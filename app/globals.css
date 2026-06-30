@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #ffffff;
+  --bg-muted: #fafafa;
+  --border: #ececef;
+  --text: #18181b;
+  --text-muted: #71717a;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.18);
+  color: #18181b;
+}
+
+/* Subtle background grid for hero sections */
+.bg-dot-grid {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: -10px -10px;
+}
+
+.bg-line-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(244, 244, 245, 0) 0%,
+    rgba(228, 228, 231, 0.7) 50%,
+    rgba(244, 244, 245, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Scrollbar */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #e4e4e7;
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #d4d4d8;
+}
+
+/* Container */
+.container-x {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Card */
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.03),
+    0 1px 3px rgba(16, 24, 40, 0.04);
+}
+
+/* Pill */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-muted);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.625rem 1rem;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: #18181b;
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #27272a;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px -10px rgba(0, 0, 0, 0.4);
+}
+.btn-ghost {
+  background: transparent;
+  color: #3f3f46;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: #f4f4f5;
+}
+.btn-outline {
+  background: #fff;
+  color: #18181b;
+  border: 1px solid var(--border);
+}
+.btn-outline:hover:not(:disabled) {
+  background: #fafafa;
+  border-color: #d4d4d8;
+}
+.btn-accent {
+  background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.4),
+    0 8px 18px -6px rgba(79, 70, 229, 0.45);
+}
+.btn-accent:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.55),
+    0 14px 24px -8px rgba(79, 70, 229, 0.55);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(180deg, #18181b 0%, #52525b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Soft divider */
+.hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.08),
+    transparent
+  );
+}
+
+/* Resume page paper */
+.paper {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 20px 40px -16px rgba(16, 24, 40, 0.12);
+}
+
+/* Evidence highlight */
+.evidence-active {
+  background: rgba(99, 102, 241, 0.1);
+  outline: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 6px;
+}
+.evidence-dim {
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+
+/* Marketing typography */
+.h-display {
+  font-size: clamp(2.25rem, 5vw, 4rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+
+.h-section {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
