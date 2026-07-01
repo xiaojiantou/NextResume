@@ -343,7 +343,7 @@ function Report({
             </h3>
             <p className="text-sm text-ink-500 mt-1">
               One-time $9.99. Tailored rewrite, Evidence Mode, side-by-side
-              comparison, PDF + DOCX export.
+              comparison, and browser PDF export.
             </p>
           </div>
           <Link href="/checkout" className="btn btn-primary">

@@ -74,6 +74,10 @@ export default function ResultPage() {
     await runOptimize(modelId);
   };
 
+  const printPdf = () => {
+    window.print();
+  };
+
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
@@ -183,11 +187,15 @@ export default function ResultPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn btn-outline" onClick={() => window.print()}>
-              <FileDown size={14} /> DOCX
+            <button
+              className="btn btn-outline"
+              onClick={() => regenerate(selectedModel)}
+              disabled={generating}
+            >
+              <FileDown size={14} /> New variation
             </button>
-            <button className="btn btn-primary" onClick={() => window.print()}>
-              <Download size={14} /> Download PDF
+            <button className="btn btn-primary" onClick={printPdf}>
+              <Download size={14} /> Save as PDF
             </button>
           </div>
         </div>
@@ -302,14 +310,18 @@ export default function ResultPage() {
         <BulletDiff />
 
         <div className="mt-12 flex items-center justify-between pb-12">
-          <button className="btn btn-outline">
+          <button
+            className="btn btn-outline"
+            onClick={() => regenerate(selectedModel)}
+            disabled={generating}
+          >
             <ArrowLeftRight size={14} /> Generate another variation
           </button>
           <button
             className="btn btn-primary !px-5"
-            onClick={() => window.print()}
+            onClick={printPdf}
           >
-            <Download size={14} /> Download PDF
+            <Download size={14} /> Save as PDF
           </button>
         </div>
 

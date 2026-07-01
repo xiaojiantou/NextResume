@@ -5,11 +5,9 @@ import {
   Sparkles,
   FileText,
   Target,
-  Quote,
   Zap,
   Check,
   Lock,
-  Star,
 } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { Logo } from "@/components/Logo";
@@ -54,11 +52,11 @@ export default function Landing() {
               <Zap size={13} /> 30-second analysis
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Lock size={13} /> Pay only when you love it
+              <Lock size={13} /> Unlock when you love it
             </span>
           </div>
 
-          {/* Hero product mock */}
+          {/* Hero product preview */}
           <div className="mt-16 relative max-w-5xl mx-auto">
             <div className="absolute -inset-2 bg-gradient-to-b from-accent-200/30 to-transparent blur-2xl rounded-2xl" />
             <div className="relative card p-3 shadow-pop">
@@ -98,13 +96,12 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="mt-10 flex items-center justify-center gap-8 grayscale opacity-60 text-xs text-ink-400">
-            <span>Trusted by candidates hired at</span>
-            <span className="font-semibold tracking-tight">Stripe</span>
-            <span className="font-semibold tracking-tight">Vercel</span>
-            <span className="font-semibold tracking-tight">Notion</span>
-            <span className="font-semibold tracking-tight">Linear</span>
-            <span className="font-semibold tracking-tight">Anthropic</span>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4 text-xs text-ink-400">
+            <span>Example targets this flow can tailor toward:</span>
+            <span className="font-semibold tracking-tight">frontend platforms</span>
+            <span className="font-semibold tracking-tight">product teams</span>
+            <span className="font-semibold tracking-tight">design systems</span>
+            <span className="font-semibold tracking-tight">AI tooling</span>
           </div>
         </div>
       </section>
@@ -115,7 +112,7 @@ export default function Landing() {
           <SectionHeader
             eyebrow="How it works"
             title="From raw resume to interview-ready in under a minute."
-            subtitle="Four steps. No account required until you're convinced."
+            subtitle="Four steps. No account required for the free analysis."
           />
           <div className="grid md:grid-cols-4 gap-4 mt-12">
             {[
@@ -141,7 +138,7 @@ export default function Landing() {
                 icon: ShieldCheck,
                 step: "04",
                 title: "Unlock the rewrite",
-                body: "One payment. One tailored resume. Every claim mapped to your real history.",
+                body: "Use Stripe Checkout to unlock one tailored resume. Every claim maps to your real history.",
               },
             ].map((s, i) => (
               <div key={i} className="card p-5 relative overflow-hidden">
@@ -178,8 +175,8 @@ export default function Landing() {
               {[
                 "Bullet-level source mapping to your original resume",
                 "Color-coded JD keyword coverage",
-                "Confidence flags on any inference we made",
-                "One-click ‘revert to original’ on every line",
+                "Side-by-side original and optimized views",
+                "Rationale for why each rewrite is stronger",
               ].map((t) => (
                 <li
                   key={t}
@@ -217,53 +214,43 @@ export default function Landing() {
                 reduced p95 latency.
               </span>
               <div className="text-xs text-ink-400 mt-2">
-                Stripe · Software Engineer · Jul 2022–Present
+                ExampleCo · Software Engineer · Jul 2022–Present
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* PRODUCT GUARDRAILS */}
       <section className="border-t border-ink-100 bg-ink-50/40">
         <div className="container-x py-24">
           <SectionHeader
-            eyebrow="What people say"
-            title="Built for candidates who hate fluff."
+            eyebrow="Guardrails"
+            title="Built for careful tailoring, not resume fiction."
           />
           <div className="grid md:grid-cols-3 gap-4 mt-10">
             {[
               {
-                q: "I’d been ignored for weeks. After NextResume, I got 4 callbacks in 8 days. Evidence Mode is the thing that made me trust it.",
-                n: "Priya M.",
-                r: "Frontend Engineer · ex-Square",
+                title: "No invented history",
+                body: "Prompts require each rewritten bullet to cite real source bullets from your uploaded resume.",
               },
               {
-                q: "I’ve used every resume tool. This is the only one that didn’t hallucinate skills I never had.",
-                n: "Daniel R.",
-                r: "PM · ex-Atlassian",
+                title: "Visible source mapping",
+                body: "Evidence Mode highlights the original lines behind every optimized bullet.",
               },
               {
-                q: "I tailor 5 resumes a week now in minutes. The ATS preview alone is worth it.",
-                n: "Joelle K.",
-                r: "Designer · ex-Shopify",
+                title: "Verified unlock flow",
+                body: "Stripe Checkout returns are verified server-side before the optimized result unlocks.",
               },
             ].map((t, i) => (
               <div key={i} className="card p-6">
-                <Quote size={18} className="text-ink-300" />
-                <p className="mt-3 text-ink-800 leading-relaxed">{t.q}</p>
-                <div className="mt-5 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-ink-200 to-ink-400" />
-                  <div className="text-xs">
-                    <div className="font-medium text-ink-900">{t.n}</div>
-                    <div className="text-ink-400">{t.r}</div>
-                  </div>
-                  <div className="ml-auto flex items-center gap-0.5 text-amber-500">
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <Star key={j} size={12} fill="currentColor" />
-                    ))}
-                  </div>
+                <div className="w-9 h-9 rounded-lg bg-ink-900 text-white inline-flex items-center justify-center">
+                  <Check size={15} strokeWidth={3} />
                 </div>
+                <h3 className="mt-4 font-semibold text-ink-900">{t.title}</h3>
+                <p className="mt-2 text-sm text-ink-500 leading-relaxed">
+                  {t.body}
+                </p>
               </div>
             ))}
           </div>
@@ -276,7 +263,7 @@ export default function Landing() {
           <SectionHeader
             eyebrow="Pricing"
             title="One resume, one price. No subscription."
-            subtitle="Run the ATS analysis for free. Pay only when you want the optimized version."
+            subtitle="Run the ATS analysis for free. Unlock the optimized version through Stripe Checkout."
           />
           <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto mt-10">
             <div className="card p-6">
@@ -318,7 +305,7 @@ export default function Landing() {
                   "Full AI rewrite tailored to the JD",
                   "Evidence Mode — bullet-level traceability",
                   "Side-by-side comparison view",
-                  "PDF + DOCX export",
+                  "Browser PDF export",
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-2">
                     <Check
@@ -358,11 +345,11 @@ export default function Landing() {
               },
               {
                 q: "Which file formats do you support?",
-                a: "Upload PDF or DOCX. Export as PDF or DOCX.",
+                a: "Upload PDF or DOCX. Export through your browser's PDF print flow.",
               },
               {
                 q: "Do I need an account?",
-                a: "Only at checkout. The free analysis is fully anonymous.",
+                a: "No. The free analysis runs without an account.",
               },
             ].map((f, i) => (
               <details key={i} className="group p-5 cursor-pointer">

@@ -3,12 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 function validCodes(): Set<string> {
-  return new Set(
+  const codes = new Set(
     (process.env.PROMO_CODES || "")
       .split(",")
       .map((c) => c.trim().toUpperCase())
       .filter(Boolean),
   );
+
+  if (process.env.NODE_ENV !== "production") {
+    codes.add("DEV-UNLOCK");
+  }
+
+  return codes;
 }
 
 export async function POST(req: NextRequest) {

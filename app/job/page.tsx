@@ -39,6 +39,7 @@ export default function JobPage() {
     setJobUrl,
     setJob,
     job,
+    selectedModel,
   } = useFlow();
   const [mode, setMode] = useState<"paste" | "url">("paste");
   const [importing, setImporting] = useState(false);
@@ -50,11 +51,17 @@ export default function JobPage() {
     setImporting(true);
     setError(null);
     try {
-      // URL fetching from arbitrary job boards needs a backend scraper.
-      // For now we fall back to the sample JD so the flow stays usable.
-      await new Promise((r) => setTimeout(r, 800));
-      setJobDescription(SAMPLE_JD);
+      const res = await fetch("/api/import-job-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: jobUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Import failed");
+      setJobDescription(data.text);
       setMode("paste");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not import job URL.");
     } finally {
       setImporting(false);
     }
@@ -67,7 +74,7 @@ export default function JobPage() {
       const res = await fetch("/api/parse-job", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: jobDescription }),
+        body: JSON.stringify({ text: jobDescription, model: selectedModel }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Parse failed");
@@ -89,7 +96,7 @@ export default function JobPage() {
           Tell us about the job
         </h1>
         <p className="text-ink-500 mt-2">
-          Paste the full job description, or import from a job board URL.
+          Paste the full job description, or try importing a public job URL.
         </p>
 
         <div className="mt-6 inline-flex bg-ink-100 p-1 rounded-lg">
@@ -162,8 +169,8 @@ export default function JobPage() {
               </button>
             </div>
             <p className="text-xs text-ink-400 mt-3">
-              URL import is in beta — for best results, paste the description
-              directly.
+              Some job boards block automated reading. If import fails, paste
+              the description directly.
             </p>
           </div>
         )}
