@@ -74,3 +74,9 @@ export type Optimization = {
   skills: string[];
   roles: OptimizedRole[];
 };
+
+export type PreviewBullet = {
+  preview: OptimizedBullet;
+  targetBulletId: string;
+  targetBulletText: string;
+};

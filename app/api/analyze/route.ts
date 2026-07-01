@@ -34,14 +34,16 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
-    const { resume, job } = (await req.json()) as {
+    const { resume, job, model } = (await req.json()) as {
       resume: Resume;
       job: JobAnalysis;
+      model?: string;
     };
 
     const report = await jsonCompletion<AtsReport>({
       system: SYSTEM,
       user: `Resume JSON:\n${JSON.stringify(resume)}\n\nJob analysis JSON:\n${JSON.stringify(job)}`,
+      model,
       maxTokens: 2000,
     });
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { AppShell } from "@/components/AppShell";
+import { ModelPicker } from "@/components/ModelPicker";
 import { ResumeView } from "@/components/ResumeView";
+import { findModel } from "@/lib/models";
 import { useFlow } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import {
@@ -9,6 +11,7 @@ import {
   ArrowLeftRight,
   Check,
   Columns2,
+  Cpu,
   Download,
   Eye,
   FileDown,
@@ -28,8 +31,12 @@ export default function ResultPage() {
     job,
     report,
     optimization,
+    optimizationModel,
+    selectedModel,
     paid,
     setOptimization,
+    setSelectedModel,
+    clearOptimization,
   } = useFlow();
   const [view, setView] = useState<View>("split");
   const [evidenceMode, setEvidenceMode] = useState(true);
@@ -40,6 +47,32 @@ export default function ResultPage() {
   const [error, setError] = useState<string | null>(null);
   const ran = useRef(false);
   const router = useRouter();
+
+  const runOptimize = async (modelId: string) => {
+    if (!resume || !job || !report) return;
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume, job, report, model: modelId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Optimization failed");
+      setOptimization(data.optimization, modelId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Optimization failed.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const regenerate = async (modelId: string) => {
+    clearOptimization();
+    setHoveredOptimizedId(null);
+    await runOptimize(modelId);
+  };
 
   useEffect(() => {
     if (ran.current) return;
@@ -55,23 +88,7 @@ export default function ResultPage() {
     }
     if (optimization) return;
 
-    (async () => {
-      setGenerating(true);
-      try {
-        const res = await fetch("/api/optimize", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resume, job, report }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Optimization failed");
-        setOptimization(data.optimization);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Optimization failed.");
-      } finally {
-        setGenerating(false);
-      }
-    })();
+    runOptimize(selectedModel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -197,7 +214,7 @@ export default function ResultPage() {
               label="Original only"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
               <span className="inline-flex items-center gap-1.5">
                 <Layers size={14} className="text-accent-600" />
@@ -208,8 +225,30 @@ export default function ResultPage() {
                 onChange={() => setEvidenceMode((v) => !v)}
               />
             </label>
+            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
+            <ModelPicker
+              current={selectedModel}
+              onPick={(id) => {
+                setSelectedModel(id);
+                if (id !== optimizationModel) regenerate(id);
+              }}
+              onRegenerate={() => regenerate(selectedModel)}
+              regenerating={generating}
+              compact
+            />
           </div>
         </div>
+
+        {optimizationModel && (
+          <div className="mt-2 text-xs text-ink-400 flex items-center gap-1.5">
+            <Cpu size={11} />
+            Generated with{" "}
+            <span className="text-ink-600 font-medium">
+              {findModel(optimizationModel).name}
+            </span>
+            . Pick another model to compare rewrites.
+          </div>
+        )}
 
         {evidenceMode && (
           <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50/40 px-4 py-3 text-sm text-ink-700 flex items-start gap-2.5">

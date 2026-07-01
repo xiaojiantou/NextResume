@@ -23,7 +23,7 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
-    const { text } = await req.json();
+    const { text, model } = await req.json();
     if (!text || text.length < 50) {
       return NextResponse.json(
         { error: "Job description too short" },
@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     const analysis = await jsonCompletion<JobAnalysis>({
       system: SYSTEM,
       user: `Job description:\n\n${text.slice(0, 8000)}`,
+      model,
       maxTokens: 1500,
     });
 

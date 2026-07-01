@@ -2,6 +2,7 @@
 
 import { AppShell } from "@/components/AppShell";
 import { useFlow } from "@/lib/store";
+import type { PreviewBullet } from "@/lib/types";
 import {
   AlertCircle,
   AlertTriangle,
@@ -25,11 +26,55 @@ const STAGES = [
 ];
 
 export default function AnalysisPage() {
-  const { resume, job, report, setReport } = useFlow();
+  const {
+    resume,
+    job,
+    report,
+    preview,
+    selectedModel,
+    setReport,
+    setPreview,
+  } = useFlow();
   const [stage, setStage] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const router = useRouter();
   const ran = useRef(false);
+  const previewRan = useRef(false);
+
+  // Kick off the free preview bullet rewrite as soon as report is ready.
+  useEffect(() => {
+    if (!report || !resume || !job || preview || previewRan.current) return;
+    previewRan.current = true;
+    setPreviewLoading(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/optimize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resume,
+            job,
+            report,
+            mode: "preview",
+            model: selectedModel,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.preview) {
+          setPreview({
+            preview: data.preview,
+            targetBulletId: data.targetBulletId,
+            targetBulletText: data.targetBulletText,
+          });
+        }
+      } catch {
+        // Preview failure is non-fatal — paid path still works.
+      } finally {
+        setPreviewLoading(false);
+      }
+    })();
+  }, [report, resume, job, preview, selectedModel, setPreview]);
 
   useEffect(() => {
     if (ran.current) return;
@@ -55,7 +100,7 @@ export default function AnalysisPage() {
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resume, job }),
+          body: JSON.stringify({ resume, job, model: selectedModel }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Analysis failed");
@@ -79,6 +124,9 @@ export default function AnalysisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const totalBullets =
+    resume?.experience.reduce((n, r) => n + r.bullets.length, 0) ?? 0;
+
   return (
     <AppShell step="analysis">
       <div className="container-x py-10 max-w-5xl">
@@ -87,7 +135,11 @@ export default function AnalysisPage() {
         ) : !report ? (
           <Analyzing stage={stage} />
         ) : (
-          <Report />
+          <Report
+            preview={preview}
+            previewLoading={previewLoading}
+            totalBullets={totalBullets}
+          />
         )}
       </div>
     </AppShell>
@@ -153,9 +205,18 @@ function Analyzing({ stage }: { stage: number }) {
   );
 }
 
-function Report() {
+function Report({
+  preview,
+  previewLoading,
+  totalBullets,
+}: {
+  preview: PreviewBullet | null;
+  previewLoading: boolean;
+  totalBullets: number;
+}) {
   const { report } = useFlow();
   if (!report) return null;
+  const remainingBullets = Math.max(totalBullets - 1, 0);
 
   return (
     <div className="space-y-6 animate-rise">
@@ -265,6 +326,12 @@ function Report() {
         </div>
       </div>
 
+      <PreviewBulletBlock
+        preview={preview}
+        loading={previewLoading}
+        remaining={remainingBullets}
+      />
+
       <div className="card p-6 bg-gradient-to-br from-white to-accent-50/40 border-accent-100">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-lg bg-ink-900 text-white inline-flex items-center justify-center shrink-0">
@@ -294,6 +361,125 @@ function Report() {
           Unlock optimized resume
           <ArrowRight size={14} />
         </Link>
+      </div>
+    </div>
+  );
+}
+
+function PreviewBulletBlock({
+  preview,
+  loading,
+  remaining,
+}: {
+  preview: PreviewBullet | null;
+  loading: boolean;
+  remaining: number;
+}) {
+  if (!preview && !loading) return null;
+
+  return (
+    <div className="card overflow-hidden border-accent-200">
+      <div className="px-5 py-3 bg-gradient-to-r from-accent-50/60 to-white border-b border-accent-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="pill !text-accent-700 !border-accent-200 !bg-white">
+            <Sparkles size={11} />
+            Free preview · 1 bullet rewritten
+          </span>
+        </div>
+        <span className="text-xs text-ink-400 hidden sm:inline">
+          See how Evidence Mode works before you pay
+        </span>
+      </div>
+
+      {loading || !preview ? (
+        <div className="p-6 grid md:grid-cols-2 gap-4">
+          <PreviewSkeleton label="Your original" />
+          <PreviewSkeleton label="Tailored rewrite" tone="accent" />
+        </div>
+      ) : (
+        <div className="p-5 grid md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
+              Your original bullet
+            </div>
+            <div className="rounded-lg border border-ink-100 bg-white p-3 text-sm text-ink-700">
+              <span className="evidence-active px-1.5 py-0.5">
+                {preview.targetBulletText}
+              </span>
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium mb-1.5">
+              Rewritten for this job
+            </div>
+            <div className="rounded-lg border border-accent-200 bg-accent-50/40 p-3 text-sm text-ink-900">
+              {preview.preview.text}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {preview.preview.matchedKeywords.map((k) => (
+                  <span
+                    key={k}
+                    className="text-[11px] px-2 py-0.5 rounded-md bg-accent-100 text-accent-700 font-medium"
+                  >
+                    +{k}
+                  </span>
+                ))}
+              </div>
+              {preview.preview.rationale && (
+                <div className="mt-3 text-xs text-ink-500 italic">
+                  Why this is stronger: {preview.preview.rationale}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-5 py-3 bg-ink-50/50 border-t border-ink-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="text-sm text-ink-700">
+          <span className="font-medium text-ink-900">
+            {remaining > 0
+              ? `${remaining} more ${remaining === 1 ? "bullet" : "bullets"} to rewrite.`
+              : "Unlock the full rewrite."}
+          </span>{" "}
+          <span className="text-ink-500">
+            Includes Evidence Mode, side-by-side, and exports.
+          </span>
+        </div>
+        <Link href="/checkout" className="btn btn-primary">
+          Unlock the rest for $9.99
+          <ArrowRight size={14} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function PreviewSkeleton({
+  label,
+  tone,
+}: {
+  label: string;
+  tone?: "accent";
+}) {
+  return (
+    <div>
+      <div
+        className={`text-[10px] uppercase tracking-widest font-medium mb-1.5 ${
+          tone === "accent" ? "text-accent-600" : "text-ink-400"
+        }`}
+      >
+        {label}
+      </div>
+      <div
+        className={`rounded-lg p-3 space-y-2 ${
+          tone === "accent"
+            ? "border border-accent-200 bg-accent-50/40"
+            : "border border-ink-100 bg-white"
+        }`}
+      >
+        <div className="h-3 rounded shimmer bg-ink-100" />
+        <div className="h-3 rounded shimmer bg-ink-100 w-5/6" />
+        <div className="h-3 rounded shimmer bg-ink-100 w-2/3" />
       </div>
     </div>
   );
