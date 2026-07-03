@@ -1,3 +1,13 @@
+// Order store — durable across serverless cold starts + concurrent webhooks.
+//
+// Backends:
+//   • prod: Upstash Redis (REST). One key per order + a session→order index key.
+//     No read-modify-write on a shared blob, so concurrent Stripe events don't
+//     clobber each other.
+//   • dev: a single JSON file at .nextresume-orders.json (gitignored).
+//
+// To enable prod: set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN.
+
 import { promises as fs } from "fs";
 import path from "path";
 
@@ -12,21 +22,18 @@ export type Order = {
   updatedAt: string;
 };
 
-type OrderStore = {
-  orders: Record<string, Order>;
-};
-
 const STORE_PATH = path.join(process.cwd(), ".nextresume-orders.json");
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-const REDIS_KEY = process.env.ORDER_STORE_KEY || "nextresume:orders";
+const ORDER_KEY = (id: string) => `nextresume:order:${id}`;
+const SESSION_KEY = (sid: string) => `nextresume:session:${sid}`;
 
-function hasRedisConfig() {
+function hasRedis() {
   return Boolean(REDIS_URL && REDIS_TOKEN);
 }
 
-function requireProductionStore() {
-  if (process.env.NODE_ENV === "production" && !hasRedisConfig()) {
+function guardProd() {
+  if (process.env.NODE_ENV === "production" && !hasRedis()) {
     throw new Error(
       "Missing production order store. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.",
     );
@@ -34,39 +41,29 @@ function requireProductionStore() {
 }
 
 async function redisCommand<T>(command: unknown[]): Promise<T> {
-  if (!REDIS_URL || !REDIS_TOKEN) {
-    throw new Error("Redis order store is not configured.");
-  }
-
-  const res = await fetch(REDIS_URL, {
+  const res = await fetch(REDIS_URL!, {
     method: "POST",
     headers: {
-      authorization: `Bearer ${REDIS_TOKEN}`,
+      authorization: `Bearer ${REDIS_TOKEN!}`,
       "content-type": "application/json",
     },
     body: JSON.stringify(command),
     cache: "no-store",
   });
-
   const data = (await res.json()) as { result?: T; error?: string };
   if (!res.ok || data.error) {
-    throw new Error(data.error || "Redis order store request failed.");
+    throw new Error(data.error || `Redis error (HTTP ${res.status})`);
   }
-
   return data.result as T;
 }
 
-async function readStore(): Promise<OrderStore> {
-  requireProductionStore();
+// --- file-backed helpers (dev only) --------------------------------------
+type FileStore = { orders: Record<string, Order> };
 
-  if (hasRedisConfig()) {
-    const raw = await redisCommand<string | null>(["GET", REDIS_KEY]);
-    return raw ? (JSON.parse(raw) as OrderStore) : { orders: {} };
-  }
-
+async function readFileStore(): Promise<FileStore> {
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
-    return JSON.parse(raw) as OrderStore;
+    return JSON.parse(raw) as FileStore;
   } catch (e) {
     if (
       typeof e === "object" &&
@@ -80,16 +77,11 @@ async function readStore(): Promise<OrderStore> {
   }
 }
 
-async function writeStore(store: OrderStore) {
-  requireProductionStore();
-
-  if (hasRedisConfig()) {
-    await redisCommand<"OK">(["SET", REDIS_KEY, JSON.stringify(store)]);
-    return;
-  }
-
+async function writeFileStore(store: FileStore) {
   await fs.writeFile(STORE_PATH, `${JSON.stringify(store, null, 2)}\n`);
 }
+
+// --- public API ----------------------------------------------------------
 
 export async function createOrder({
   id,
@@ -98,7 +90,7 @@ export async function createOrder({
   id: string;
   stripeSessionId: string;
 }): Promise<Order> {
-  const store = await readStore();
+  guardProd();
   const now = new Date().toISOString();
   const order: Order = {
     id,
@@ -107,9 +99,48 @@ export async function createOrder({
     createdAt: now,
     updatedAt: now,
   };
+
+  if (hasRedis()) {
+    // Two atomic writes: the order + the session→order index.
+    await redisCommand(["SET", ORDER_KEY(id), JSON.stringify(order)]);
+    await redisCommand(["SET", SESSION_KEY(stripeSessionId), id]);
+    return order;
+  }
+
+  const store = await readFileStore();
   store.orders[id] = order;
-  await writeStore(store);
+  await writeFileStore(store);
   return order;
+}
+
+export async function getOrder(id: string): Promise<Order | null> {
+  guardProd();
+  if (hasRedis()) {
+    const raw = await redisCommand<string | null>(["GET", ORDER_KEY(id)]);
+    return raw ? (JSON.parse(raw) as Order) : null;
+  }
+  const store = await readFileStore();
+  return store.orders[id] ?? null;
+}
+
+export async function findOrderBySessionId(
+  stripeSessionId: string,
+): Promise<Order | null> {
+  guardProd();
+  if (hasRedis()) {
+    const id = await redisCommand<string | null>([
+      "GET",
+      SESSION_KEY(stripeSessionId),
+    ]);
+    if (!id) return null;
+    return getOrder(id);
+  }
+  const store = await readFileStore();
+  return (
+    Object.values(store.orders).find(
+      (o) => o.stripeSessionId === stripeSessionId,
+    ) ?? null
+  );
 }
 
 export async function markOrderFromCheckoutSession({
@@ -123,13 +154,11 @@ export async function markOrderFromCheckoutSession({
   status: string;
   paymentStatus: string;
 }): Promise<Order | null> {
-  const store = await readStore();
-  const order =
-    (orderId ? store.orders[orderId] : undefined) ??
-    Object.values(store.orders).find(
-      (o) => o.stripeSessionId === stripeSessionId,
-    );
+  guardProd();
 
+  const order = orderId
+    ? await getOrder(orderId)
+    : await findOrderBySessionId(stripeSessionId);
   if (!order) return null;
 
   const paid =
@@ -138,18 +167,14 @@ export async function markOrderFromCheckoutSession({
   order.status = paid ? "paid" : status === "expired" ? "expired" : "pending";
   order.paymentStatus = paymentStatus;
   order.updatedAt = new Date().toISOString();
-  store.orders[order.id] = order;
-  await writeStore(store);
-  return order;
-}
 
-export async function findOrderBySessionId(
-  stripeSessionId: string,
-): Promise<Order | null> {
-  const store = await readStore();
-  return (
-    Object.values(store.orders).find(
-      (o) => o.stripeSessionId === stripeSessionId,
-    ) ?? null
-  );
+  if (hasRedis()) {
+    await redisCommand(["SET", ORDER_KEY(order.id), JSON.stringify(order)]);
+    return order;
+  }
+
+  const store = await readFileStore();
+  store.orders[order.id] = order;
+  await writeFileStore(store);
+  return order;
 }

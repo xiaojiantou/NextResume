@@ -3,8 +3,9 @@
 import { AppShell } from "@/components/AppShell";
 import { ModelPicker } from "@/components/ModelPicker";
 import { ResumeView } from "@/components/ResumeView";
+import { VoiceRefine } from "@/components/VoiceRefine";
 import { findModel } from "@/lib/models";
-import { useFlow } from "@/lib/store";
+import { VOICE_QUOTA, useFlow } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import {
   AlertCircle,
@@ -74,8 +75,46 @@ export default function ResultPage() {
     await runOptimize(modelId);
   };
 
-  const printPdf = () => {
-    window.print();
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const downloadPdf = async () => {
+    if (!resume) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const res = await fetch("/api/export/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume,
+          optimization,
+          targetTitle: job?.title || "",
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Export failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      const disp = res.headers.get("Content-Disposition") || "";
+      const match = disp.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+      const filename = match
+        ? decodeURIComponent(match[1])
+        : `${resume.name || "resume"}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "PDF export failed.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   useEffect(() => {
@@ -194,11 +233,30 @@ export default function ResultPage() {
             >
               <FileDown size={14} /> New variation
             </button>
-            <button className="btn btn-primary" onClick={printPdf}>
-              <Download size={14} /> Save as PDF
+            <button
+              className="btn btn-primary"
+              onClick={downloadPdf}
+              disabled={exporting || generating || !optimization}
+            >
+              {exporting ? (
+                <>
+                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Preparing…
+                </>
+              ) : (
+                <>
+                  <Download size={14} /> Download PDF
+                </>
+              )}
             </button>
           </div>
         </div>
+
+        {exportError && (
+          <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {exportError}
+          </div>
+        )}
 
         {/* Toolbar */}
         <div className="mt-6 card p-2 flex flex-wrap items-center gap-2 justify-between">
@@ -319,9 +377,19 @@ export default function ResultPage() {
           </button>
           <button
             className="btn btn-primary !px-5"
-            onClick={printPdf}
+            onClick={downloadPdf}
+            disabled={exporting || generating || !optimization}
           >
-            <Download size={14} /> Save as PDF
+            {exporting ? (
+              <>
+                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Preparing…
+              </>
+            ) : (
+              <>
+                <Download size={14} /> Download PDF
+              </>
+            )}
           </button>
         </div>
 
@@ -490,8 +558,17 @@ function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
 }
 
 function BulletDiff() {
-  const { resume, optimization } = useFlow();
+  const {
+    resume,
+    optimization,
+    job,
+    selectedModel,
+    voiceCount,
+    replaceOptimizedBullet,
+    incrementVoiceCount,
+  } = useFlow();
   if (!resume || !optimization) return null;
+  const quotaRemaining = Math.max(0, VOICE_QUOTA - voiceCount);
 
   return (
     <div className="mt-10">
@@ -499,9 +576,20 @@ function BulletDiff() {
         <h2 className="text-lg font-semibold text-ink-900">
           Bullet-by-bullet changes
         </h2>
-        <div className="text-xs text-ink-400">
-          {optimization.roles.flatMap((r) => r.bullets).length} bullets
-          rewritten
+        <div className="text-xs text-ink-400 flex items-center gap-3">
+          <span>
+            {optimization.roles.flatMap((r) => r.bullets).length} bullets
+            rewritten
+          </span>
+          <span className="hidden sm:inline">·</span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1",
+              quotaRemaining === 0 && "text-rose-500",
+            )}
+          >
+            🎙 {quotaRemaining}/{VOICE_QUOTA} voice refinements
+          </span>
         </div>
       </div>
 
@@ -538,8 +626,19 @@ function BulletDiff() {
                         </div>
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium mb-1.5">
-                          After
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium">
+                            After
+                          </div>
+                          <VoiceRefine
+                            roleId={role.id}
+                            bullet={b}
+                            job={job}
+                            model={selectedModel}
+                            quotaRemaining={quotaRemaining}
+                            onAccept={replaceOptimizedBullet}
+                            onQuotaConsume={incrementVoiceCount}
+                          />
                         </div>
                         <div className="text-ink-900">{b.text}</div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -551,6 +650,11 @@ function BulletDiff() {
                               +{k}
                             </span>
                           ))}
+                          {b.evidence.includes("voice-transcript") && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                              🎙 voice-attested
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { markOrderFromCheckoutSession } from "@/lib/orders";
+import { sendOrderReadyEmail } from "@/lib/email";
 import type { CheckoutSession } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -78,12 +79,29 @@ export async function POST(req: NextRequest) {
       event.type === "checkout.session.expired"
     ) {
       const session = event.data.object;
-      await markOrderFromCheckoutSession({
+      const order = await markOrderFromCheckoutSession({
         orderId: session.metadata?.order_id || session.client_reference_id,
         stripeSessionId: session.id,
         status: session.status,
         paymentStatus: session.payment_status,
       });
+
+      // Fire the "resume ready" email on successful payment. Non-fatal.
+      if (order?.status === "paid") {
+        const to =
+          session.customer_details?.email || session.customer_email || "";
+        if (to) {
+          try {
+            await sendOrderReadyEmail({
+              to,
+              name: session.customer_details?.name || undefined,
+              orderId: order.id,
+            });
+          } catch (err) {
+            console.error("[webhook] email send failed", err);
+          }
+        }
+      }
     }
 
     return NextResponse.json({ received: true });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -33,6 +34,8 @@ function htmlToText(html: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimitGuard(req, LIMITS.importJobUrl);
+  if (rl) return rl;
   try {
     const { url: rawUrl } = (await req.json()) as { url?: string };
     const url = normalizeUrl(rawUrl || "");

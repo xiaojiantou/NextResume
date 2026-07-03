@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
+import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { AtsReport, JobAnalysis, Resume } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -33,6 +34,8 @@ Rules:
 - "detail" is one sentence, specific and actionable.`;
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimitGuard(req, LIMITS.analyze);
+  if (rl) return rl;
   try {
     const { resume, job, model } = (await req.json()) as {
       resume: Resume;

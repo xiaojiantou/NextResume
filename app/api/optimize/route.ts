@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
+import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type {
   AtsReport,
   JobAnalysis,
@@ -92,6 +93,8 @@ function pickWeakestBullet(resume: Resume): {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimitGuard(req, LIMITS.optimize);
+  if (rl) return rl;
   try {
     const body = (await req.json()) as {
       resume: Resume;

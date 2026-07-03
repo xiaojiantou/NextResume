@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
+import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { JobAnalysis } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -22,6 +23,8 @@ Rules:
 - "title" = the role title only, no company or location.`;
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimitGuard(req, LIMITS.parseJob);
+  if (rl) return rl;
   try {
     const { text, model } = await req.json();
     if (!text || text.length < 50) {

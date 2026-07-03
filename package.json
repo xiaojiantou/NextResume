@@ -6,9 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "run": "bash scripts/run.sh",
+    "run:prod": "bash scripts/run.sh --prod",
+    "run:clean": "bash scripts/run.sh --clean"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.5.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
     "mammoth": "^1.12.0",
@@ -17,6 +21,7 @@
     "pdf-parse": "^1.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.16.0",
     "server-only": "^0.0.1",
     "tailwind-merge": "^2.5.4",
     "zustand": "^5.0.1"

@@ -7,9 +7,12 @@ import type {
   AtsReport,
   JobAnalysis,
   Optimization,
+  OptimizedBullet,
   PreviewBullet,
   Resume,
 } from "./types";
+
+export const VOICE_QUOTA = 10;
 
 type Step = "upload" | "job" | "analysis" | "checkout" | "result";
 
@@ -32,6 +35,8 @@ type State = {
 
   paid: boolean;
   step: Step;
+
+  voiceCount: number;
 };
 
 type Actions = {
@@ -47,8 +52,15 @@ type Actions = {
   setPreview: (p: PreviewBullet) => void;
   setOptimization: (o: Optimization, model: string) => void;
   clearOptimization: () => void;
+  replaceOptimizedBullet: (
+    roleId: string,
+    bulletId: string,
+    next: OptimizedBullet,
+  ) => void;
 
   setSelectedModel: (m: string) => void;
+
+  incrementVoiceCount: () => void;
 
   markPaid: () => void;
   setStep: (s: Step) => void;
@@ -70,6 +82,7 @@ const initial: State = {
   selectedModel: DEFAULT_MODEL_ID,
   paid: false,
   step: "upload",
+  voiceCount: 0,
 };
 
 export const useFlow = create<State & Actions>()(
@@ -104,10 +117,30 @@ export const useFlow = create<State & Actions>()(
       setReport: (r) => set({ report: r }),
       setPreview: (p) => set({ preview: p }),
       setOptimization: (o, model) =>
-        set({ optimization: o, optimizationModel: model }),
+        set({ optimization: o, optimizationModel: model, voiceCount: 0 }),
       clearOptimization: () =>
         set({ optimization: null, optimizationModel: null }),
+      replaceOptimizedBullet: (roleId, bulletId, next) =>
+        set((s) => {
+          if (!s.optimization) return {};
+          return {
+            optimization: {
+              ...s.optimization,
+              roles: s.optimization.roles.map((r) =>
+                r.id !== roleId
+                  ? r
+                  : {
+                      ...r,
+                      bullets: r.bullets.map((b) =>
+                        b.id === bulletId ? { ...next, id: bulletId } : b,
+                      ),
+                    },
+              ),
+            },
+          };
+        }),
       setSelectedModel: (m) => set({ selectedModel: m }),
+      incrementVoiceCount: () => set((s) => ({ voiceCount: s.voiceCount + 1 })),
       markPaid: () => set({ paid: true }),
       setStep: (s) => set({ step: s }),
       reset: () => set(initial),

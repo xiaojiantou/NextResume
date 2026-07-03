@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,8 @@ function validCodes(): Set<string> {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimitGuard(req, LIMITS.redeem);
+  if (rl) return rl;
   try {
     const { code } = (await req.json()) as { code?: string };
     const submitted = (code || "").trim().toUpperCase();

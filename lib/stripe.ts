@@ -34,6 +34,11 @@ export type CheckoutSession = {
   status: "open" | "complete" | "expired";
   client_reference_id?: string | null;
   metadata?: Record<string, string> | null;
+  customer_details?: {
+    email?: string | null;
+    name?: string | null;
+  } | null;
+  customer_email?: string | null;
 };
 
 export async function createCheckoutSession({

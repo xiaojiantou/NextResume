@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { extractText } from "@/lib/extract";
+import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { Resume } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -41,6 +42,8 @@ Rules:
 - Skills should be a flat deduplicated list.`;
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimitGuard(req, LIMITS.parseResume);
+  if (rl) return rl;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
