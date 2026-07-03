@@ -1,10 +1,24 @@
 import OpenAI from "openai";
 import { DEFAULT_MODEL_ID } from "./models";
 
-export const novita = new OpenAI({
-  apiKey: process.env.NOVITA_API_KEY,
-  baseURL: process.env.NOVITA_BASE_URL || "https://api.novita.ai/v3/openai",
-});
+// Lazy-init: the OpenAI SDK throws in its constructor if no key is set, which
+// breaks Next.js "collecting page data" step at build time on Vercel.
+// Instead we construct the client on first use, when env vars ARE available.
+let _novita: OpenAI | null = null;
+function getNovita(): OpenAI {
+  if (_novita) return _novita;
+  const apiKey = process.env.NOVITA_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "Missing NOVITA_API_KEY. Set it in .env.local or Vercel env vars.",
+    );
+  }
+  _novita = new OpenAI({
+    apiKey,
+    baseURL: process.env.NOVITA_BASE_URL || "https://api.novita.ai/v3/openai",
+  });
+  return _novita;
+}
 
 export const ENV_MODEL = process.env.NOVITA_MODEL || DEFAULT_MODEL_ID;
 
@@ -44,8 +58,9 @@ export async function jsonCompletion<T>({
     { role: "user" as const, content: user },
   ];
 
+  const client = getNovita();
   const call = async (useJsonMode: boolean) => {
-    const res = await novita.chat.completions.create({
+    const res = await client.chat.completions.create({
       model: chosen,
       messages,
       ...(useJsonMode
