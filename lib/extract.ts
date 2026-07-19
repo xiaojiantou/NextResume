@@ -8,8 +8,15 @@ export async function extractText(
   const ext = filename.split(".").pop()?.toLowerCase();
 
   if (ext === "pdf") {
-    // Dynamic import avoids pdf-parse's debug-mode file read at build time.
-    const pdfParse = (await import("pdf-parse")).default;
+    // Import the internal implementation directly. The top-level `pdf-parse`
+    // entrypoint has a debug-mode code path that tries to read a bundled test
+    // PDF (./test/data/05-versions-space.pdf) at load time, which ENOENTs on
+    // Vercel serverless. Reaching straight for the impl file dodges it.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error — deep import into pdf-parse has no types
+    const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default as (
+      b: Buffer,
+    ) => Promise<{ text: string }>;
     const data = await pdfParse(buffer);
     return data.text.trim();
   }
