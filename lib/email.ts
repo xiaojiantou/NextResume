@@ -1,17 +1,20 @@
-// Transactional email via Resend.
+// Transactional email via MailerSend.
 //
-// Fails safe: if RESEND_API_KEY isn't set, this logs a warning and no-ops
+// Fails safe: if MAILERSEND_API_KEY isn't set, this logs a warning and no-ops
 // so the checkout flow still succeeds. Wire the key when you're ready.
+//
+// Env vars:
+//   MAILERSEND_API_KEY   — starts with "mlsn."
+//   EMAIL_FROM_EMAIL     — e.g. "hello@yourdomain.com" (must be from a verified domain,
+//                          OR a *.mlsender.net trial subdomain MailerSend assigns you)
+//   EMAIL_FROM_NAME      — display name, defaults to "NextResume"
+//   NEXT_PUBLIC_APP_URL  — used in the CTA link back into the app
 
-import { Resend } from "resend";
-
-const API_KEY = process.env.RESEND_API_KEY;
-const FROM =
-  process.env.EMAIL_FROM || "NextResume <onboarding@resend.dev>";
+const API_KEY = process.env.MAILERSEND_API_KEY;
+const FROM_EMAIL = process.env.EMAIL_FROM_EMAIL || "";
+const FROM_NAME = process.env.EMAIL_FROM_NAME || "NextResume";
 const APP_URL =
   process.env.NEXT_PUBLIC_APP_URL || "https://nextresume-lovat.vercel.app";
-
-const resend = API_KEY ? new Resend(API_KEY) : null;
 
 export type SendResult =
   | { ok: true; id: string }
@@ -26,31 +29,54 @@ export async function sendOrderReadyEmail({
   name?: string;
   orderId: string;
 }): Promise<SendResult> {
-  if (!resend) {
+  if (!API_KEY) {
     console.warn(
-      "[email] RESEND_API_KEY not set — skipping order-ready email to",
+      "[email] MAILERSEND_API_KEY not set — skipping order-ready email to",
       to,
     );
     return { ok: false, reason: "email_disabled" };
+  }
+  if (!FROM_EMAIL) {
+    console.warn(
+      "[email] EMAIL_FROM_EMAIL not set — skipping order-ready email to",
+      to,
+    );
+    return { ok: false, reason: "email_from_missing" };
   }
 
   const resultUrl = `${APP_URL}/result`;
   const displayName = (name || "").split(/[\s@]/)[0] || "there";
 
+  const body = {
+    from: { email: FROM_EMAIL, name: FROM_NAME },
+    to: [{ email: to, name: name || undefined }],
+    subject: "Your optimized resume is ready",
+    html: renderHtml({ displayName, resultUrl, orderId }),
+    text: renderText({ displayName, resultUrl, orderId }),
+  };
+
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM,
-      to,
-      subject: "Your optimized resume is ready",
-      html: renderHtml({ displayName, resultUrl, orderId }),
-      text: renderText({ displayName, resultUrl, orderId }),
+    const res = await fetch("https://api.mailersend.com/v1/email", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${API_KEY}`,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify(body),
     });
 
-    if (error) {
-      console.error("[email] resend error", error);
-      return { ok: false, reason: error.message || "resend_error" };
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(
+        "[email] mailersend error",
+        res.status,
+        errText.slice(0, 500),
+      );
+      return { ok: false, reason: `mailersend_${res.status}` };
     }
-    return { ok: true, id: data?.id || "" };
+    const id = res.headers.get("x-message-id") || "";
+    return { ok: true, id };
   } catch (e) {
     console.error("[email] send failed", e);
     return {
