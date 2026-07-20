@@ -10,6 +10,8 @@
 //   EMAIL_FROM_NAME      — display name, defaults to "NextResume"
 //   NEXT_PUBLIC_APP_URL  — used in the CTA link back into the app
 
+import { signOrderToken } from "./tokens";
+
 const API_KEY = process.env.MAILERSEND_API_KEY;
 const FROM_EMAIL = process.env.EMAIL_FROM_EMAIL || "";
 const FROM_NAME = process.env.EMAIL_FROM_NAME || "NextResume";
@@ -44,7 +46,10 @@ export async function sendOrderReadyEmail({
     return { ok: false, reason: "email_from_missing" };
   }
 
-  const resultUrl = `${APP_URL}/result`;
+  // Signed link → clicking it grants access to this order's snapshot from
+  // any device, no login required. Token never expires.
+  const token = signOrderToken(orderId);
+  const resultUrl = `${APP_URL}/result?order=${encodeURIComponent(orderId)}&token=${encodeURIComponent(token)}`;
   const displayName = (name || "").split(/[\s@]/)[0] || "there";
 
   const body = {

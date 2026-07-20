@@ -11,6 +11,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { Redis } from "@upstash/redis";
+import type { JobAnalysis, Optimization, Resume } from "./types";
 
 type OrderStatus = "pending" | "paid" | "expired";
 
@@ -19,13 +20,25 @@ export type Order = {
   stripeSessionId: string;
   status: OrderStatus;
   paymentStatus?: string;
+  email?: string;
   createdAt: string;
+  updatedAt: string;
+};
+
+// The buyer's data attached to an order — hydrated on the /result page when
+// they click through from the email on a new device.
+export type OrderSnapshot = {
+  resume: Resume;
+  job: JobAnalysis | null;
+  optimization: Optimization | null;
+  optimizationModel: string | null;
   updatedAt: string;
 };
 
 const STORE_PATH = path.join(process.cwd(), ".nextresume-orders.json");
 const ORDER_KEY = (id: string) => `nextresume:order:${id}`;
 const SESSION_KEY = (sid: string) => `nextresume:session:${sid}`;
+const SNAPSHOT_KEY = (id: string) => `nextresume:snapshot:${id}`;
 
 function hasRedis() {
   return Boolean(
@@ -167,11 +180,13 @@ export async function markOrderFromCheckoutSession({
   stripeSessionId,
   status,
   paymentStatus,
+  email,
 }: {
   orderId?: string | null;
   stripeSessionId: string;
   status: string;
   paymentStatus: string;
+  email?: string | null;
 }): Promise<Order | null> {
   guardProd();
 
@@ -184,6 +199,7 @@ export async function markOrderFromCheckoutSession({
     status === "complete" &&
     (paymentStatus === "paid" || paymentStatus === "no_payment_required");
   order.status = paid ? "paid" : status === "expired" ? "expired" : "pending";
+  if (email) order.email = email;
   order.paymentStatus = paymentStatus;
   order.updatedAt = new Date().toISOString();
 
@@ -196,4 +212,82 @@ export async function markOrderFromCheckoutSession({
   store.orders[order.id] = order;
   await writeFileStore(store);
   return order;
+}
+
+// --- snapshot (buyer's data, hydrated when clicking through the email) ---
+
+export async function saveOrderSnapshot(
+  orderId: string,
+  snapshot: Omit<OrderSnapshot, "updatedAt">,
+): Promise<void> {
+  guardProd();
+  const full: OrderSnapshot = {
+    ...snapshot,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (hasRedis()) {
+    await getRedis().set(SNAPSHOT_KEY(orderId), JSON.stringify(full));
+    return;
+  }
+  // Dev: store inline on the order file (small hack)
+  const store = await readFileStore();
+  const anyStore = store as unknown as {
+    orders: Record<string, Order>;
+    snapshots?: Record<string, OrderSnapshot>;
+  };
+  anyStore.snapshots = anyStore.snapshots || {};
+  anyStore.snapshots[orderId] = full;
+  await writeFileStore(anyStore as FileStore);
+}
+
+export async function patchOrderSnapshot(
+  orderId: string,
+  patch: Partial<Omit<OrderSnapshot, "updatedAt">>,
+): Promise<OrderSnapshot | null> {
+  guardProd();
+  const existing = await getOrderSnapshot(orderId);
+  if (!existing) return null;
+  const merged: OrderSnapshot = {
+    ...existing,
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  if (hasRedis()) {
+    await getRedis().set(SNAPSHOT_KEY(orderId), JSON.stringify(merged));
+    return merged;
+  }
+  const store = await readFileStore();
+  const anyStore = store as unknown as {
+    orders: Record<string, Order>;
+    snapshots?: Record<string, OrderSnapshot>;
+  };
+  anyStore.snapshots = anyStore.snapshots || {};
+  anyStore.snapshots[orderId] = merged;
+  await writeFileStore(anyStore as FileStore);
+  return merged;
+}
+
+export async function getOrderSnapshot(
+  orderId: string,
+): Promise<OrderSnapshot | null> {
+  guardProd();
+  if (hasRedis()) {
+    const raw = await getRedis().get(SNAPSHOT_KEY(orderId));
+    if (!raw) return null;
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw) as OrderSnapshot;
+      } catch {
+        return null;
+      }
+    }
+    return raw as OrderSnapshot;
+  }
+  const store = await readFileStore();
+  const anyStore = store as unknown as {
+    orders: Record<string, Order>;
+    snapshots?: Record<string, OrderSnapshot>;
+  };
+  return anyStore.snapshots?.[orderId] ?? null;
 }

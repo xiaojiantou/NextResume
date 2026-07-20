@@ -21,12 +21,30 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 type View = "split" | "optimized" | "original";
 
 export default function ResultPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell step="result">
+          <div className="container-x py-16 max-w-2xl">
+            <div className="card p-10 text-center text-ink-500 text-sm">
+              Loading…
+            </div>
+          </div>
+        </AppShell>
+      }
+    >
+      <ResultPageInner />
+    </Suspense>
+  );
+}
+
+function ResultPageInner() {
   const {
     resume,
     job,
@@ -35,9 +53,13 @@ export default function ResultPage() {
     optimizationModel,
     selectedModel,
     paid,
+    setResume,
+    setJob,
+    setReport,
     setOptimization,
     setSelectedModel,
     clearOptimization,
+    markPaid,
   } = useFlow();
   const [view, setView] = useState<View>("split");
   const [evidenceMode, setEvidenceMode] = useState(true);
@@ -46,8 +68,16 @@ export default function ResultPage() {
   );
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrating, setHydrating] = useState(false);
   const ran = useRef(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Email-link identity: if URL has ?order=xxx&token=yyy, this is the
+  // "return by email" flow. It grants access regardless of localStorage.
+  const orderIdFromUrl = searchParams?.get("order") || null;
+  const tokenFromUrl = searchParams?.get("token") || null;
+  const hasEmailAccess = !!(orderIdFromUrl && tokenFromUrl);
 
   const runOptimize = async (modelId: string) => {
     if (!resume || !job || !report) return;
@@ -121,6 +151,50 @@ export default function ResultPage() {
     if (ran.current) return;
     ran.current = true;
 
+    // Path A: hydrate from email link. Bypasses localStorage / paid check.
+    if (hasEmailAccess) {
+      (async () => {
+        setHydrating(true);
+        try {
+          const res = await fetch(
+            `/api/order/${encodeURIComponent(orderIdFromUrl!)}?token=${encodeURIComponent(tokenFromUrl!)}`,
+          );
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Could not open resume.");
+          const snap = data.snapshot;
+          const order = data.order;
+
+          if (snap?.resume) setResume(snap.resume);
+          if (snap?.job) setJob(snap.job);
+          if (snap?.optimization && snap?.optimizationModel) {
+            setOptimization(snap.optimization, snap.optimizationModel);
+          }
+          if (order?.status === "paid") markPaid();
+          setHydrating(false);
+
+          // If snapshot has no optimization yet, run it now.
+          if (!snap?.optimization && snap?.resume && snap?.job) {
+            // Need a report — build a minimal one so /api/optimize accepts input.
+            const stubReport = {
+              overallBefore: 0,
+              overallAfter: 0,
+              categoriesBefore: [],
+              categoriesAfter: [],
+              missingKeywords: [],
+              presentKeywords: [],
+            };
+            setReport(stubReport);
+            await runOptimize(selectedModel);
+          }
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "Could not open resume.");
+          setHydrating(false);
+        }
+      })();
+      return;
+    }
+
+    // Path B: localStorage flow (same device that paid).
     if (!paid) {
       router.replace("/checkout");
       return;
@@ -130,17 +204,54 @@ export default function ResultPage() {
       return;
     }
     if (optimization) return;
-
     runOptimize(selectedModel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Persist optimization back to Redis whenever it changes on an email-link session.
+  useEffect(() => {
+    if (!hasEmailAccess || !optimization || !optimizationModel) return;
+    fetch(
+      `/api/order/${encodeURIComponent(orderIdFromUrl!)}?token=${encodeURIComponent(tokenFromUrl!)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optimization, optimizationModel }),
+      },
+    ).catch(() => {
+      /* non-fatal — user still sees the resume */
+    });
+  }, [optimization, optimizationModel, hasEmailAccess, orderIdFromUrl, tokenFromUrl]);
 
   const allOptimized = useMemo(
     () => optimization?.roles.flatMap((r) => r.bullets) ?? [],
     [optimization],
   );
 
-  if (!resume || !job || !report) return null;
+  if (hydrating || !resume || !job || !report) {
+    return (
+      <AppShell step="result">
+        <div className="container-x py-16 max-w-2xl">
+          <div className="card p-10 text-center">
+            <div className="w-12 h-12 rounded-xl bg-ink-900 text-white mx-auto inline-flex items-center justify-center">
+              <Sparkles size={20} />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight mt-5 text-ink-900">
+              Loading your resume…
+            </h2>
+            <p className="text-ink-500 mt-2 max-w-md mx-auto">
+              Restoring your order from the link in your email.
+            </p>
+            <div className="mt-6 max-w-xs mx-auto">
+              <div className="h-1.5 bg-ink-100 rounded-full overflow-hidden">
+                <div className="h-full w-1/3 bg-ink-900 shimmer" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   const hoveredBullet =
     allOptimized.find((b) => b.id === hoveredOptimizedId) ?? null;

@@ -79,27 +79,26 @@ export async function POST(req: NextRequest) {
       event.type === "checkout.session.expired"
     ) {
       const session = event.data.object;
+      const emailFromSession =
+        session.customer_details?.email || session.customer_email || null;
       const order = await markOrderFromCheckoutSession({
         orderId: session.metadata?.order_id || session.client_reference_id,
         stripeSessionId: session.id,
         status: session.status,
         paymentStatus: session.payment_status,
+        email: emailFromSession,
       });
 
       // Fire the "resume ready" email on successful payment. Non-fatal.
-      if (order?.status === "paid") {
-        const to =
-          session.customer_details?.email || session.customer_email || "";
-        if (to) {
-          try {
-            await sendOrderReadyEmail({
-              to,
-              name: session.customer_details?.name || undefined,
-              orderId: order.id,
-            });
-          } catch (err) {
-            console.error("[webhook] email send failed", err);
-          }
+      if (order?.status === "paid" && emailFromSession) {
+        try {
+          await sendOrderReadyEmail({
+            to: emailFromSession,
+            name: session.customer_details?.name || undefined,
+            orderId: order.id,
+          });
+        } catch (err) {
+          console.error("[webhook] email send failed", err);
         }
       }
     }
