@@ -394,9 +394,12 @@ function ResultPageInner() {
             />
             <ToolbarTab
               active={view === "edit"}
-              onClick={() => setView("edit")}
+              onClick={() => {
+                if (resume) setView("edit");
+              }}
               icon={<Pencil size={14} />}
               label="Edit Resume"
+              disabled={!resume}
             />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -450,13 +453,33 @@ function ResultPageInner() {
         {/* Main split view */}
         {view === "edit" ? (
           <div className="mt-5">
-            <EditorWithPreview
-              resume={resume}
-              optimization={optimization}
-              onResumeChange={setResume}
-              onRegenerate={() => regenerate(selectedModel)}
-              regenerating={generating}
-            />
+            {!resume ? (
+              <div className="card p-8 text-center">
+                <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 mx-auto inline-flex items-center justify-center">
+                  <AlertCircle size={20} />
+                </div>
+                <h2 className="text-xl font-semibold mt-4 text-ink-900">
+                  Upload a resume first
+                </h2>
+                <p className="text-ink-500 text-sm mt-2">
+                  You need to upload and parse your resume before you can edit it.
+                </p>
+                <button
+                  onClick={() => router.push("/upload")}
+                  className="btn btn-primary mt-5"
+                >
+                  Upload Resume
+                </button>
+              </div>
+            ) : (
+              <EditorWithPreview
+                resume={resume}
+                optimization={optimization}
+                onResumeChange={setResume}
+                onRegenerate={() => regenerate(selectedModel)}
+                regenerating={generating}
+              />
+            )}
           </div>
         ) : (
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
@@ -566,19 +589,27 @@ function ToolbarTab({
   onClick,
   icon,
   label,
+  disabled,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         "px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center gap-1.5 transition",
-        active ? "bg-ink-900 text-white" : "text-ink-600 hover:bg-ink-100",
+        disabled
+          ? "text-ink-300 cursor-not-allowed"
+          : active
+            ? "bg-ink-900 text-white"
+            : "text-ink-600 hover:bg-ink-100",
       )}
+      title={disabled ? "Upload a resume first" : undefined}
     >
       {icon}
       {label}
