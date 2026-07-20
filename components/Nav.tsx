@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, useUser, useClerk } from "@clerk/nextjs";
 import { Logo } from "./Logo";
 
 export function Nav({ minimal = false }: { minimal?: boolean }) {
   const { user } = useUser();
+  const { openSignIn, openSignUp } = useClerk();
 
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-white/70 border-b border-ink-100">
@@ -37,12 +38,18 @@ export function Nav({ minimal = false }: { minimal?: boolean }) {
             </>
           ) : (
             <>
-              <Link href="/sign-in" className="btn btn-ghost">
+              <button
+                onClick={() => openSignIn()}
+                className="btn btn-ghost"
+              >
                 Sign in
-              </Link>
-              <Link href="/sign-up" className="btn btn-primary">
+              </button>
+              <button
+                onClick={() => openSignUp()}
+                className="btn btn-primary"
+              >
                 Get started
-              </Link>
+              </button>
             </>
           )}
         </div>
