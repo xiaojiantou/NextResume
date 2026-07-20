@@ -60,7 +60,7 @@ export default function AnalysisPage() {
             model: selectedModel,
           }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (res.ok && data.preview) {
           setPreview({
             preview: data.preview,
@@ -102,7 +102,7 @@ export default function AnalysisPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ resume, job, model: selectedModel }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Analysis failed");
         if (!cancelled) {
           setReport(data.report);

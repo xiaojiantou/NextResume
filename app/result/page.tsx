@@ -91,7 +91,7 @@ function ResultPageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resume, job, report, model: modelId }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Optimization failed");
       setOptimization(data.optimization, modelId);
     } catch (e) {
@@ -161,7 +161,7 @@ function ResultPageInner() {
           const res = await fetch(
             `/api/order/${encodeURIComponent(orderIdFromUrl!)}?token=${encodeURIComponent(tokenFromUrl!)}`,
           );
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data.error || "Could not open resume.");
           const snap = data.snapshot;
           const order = data.order;

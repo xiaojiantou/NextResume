@@ -132,7 +132,7 @@ export function VoiceRefine({
           model,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Voice rewrite failed");
       setSuggested(data.bullet);
     } catch (e) {

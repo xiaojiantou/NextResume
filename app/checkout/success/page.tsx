@@ -37,7 +37,7 @@ function CheckoutSuccess() {
         const res = await fetch(
           `/api/checkout/session?session_id=${encodeURIComponent(sessionId)}`,
         );
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Payment check failed");
         if (!data.paid) {
           throw new Error("Stripe has not marked this checkout as paid yet.");

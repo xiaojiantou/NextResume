@@ -55,7 +55,7 @@ export default function UploadPage() {
           method: "POST",
           body: fd,
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Parse failed");
         setResume(data.resume);
       } catch (e) {

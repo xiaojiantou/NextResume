@@ -56,7 +56,7 @@ export default function JobPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: jobUrl }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Import failed");
       setJobDescription(data.text);
       setMode("paste");
@@ -76,7 +76,7 @@ export default function JobPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: jobDescription, model: selectedModel }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Parse failed");
       setJob(data.analysis);
       router.push("/analysis");
