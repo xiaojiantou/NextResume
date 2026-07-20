@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { Logo } from "./Logo";
 
 export function Nav({ minimal = false }: { minimal?: boolean }) {
@@ -37,12 +37,12 @@ export function Nav({ minimal = false }: { minimal?: boolean }) {
             </>
           ) : (
             <>
-              <SignInButton>
-                <button className="btn btn-ghost">Sign in</button>
-              </SignInButton>
-              <SignUpButton>
-                <button className="btn btn-primary">Get started</button>
-              </SignUpButton>
+              <Link href="/sign-in" className="btn btn-ghost">
+                Sign in
+              </Link>
+              <Link href="/sign-up" className="btn btn-primary">
+                Get started
+              </Link>
             </>
           )}
         </div>
