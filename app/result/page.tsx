@@ -3,6 +3,7 @@
 import { AppShell } from "@/components/AppShell";
 import { ModelPicker } from "@/components/ModelPicker";
 import { ResumeView } from "@/components/ResumeView";
+import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
 import { findModel } from "@/lib/models";
 import { VOICE_QUOTA, useFlow } from "@/lib/store";
@@ -19,12 +20,13 @@ import {
   Info,
   Layers,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
-type View = "split" | "optimized" | "original";
+type View = "split" | "optimized" | "original" | "edit";
 
 export default function ResultPage() {
   return (
@@ -390,6 +392,12 @@ function ResultPageInner() {
               icon={<Eye size={14} />}
               label="Original only"
             />
+            <ToolbarTab
+              active={view === "edit"}
+              onClick={() => setView("edit")}
+              icon={<Pencil size={14} />}
+              label="Edit Resume"
+            />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
@@ -440,73 +448,89 @@ function ResultPageInner() {
         )}
 
         {/* Main split view */}
-        <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          {(view === "split" || view === "original") && (
-            <PaneWrapper title="Your original" tone="muted">
-              <ResumeView
-                mode="original"
-                resume={resume}
-                optimization={optimization}
-                hoveredEvidence={hoveredEvidence}
-                hoveredOptimizedId={hoveredOptimizedId}
-                setHoveredOptimizedId={setHoveredOptimizedId}
-                evidenceMode={evidenceMode}
-              />
-            </PaneWrapper>
-          )}
-          {(view === "split" || view === "optimized") && (
-            <PaneWrapper
-              title={`Optimized for ${job.title}`}
-              tone="accent"
-            >
-              <ResumeView
-                mode="optimized"
-                resume={resume}
-                optimization={optimization}
-                hoveredEvidence={hoveredEvidence}
-                hoveredOptimizedId={hoveredOptimizedId}
-                setHoveredOptimizedId={setHoveredOptimizedId}
-                evidenceMode={evidenceMode}
-              />
-            </PaneWrapper>
-          )}
-        </div>
+        {view === "edit" ? (
+          <div className="mt-5">
+            <EditorWithPreview
+              resume={resume}
+              optimization={optimization}
+              onResumeChange={setResume}
+              onRegenerate={() => regenerate(selectedModel)}
+              regenerating={generating}
+            />
+          </div>
+        ) : (
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            {(view === "split" || view === "original") && (
+              <PaneWrapper title="Your original" tone="muted">
+                <ResumeView
+                  mode="original"
+                  resume={resume}
+                  optimization={optimization}
+                  hoveredEvidence={hoveredEvidence}
+                  hoveredOptimizedId={hoveredOptimizedId}
+                  setHoveredOptimizedId={setHoveredOptimizedId}
+                  evidenceMode={evidenceMode}
+                />
+              </PaneWrapper>
+            )}
+            {(view === "split" || view === "optimized") && (
+              <PaneWrapper
+                title={`Optimized for ${job.title}`}
+                tone="accent"
+              >
+                <ResumeView
+                  mode="optimized"
+                  resume={resume}
+                  optimization={optimization}
+                  hoveredEvidence={hoveredEvidence}
+                  hoveredOptimizedId={hoveredOptimizedId}
+                  setHoveredOptimizedId={setHoveredOptimizedId}
+                  evidenceMode={evidenceMode}
+                />
+              </PaneWrapper>
+            )}
+          </div>
+        )}
 
         {/* Evidence detail */}
-        {evidenceMode && <EvidencePanel hoveredId={hoveredOptimizedId} />}
+        {view !== "edit" && evidenceMode && <EvidencePanel hoveredId={hoveredOptimizedId} />}
 
         {/* Bullet diff */}
-        <BulletDiff />
+        {view !== "edit" && <BulletDiff />}
 
-        <div className="mt-12 flex items-center justify-between pb-12">
-          <button
-            className="btn btn-outline"
-            onClick={() => regenerate(selectedModel)}
-            disabled={generating}
-          >
-            <ArrowLeftRight size={14} /> Generate another variation
-          </button>
-          <button
-            className="btn btn-primary !px-5"
-            onClick={downloadPdf}
-            disabled={exporting || generating || !optimization}
-          >
-            {exporting ? (
-              <>
-                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Preparing…
-              </>
-            ) : (
-              <>
-                <Download size={14} /> Download PDF
-              </>
-            )}
-          </button>
-        </div>
+        {view !== "edit" && (
+          <>
+            <div className="mt-12 flex items-center justify-between pb-12">
+              <button
+                className="btn btn-outline"
+                onClick={() => regenerate(selectedModel)}
+                disabled={generating}
+              >
+                <ArrowLeftRight size={14} /> Generate another variation
+              </button>
+              <button
+                className="btn btn-primary !px-5"
+                onClick={downloadPdf}
+                disabled={exporting || generating || !optimization}
+              >
+                {exporting ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Preparing…
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} /> Download PDF
+                  </>
+                )}
+              </button>
+            </div>
 
-        <div className="text-xs text-ink-400 text-center">
-          {bulletsRewritten} bullets rewritten · Every change evidence-backed
-        </div>
+            <div className="text-xs text-ink-400 text-center">
+              {bulletsRewritten} bullets rewritten · Every change evidence-backed
+            </div>
+          </>
+        )}
       </div>
     </AppShell>
   );
