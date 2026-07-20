@@ -12,6 +12,7 @@
     "run:clean": "bash scripts/run.sh --clean"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.20",
     "@react-pdf/renderer": "^4.5.1",
     "@upstash/redis": "^1.38.0",
     "@vercel/postgres": "^0.10.0",

@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { Logo } from "./Logo";
 
-export function Nav({ minimal = false }: { minimal?: boolean }) {
+export async function Nav({ minimal = false }: { minimal?: boolean }) {
+  const { userId } = await auth();
+
   return (
     <header className="sticky top-0 z-30 backdrop-blur-md bg-white/70 border-b border-ink-100">
       <div className="container-x flex items-center justify-between h-14">
@@ -23,12 +27,23 @@ export function Nav({ minimal = false }: { minimal?: boolean }) {
           </nav>
         )}
         <div className="flex items-center gap-2">
-          <Link href="/upload" className="btn btn-ghost">
-            Sign in
-          </Link>
-          <Link href="/upload" className="btn btn-primary">
-            Get started
-          </Link>
+          {userId ? (
+            <>
+              <Link href="/upload" className="btn btn-ghost text-sm">
+                Go to app
+              </Link>
+              <UserButton />
+            </>
+          ) : (
+            <>
+              <SignInButton mode="modal">
+                <button className="btn btn-ghost">Sign in</button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="btn btn-primary">Get started</button>
+              </SignUpButton>
+            </>
+          )}
         </div>
       </div>
     </header>
