@@ -226,7 +226,10 @@ function ResultPageInner() {
   }, [optimization, optimizationModel, hasEmailAccess, orderIdFromUrl, tokenFromUrl]);
 
   const allOptimized = useMemo(
-    () => optimization?.roles.flatMap((r) => r.bullets) ?? [],
+    () => [
+      ...(optimization?.roles.flatMap((r) => r.bullets) ?? []),
+      ...(optimization?.projects?.flatMap((p) => p.bullets) ?? []),
+    ],
     [optimization],
   );
 

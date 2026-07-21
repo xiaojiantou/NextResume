@@ -92,6 +92,56 @@ export function EditableResumeCanvas({
     onResumeChange({ ...resume, experience: updated });
   };
 
+  const projects = resume.projects ?? [];
+
+  const updateProjectBullet = (
+    projectId: string,
+    bulletId: string,
+    newText: string,
+  ) => {
+    const updated = projects.map((project) => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          bullets: project.bullets.map((b) =>
+            b.id === bulletId ? { ...b, text: newText } : b,
+          ),
+        };
+      }
+      return project;
+    });
+    onResumeChange({ ...resume, projects: updated });
+  };
+
+  const addProjectBullet = (projectId: string) => {
+    const updated = projects.map((project) => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          bullets: [
+            ...project.bullets,
+            { id: `bullet-${Date.now()}`, text: "New achievement" },
+          ],
+        };
+      }
+      return project;
+    });
+    onResumeChange({ ...resume, projects: updated });
+  };
+
+  const deleteProjectBullet = (projectId: string, bulletId: string) => {
+    const updated = projects.map((project) => {
+      if (project.id === projectId) {
+        return {
+          ...project,
+          bullets: project.bullets.filter((b) => b.id !== bulletId),
+        };
+      }
+      return project;
+    });
+    onResumeChange({ ...resume, projects: updated });
+  };
+
   const EditableField = ({
     fieldId,
     label,
@@ -341,6 +391,88 @@ export function EditableResumeCanvas({
           </div>
         ))}
       </div>
+
+      {/* Projects */}
+      {projects.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-ink-900">Projects</h3>
+          </div>
+          {projects.map((project) => (
+            <div
+              key={project.id}
+              className="card p-6 border-l-4 border-l-accent-500"
+            >
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
+                    Project Name
+                  </label>
+                  <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
+                    {project.name}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
+                    Role
+                  </label>
+                  <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
+                    {project.role}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
+                    Start Date
+                  </label>
+                  <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
+                    {project.start}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
+                    End Date
+                  </label>
+                  <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
+                    {project.end}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bullets */}
+              <div className="mt-4 space-y-3 pt-4 border-t border-ink-100">
+                <div className="text-xs font-medium text-ink-600 uppercase tracking-widest">
+                  Achievements
+                </div>
+                {project.bullets.map((bullet) => (
+                  <div key={bullet.id} className="flex gap-2 items-start">
+                    <span className="mt-2 text-ink-400">•</span>
+                    <input
+                      type="text"
+                      value={bullet.text}
+                      onChange={(e) =>
+                        updateProjectBullet(project.id, bullet.id, e.target.value)
+                      }
+                      className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans resize-none"
+                    />
+                    <button
+                      onClick={() => deleteProjectBullet(project.id, bullet.id)}
+                      className="p-2 hover:bg-rose-100 rounded text-rose-500 shrink-0"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => addProjectBullet(project.id)}
+                  className="ml-5 text-sm font-medium text-accent-600 hover:text-accent-700 flex items-center gap-1"
+                >
+                  <Plus size={14} /> Add achievement
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex justify-end gap-3 pt-6 border-t border-ink-100">

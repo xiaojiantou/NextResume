@@ -119,7 +119,8 @@ export default function AnalysisPage() {
   }, []);
 
   const totalBullets =
-    resume?.experience.reduce((n, r) => n + r.bullets.length, 0) ?? 0;
+    (resume?.experience.reduce((n, r) => n + r.bullets.length, 0) ?? 0) +
+    (resume?.projects?.reduce((n, p) => n + p.bullets.length, 0) ?? 0);
 
   return (
     <AppShell step="analysis">
