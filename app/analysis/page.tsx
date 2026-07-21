@@ -90,9 +90,8 @@ export default function AnalysisPage() {
       return;
     }
 
-    let cancelled = false;
     const tick = setInterval(() => {
-      if (!cancelled) setStage((s) => Math.min(s + 1, STAGES.length - 1));
+      setStage((s) => Math.min(s + 1, STAGES.length - 1));
     }, 900);
 
     (async () => {
@@ -104,21 +103,16 @@ export default function AnalysisPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Analysis failed");
-        if (!cancelled) {
-          setReport(data.report);
-          setStage(STAGES.length);
-        }
+        setReport(data.report);
+        setStage(STAGES.length);
       } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Analysis failed.");
-        }
+        setError(e instanceof Error ? e.message : "Analysis failed.");
       } finally {
         clearInterval(tick);
       }
     })();
 
     return () => {
-      cancelled = true;
       clearInterval(tick);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
