@@ -35,13 +35,27 @@ Output ONLY valid JSON matching this schema:
         }
       ]
     }
+  ],
+  "projects": [
+    {
+      "id": string,
+      "bullets": [
+        {
+          "id": string,
+          "text": string,
+          "evidence": string[],
+          "matchedKeywords": string[],
+          "rationale": string
+        }
+      ]
+    }
   ]
 }
 
 Hard rules:
-- Preserve every original role. Output the same number of roles, each by id.
-- Output 2-5 optimized bullets per role.
-- "evidence" array must reference REAL bullet IDs from the input resume. Never invent ids.
+- Preserve every original role AND every original project. Output the same number of roles (by id) and the same number of projects (by id) as the input resume.
+- Output 2-5 optimized bullets per role, and 2-4 optimized bullets per project.
+- "evidence" array must reference REAL bullet IDs from the input resume (from either experience or projects). Never invent ids.
 - If a bullet merges 2 original bullets, list both ids in evidence.
 - You may insert a quantified estimate ONLY if the original bullet suggested impact. Otherwise stay qualitative.
 - Use verbs from this set first: Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered.
@@ -75,8 +89,8 @@ function pickWeakestBullet(resume: Resume): {
     "involved in",
     "participated",
   ];
-  for (const role of resume.experience) {
-    for (const b of role.bullets) {
+  for (const section of [...resume.experience, ...(resume.projects ?? [])]) {
+    for (const b of section.bullets) {
       const lower = b.text.toLowerCase();
       if (weakStarts.some((w) => lower.startsWith(w))) {
         return { bulletId: b.id, bulletText: b.text };
@@ -84,7 +98,9 @@ function pickWeakestBullet(resume: Resume): {
     }
   }
   // Fallback: shortest bullet (least quantified)
-  const all = resume.experience.flatMap((r) => r.bullets);
+  const all = [...resume.experience, ...(resume.projects ?? [])].flatMap(
+    (r) => r.bullets,
+  );
   if (all.length === 0) return null;
   const shortest = all.reduce((a, b) =>
     a.text.length <= b.text.length ? a : b,

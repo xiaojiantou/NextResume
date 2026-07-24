@@ -30,6 +30,21 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
       ]
     }
   ],
+  "projects": [
+    // A separate "Projects" section, distinct from work experience/internships.
+    // Personal, academic, or side projects — NOT roles at an employer.
+    {
+      "id": string,           // stable ID like "p1", "p2"...
+      "name": string,         // project name/title
+      "role": string,         // role and/or tech stack line, e.g. "Software Engineer | FastAPI, PostgreSQL, React"
+      "location": string,
+      "start": string,
+      "end": string,
+      "bullets": [
+        { "id": string, "text": string }  // continue the global b1,b2... sequence
+      ]
+    }
+  ],
   "education": [
     { "school": string, "degree": string, "year": string }
   ]
@@ -37,7 +52,8 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
 
 Rules:
 - Preserve bullet text VERBATIM. Do not rewrite or summarize.
-- Assign sequential IDs: r1,r2... for roles; b1,b2,b3... globally across all roles.
+- Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across all roles AND projects.
+- A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".
 - If a field is missing, use "" (or [] for arrays).
 - Skills should be a flat deduplicated list.`;
 

@@ -171,6 +171,47 @@ export function ResumePdf({
           })}
         </View>
 
+        {resume.projects && resume.projects.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Projects</Text>
+            {resume.projects.map((project) => {
+              const opt = optimization?.projects?.find(
+                (p) => p.id === project.id,
+              );
+              const bullets = opt?.bullets.length
+                ? opt.bullets.map((b) => b.text)
+                : project.bullets.map((b) => b.text);
+              return (
+                <View key={project.id} wrap={false}>
+                  <View style={styles.roleHeader}>
+                    <Text>
+                      <Text style={styles.roleTitle}>{project.name}</Text>
+                      {project.role ? (
+                        <Text style={styles.roleTitleMuted}>
+                          {"  ·  "}
+                          {project.role}
+                        </Text>
+                      ) : null}
+                    </Text>
+                    <Text style={styles.roleDates}>
+                      {project.start} — {project.end}
+                    </Text>
+                  </View>
+                  {project.location ? (
+                    <Text style={styles.roleLocation}>{project.location}</Text>
+                  ) : null}
+                  {bullets.map((text, i) => (
+                    <View key={i} style={styles.bulletRow}>
+                      <Text style={styles.bulletDot}>•</Text>
+                      <Text style={styles.bulletText}>{text}</Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
+
         {resume.education.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Education</Text>

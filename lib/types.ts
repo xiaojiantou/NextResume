@@ -19,6 +19,16 @@ export type ResumeEducation = {
   year: string;
 };
 
+export type ResumeProject = {
+  id: string;
+  name: string;
+  role: string;
+  location: string;
+  start: string;
+  end: string;
+  bullets: ResumeBullet[];
+};
+
 export type Resume = {
   name: string;
   title: string;
@@ -28,6 +38,7 @@ export type Resume = {
   summary: string;
   skills: string[];
   experience: ResumeRole[];
+  projects: ResumeProject[];
   education: ResumeEducation[];
 };
 
@@ -68,11 +79,17 @@ export type OptimizedRole = {
   bullets: OptimizedBullet[];
 };
 
+export type OptimizedProject = {
+  id: string;
+  bullets: OptimizedBullet[];
+};
+
 export type Optimization = {
   summary: string;
   title: string;
   skills: string[];
   roles: OptimizedRole[];
+  projects: OptimizedProject[];
 };
 
 export type PreviewBullet = {

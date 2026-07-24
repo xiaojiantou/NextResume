@@ -132,6 +132,75 @@ export function ResumeView({
         </div>
       </section>
 
+      {resume.projects && resume.projects.length > 0 && (
+        <section className="mt-5">
+          <SectionLabel>Projects</SectionLabel>
+          <div className="space-y-5 mt-2">
+            {resume.projects.map((project) => {
+              const optProject = optimization?.projects?.find(
+                (o) => o.id === project.id,
+              );
+              return (
+                <div key={project.id}>
+                  <div className="flex items-baseline justify-between font-sans">
+                    <div>
+                      <span className="font-semibold text-ink-900">
+                        {project.name}
+                      </span>
+                      {project.role && (
+                        <span className="text-ink-500"> · {project.role}</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-ink-500">
+                      {project.start} — {project.end}
+                    </div>
+                  </div>
+                  {project.location && (
+                    <div className="text-[11px] text-ink-400 font-sans">
+                      {project.location}
+                    </div>
+                  )}
+                  <ul className="mt-2 space-y-1.5 list-disc pl-5">
+                    {mode === "original"
+                      ? project.bullets.map((b) => {
+                          const isActive = hoveredEvidence.includes(b.id);
+                          return (
+                            <li
+                              key={b.id}
+                              className={cn(
+                                "transition-all rounded-md px-1 -mx-1",
+                                evidenceActive && !isActive && "evidence-dim",
+                                evidenceActive && isActive && "evidence-active",
+                              )}
+                            >
+                              {b.text}
+                            </li>
+                          );
+                        })
+                      : (optProject?.bullets ?? []).map((b) => {
+                          const isActive = hoveredOptimizedId === b.id;
+                          return (
+                            <li
+                              key={b.id}
+                              onMouseEnter={() => setHoveredOptimizedId(b.id)}
+                              onMouseLeave={() => setHoveredOptimizedId(null)}
+                              className={cn(
+                                "transition-all rounded-md px-1 -mx-1 cursor-default",
+                                evidenceMode && isActive && "evidence-active",
+                              )}
+                            >
+                              {b.text}
+                            </li>
+                          );
+                        })}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {resume.education.length > 0 && (
         <section className="mt-5">
           <SectionLabel>Education</SectionLabel>
