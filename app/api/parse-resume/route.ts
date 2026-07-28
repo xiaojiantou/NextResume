@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buf = Buffer.from(await file.arrayBuffer());
-    const text = await extractText(buf, file.name);
+    const { text, photo } = await extractText(buf, file.name);
 
     if (text.length < 50) {
       return NextResponse.json(
@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
       user: `Resume text:\n\n${text.slice(0, 12000)}`,
       maxTokens: 4000,
     });
+    if (photo) resume.photo = photo;
 
     return NextResponse.json({ resume, rawText: text });
   } catch (e) {

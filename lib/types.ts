@@ -40,6 +40,7 @@ export type Resume = {
   experience: ResumeRole[];
   projects: ResumeProject[];
   education: ResumeEducation[];
+  photo?: string; // base64 data URI, extracted from the uploaded PDF/DOCX
 };
 
 export type JobAnalysis = {

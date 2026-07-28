@@ -33,17 +33,39 @@ export function ResumeView({
 
   return (
     <div className="paper p-10 text-[12.5px] leading-relaxed text-ink-800 font-serif">
-      <header className="text-center border-b border-ink-100 pb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
-          {resume.name}
-        </h1>
-        <div className="text-sm text-ink-600 mt-0.5">{title}</div>
-        <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-          {[resume.email, resume.phone, resume.location]
-            .filter(Boolean)
-            .join(" · ")}
-        </div>
-      </header>
+      {resume.photo ? (
+        <header className="flex items-center gap-4 border-b border-ink-100 pb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={resume.photo}
+            alt=""
+            className="w-14 h-14 rounded-full object-cover shrink-0"
+          />
+          <div className="text-left">
+            <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+              {resume.name}
+            </h1>
+            <div className="text-sm text-ink-600 mt-0.5">{title}</div>
+            <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
+              {[resume.email, resume.phone, resume.location]
+                .filter(Boolean)
+                .join(" · ")}
+            </div>
+          </div>
+        </header>
+      ) : (
+        <header className="text-center border-b border-ink-100 pb-4">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+            {resume.name}
+          </h1>
+          <div className="text-sm text-ink-600 mt-0.5">{title}</div>
+          <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
+            {[resume.email, resume.phone, resume.location]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
+        </header>
+      )}
 
       {summary && (
         <section className="mt-5">
