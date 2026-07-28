@@ -11,7 +11,13 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { Redis } from "@upstash/redis";
-import type { JobAnalysis, Optimization, Resume } from "./types";
+import type {
+  JobAnalysis,
+  Optimization,
+  Resume,
+  ResumeStyleProfile,
+  ResumeStyleSource,
+} from "./types";
 
 type OrderStatus = "pending" | "paid" | "expired";
 
@@ -32,6 +38,8 @@ export type OrderSnapshot = {
   job: JobAnalysis | null;
   optimization: Optimization | null;
   optimizationModel: string | null;
+  resumeStyleSource?: ResumeStyleSource | null;
+  personalizedStyleProfile?: ResumeStyleProfile | null;
   updatedAt: string;
 };
 

@@ -1,16 +1,23 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Optimization, Resume } from "@/lib/types";
-import { resolveResumeContent } from "./shared";
+import { getResumeSectionLabels, resolveResumeContent } from "./shared";
 
 const ACCENT = "#4338ca"; // accent-700 — darker so white text stays readable
 
-function createStyles(scale: number) {
-  const px = (v: number) => v * scale;
+function createStyles(
+  fontScale: number,
+  spacingScale: number,
+  lineHeightScale: number,
+) {
+  const px = (v: number) => v * spacingScale;
+  const fs = (v: number) => v * fontScale;
+  const lh = (v: number, floor = 1.18) =>
+    Math.max(floor, v * lineHeightScale);
   return StyleSheet.create({
     page: {
       flexDirection: "row",
-      fontSize: px(9.5),
-      lineHeight: 1.42,
+      fontSize: fs(9.5),
+      lineHeight: lh(1.42),
       color: "#18181b",
       fontFamily: "Helvetica",
     },
@@ -39,7 +46,7 @@ function createStyles(scale: number) {
       objectFit: "cover",
     },
     sideLabel: {
-      fontSize: px(8),
+      fontSize: fs(8),
       fontFamily: "Helvetica-Bold",
       letterSpacing: 1.4,
       textTransform: "uppercase",
@@ -48,12 +55,12 @@ function createStyles(scale: number) {
       marginTop: px(18),
     },
     sideText: {
-      fontSize: px(9),
+      fontSize: fs(9),
       color: "#ffffff",
-      lineHeight: 1.5,
+      lineHeight: lh(1.5),
     },
     skillPill: {
-      fontSize: px(8.5),
+      fontSize: fs(8.5),
       color: "#ffffff",
       backgroundColor: "rgba(255,255,255,0.16)",
       paddingVertical: px(3),
@@ -65,26 +72,26 @@ function createStyles(scale: number) {
     skillWrap: { flexDirection: "row", flexWrap: "wrap" },
     eduBlock: { marginBottom: px(8) },
     eduSchool: {
-      fontSize: px(9),
+      fontSize: fs(9),
       fontFamily: "Helvetica-Bold",
       color: "#ffffff",
     },
-    eduDetail: { fontSize: px(8.5), color: "#e0e7ff", marginTop: px(1) },
+    eduDetail: { fontSize: fs(8.5), color: "#e0e7ff", marginTop: px(1) },
     name: {
-      fontSize: px(22),
-      lineHeight: 1.1,
+      fontSize: fs(22),
+      lineHeight: lh(1.1, 1.02),
       fontFamily: "Helvetica-Bold",
       color: "#18181b",
       letterSpacing: -0.3,
     },
     title: {
-      fontSize: px(11),
+      fontSize: fs(11),
       color: ACCENT,
       fontFamily: "Helvetica-Bold",
       marginTop: px(8),
     },
     mainSectionLabel: {
-      fontSize: px(9),
+      fontSize: fs(9),
       fontFamily: "Helvetica-Bold",
       letterSpacing: 1.2,
       textTransform: "uppercase",
@@ -92,21 +99,21 @@ function createStyles(scale: number) {
       marginTop: px(18),
       marginBottom: px(6),
     },
-    summary: { fontSize: px(9.5), color: "#3f3f46", lineHeight: 1.5 },
+    summary: { fontSize: fs(9.5), color: "#3f3f46", lineHeight: lh(1.5) },
     roleHeading: {
-      fontSize: px(10),
+      fontSize: fs(10),
       fontFamily: "Helvetica-Bold",
       color: "#18181b",
     },
-    roleSub: { fontSize: px(9), color: "#52525b", marginTop: px(1) },
-    roleDates: { fontSize: px(8.5), color: "#71717a", marginTop: px(1) },
+    roleSub: { fontSize: fs(9), color: "#52525b", marginTop: px(1) },
+    roleDates: { fontSize: fs(8.5), color: "#71717a", marginTop: px(1) },
     roleBlock: { marginTop: px(10) },
     bulletRow: { flexDirection: "row", marginTop: px(4), paddingLeft: px(2) },
-    bulletDot: { width: px(10), fontSize: px(9.5), color: ACCENT },
+    bulletDot: { width: px(10), fontSize: fs(9.5), color: ACCENT },
     bulletText: {
       flex: 1,
-      fontSize: px(9.5),
-      lineHeight: 1.4,
+      fontSize: fs(9.5),
+      lineHeight: lh(1.4),
       color: "#27272a",
     },
   });
@@ -115,15 +122,29 @@ function createStyles(scale: number) {
 export function ResumePdfSidebar({
   resume,
   optimization,
-  scale = 1,
+  fontScale = 1,
+  spacingScale = 1,
+  lineHeightScale = 1,
 }: {
   resume: Resume;
   optimization: Optimization | null;
-  scale?: number;
+  fontScale?: number;
+  spacingScale?: number;
+  lineHeightScale?: number;
 }) {
-  const styles = createStyles(scale);
-  const { summary, title, skills, experience, projects, education } =
+  const styles = createStyles(fontScale, spacingScale, lineHeightScale);
+  const {
+    summary,
+    title,
+    skills,
+    experience,
+    projects,
+    education,
+    additionalSections,
+    language,
+  } =
     resolveResumeContent(resume, optimization);
+  const labels = getResumeSectionLabels(language);
 
   return (
     <Document
@@ -152,7 +173,7 @@ export function ResumePdfSidebar({
 
           {skills.length > 0 ? (
             <>
-              <Text style={styles.sideLabel}>Skills</Text>
+              <Text style={styles.sideLabel}>{labels.skills}</Text>
               <View style={styles.skillWrap}>
                 {skills.map((s) => (
                   <Text key={s} style={styles.skillPill}>
@@ -165,7 +186,7 @@ export function ResumePdfSidebar({
 
           {education.length > 0 ? (
             <>
-              <Text style={styles.sideLabel}>Education</Text>
+              <Text style={styles.sideLabel}>{labels.education}</Text>
               {education.map((e, i) => (
                 <View key={i} style={styles.eduBlock}>
                   <Text style={styles.eduSchool}>{e.school}</Text>
@@ -183,23 +204,25 @@ export function ResumePdfSidebar({
 
           {summary ? (
             <>
-              <Text style={styles.mainSectionLabel}>Summary</Text>
+              <Text style={styles.mainSectionLabel}>{labels.summary}</Text>
               <Text style={styles.summary}>{summary}</Text>
             </>
           ) : null}
 
           {experience.length > 0 ? (
             <>
-              <Text style={styles.mainSectionLabel}>Experience</Text>
+              <Text style={styles.mainSectionLabel}>{labels.experience}</Text>
               {experience.map((block) => (
-                <View key={block.id} style={styles.roleBlock} wrap={false}>
-                  <Text style={styles.roleHeading}>{block.heading}</Text>
-                  <Text style={styles.roleSub}>
-                    {[block.subheading, block.location].filter(Boolean).join(" · ")}
-                  </Text>
-                  <Text style={styles.roleDates}>
-                    {block.start} — {block.end}
-                  </Text>
+                <View key={block.id} style={styles.roleBlock}>
+                  <View wrap={false}>
+                    <Text style={styles.roleHeading}>{block.heading}</Text>
+                    <Text style={styles.roleSub}>
+                      {[block.subheading, block.location].filter(Boolean).join(" · ")}
+                    </Text>
+                    <Text style={styles.roleDates}>
+                      {block.start} — {block.end}
+                    </Text>
+                  </View>
                   {block.bullets.map((text, i) => (
                     <View key={i} style={styles.bulletRow}>
                       <Text style={styles.bulletDot}>•</Text>
@@ -213,16 +236,18 @@ export function ResumePdfSidebar({
 
           {projects.length > 0 ? (
             <>
-              <Text style={styles.mainSectionLabel}>Projects</Text>
+              <Text style={styles.mainSectionLabel}>{labels.projects}</Text>
               {projects.map((block) => (
-                <View key={block.id} style={styles.roleBlock} wrap={false}>
-                  <Text style={styles.roleHeading}>{block.heading}</Text>
-                  <Text style={styles.roleSub}>
-                    {[block.subheading, block.location].filter(Boolean).join(" · ")}
-                  </Text>
-                  <Text style={styles.roleDates}>
-                    {block.start} — {block.end}
-                  </Text>
+                <View key={block.id} style={styles.roleBlock}>
+                  <View wrap={false}>
+                    <Text style={styles.roleHeading}>{block.heading}</Text>
+                    <Text style={styles.roleSub}>
+                      {[block.subheading, block.location].filter(Boolean).join(" · ")}
+                    </Text>
+                    <Text style={styles.roleDates}>
+                      {block.start} — {block.end}
+                    </Text>
+                  </View>
                   {block.bullets.map((text, i) => (
                     <View key={i} style={styles.bulletRow}>
                       <Text style={styles.bulletDot}>•</Text>
@@ -233,6 +258,41 @@ export function ResumePdfSidebar({
               ))}
             </>
           ) : null}
+
+          {additionalSections.map((section) =>
+            section.items.length > 0 ? (
+              <View key={section.id}>
+                <Text style={styles.mainSectionLabel}>
+                  {section.title || labels[section.kind]}
+                </Text>
+                {section.items.map((item) => (
+                  <View key={item.id} style={styles.roleBlock}>
+                    <View wrap={false}>
+                      <Text style={styles.roleHeading}>{item.heading}</Text>
+                      {item.subheading || item.location ? (
+                        <Text style={styles.roleSub}>
+                          {[item.subheading, item.location]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </Text>
+                      ) : null}
+                      {item.start || item.end ? (
+                        <Text style={styles.roleDates}>
+                          {[item.start, item.end].filter(Boolean).join(" — ")}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {item.bullets.map((bullet) => (
+                      <View key={bullet.id} style={styles.bulletRow}>
+                        <Text style={styles.bulletDot}>•</Text>
+                        <Text style={styles.bulletText}>{bullet.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            ) : null,
+          )}
         </View>
       </Page>
     </Document>

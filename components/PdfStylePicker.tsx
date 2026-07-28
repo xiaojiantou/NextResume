@@ -1,11 +1,16 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import type { PdfStyle } from "@/lib/store";
-import { Check, ChevronDown, FileText } from "lucide-react";
+import type { PdfStyle, PersonalizedStatus } from "@/lib/store";
+import { Check, ChevronDown, FileText, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const STYLES: { id: PdfStyle; label: string; blurb: string }[] = [
+  {
+    id: "personalized",
+    label: "Personalized",
+    blurb: "AI-matched to your original resume's look",
+  },
   {
     id: "classic",
     label: "Classic",
@@ -27,6 +32,15 @@ const STYLES: { id: PdfStyle; label: string; blurb: string }[] = [
 // structure (column layout / accent placement) to tell the 3 apart at a
 // glance before committing to a real export.
 function StyleThumb({ id }: { id: PdfStyle }) {
+  if (id === "personalized") {
+    return (
+      <div className="w-14 h-[72px] rounded border border-accent-200 bg-gradient-to-br from-accent-50 to-accent-100 p-1.5 flex flex-col items-center justify-center gap-1 shrink-0">
+        <Sparkles size={18} className="text-accent-600" />
+        <div className="w-8 h-0.5 bg-accent-300 rounded-full" />
+        <div className="w-6 h-0.5 bg-accent-300 rounded-full" />
+      </div>
+    );
+  }
   if (id === "sidebar") {
     return (
       <div className="w-14 h-[72px] rounded border border-ink-200 bg-white overflow-hidden flex shrink-0">
@@ -71,13 +85,17 @@ function StyleThumb({ id }: { id: PdfStyle }) {
 export function PdfStylePicker({
   current,
   onPick,
+  personalizedStatus,
 }: {
   current: PdfStyle;
   onPick: (id: PdfStyle) => void;
+  personalizedStatus?: PersonalizedStatus;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const currentInfo = STYLES.find((s) => s.id === current) ?? STYLES[0];
+  const currentIsGenerating =
+    current === "personalized" && personalizedStatus === "generating";
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -96,8 +114,14 @@ export function PdfStylePicker({
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-2.5 py-1 text-sm transition hover:border-ink-300"
       >
-        <FileText size={13} className="text-ink-500" />
-        <span className="font-medium text-ink-900">{currentInfo.label}</span>
+        {currentIsGenerating ? (
+          <Loader2 size={13} className="text-accent-600 animate-spin" />
+        ) : (
+          <FileText size={13} className="text-ink-500" />
+        )}
+        <span className="font-medium text-ink-900">
+          {currentIsGenerating ? "Generating…" : currentInfo.label}
+        </span>
         <ChevronDown
           size={13}
           className={cn("text-ink-400 transition", open && "rotate-180")}
@@ -108,6 +132,7 @@ export function PdfStylePicker({
         <div className="absolute right-0 top-full mt-1.5 z-20 w-72 card p-1.5 shadow-pop">
           {STYLES.map((s) => {
             const selected = s.id === current;
+            const isPersonalized = s.id === "personalized";
             return (
               <button
                 key={s.id}
@@ -123,10 +148,22 @@ export function PdfStylePicker({
               >
                 <StyleThumb id={s.id} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-ink-900">
+                  <div className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
                     {s.label}
+                    {isPersonalized && personalizedStatus === "generating" && (
+                      <Loader2 size={12} className="text-accent-600 animate-spin" />
+                    )}
+                    {isPersonalized && personalizedStatus === "failed" && (
+                      <AlertTriangle size={12} className="text-amber-600" />
+                    )}
                   </div>
-                  <div className="text-xs text-ink-500 mt-0.5">{s.blurb}</div>
+                  <div className="text-xs text-ink-500 mt-0.5">
+                    {isPersonalized && personalizedStatus === "generating"
+                      ? "Generating your layout — this can take a minute…"
+                      : isPersonalized && personalizedStatus === "failed"
+                        ? "Couldn't generate this time — try again, or pick another style"
+                        : s.blurb}
+                  </div>
                 </div>
                 {selected && (
                   <Check

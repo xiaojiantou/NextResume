@@ -19,6 +19,42 @@ export type ResumeEducation = {
   year: string;
 };
 
+export type ResumeLanguage = "en";
+
+export type ResumeAdditionalSectionKind =
+  | "awards"
+  | "certifications"
+  | "publications"
+  | "languages"
+  | "volunteering"
+  | "custom";
+
+export type ResumeAdditionalItem = {
+  id: string;
+  heading: string;
+  subheading: string;
+  location: string;
+  start: string;
+  end: string;
+  bullets: ResumeBullet[];
+};
+
+export type ResumeAdditionalSection = {
+  id: string;
+  kind: ResumeAdditionalSectionKind;
+  /** Original section heading, rendered verbatim when present. */
+  title: string;
+  items: ResumeAdditionalItem[];
+};
+
+export type ResumeSectionRef =
+  | "summary"
+  | "skills"
+  | "experience"
+  | "projects"
+  | "education"
+  | `additional:${string}`;
+
 export type ResumeProject = {
   id: string;
   name: string;
@@ -41,6 +77,92 @@ export type Resume = {
   projects: ResumeProject[];
   education: ResumeEducation[];
   photo?: string; // base64 data URI, extracted from the uploaded PDF/DOCX
+  /** Optional for backwards compatibility with previously persisted resumes. */
+  language?: ResumeLanguage;
+  /** Reading order detected from the source resume. */
+  sectionOrder?: ResumeSectionRef[];
+  /** Verbatim sections that do not fit the core resume schema. */
+  additionalSections?: ResumeAdditionalSection[];
+};
+
+export type ResumePageSpec = {
+  widthPt: number;
+  heightPt: number;
+  orientation: "portrait" | "landscape";
+};
+
+export type ResumeStyleSource = {
+  screenshots: string[];
+  page: ResumePageSpec;
+  pageCount: number;
+};
+
+export type ResumeLayout =
+  | "single-column"
+  | "sidebar-left"
+  | "sidebar-right";
+
+export type ResumeStyleProfile = {
+  version: 1;
+  layout: ResumeLayout;
+  sidebarWidthPercent: number;
+  sidebarSections: Array<
+    "contact" | "summary" | "skills" | "education" | "additional"
+  >;
+  fontFamily:
+    | "Arial"
+    | "Helvetica"
+    | "Verdana"
+    | "Georgia"
+    | "Times New Roman";
+  headingFontFamily:
+    | "Arial"
+    | "Helvetica"
+    | "Verdana"
+    | "Georgia"
+    | "Times New Roman";
+  colors: {
+    text: string;
+    muted: string;
+    accent: string;
+    background: string;
+    sidebarBackground: string;
+    sidebarText: string;
+  };
+  marginsPt: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  typography: {
+    bodyPt: number;
+    lineHeight: number;
+    namePt: number;
+    titlePt: number;
+    sectionPt: number;
+    metaPt: number;
+  };
+  spacing: {
+    sectionPt: number;
+    entryPt: number;
+    bulletPt: number;
+  };
+  header: {
+    alignment: "left" | "center";
+    divider: boolean;
+    photoPosition: "none" | "left" | "right";
+    photoShape: "circle" | "square" | "rounded";
+    photoSizePt: number;
+  };
+  sectionHeading: {
+    uppercase: boolean;
+    divider: boolean;
+    filled: boolean;
+    alignment: "left" | "center";
+  };
+  bulletMarker: "disc" | "dash" | "square";
+  page: ResumePageSpec;
 };
 
 export type JobAnalysis = {

@@ -1,18 +1,25 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Optimization, Resume } from "@/lib/types";
-import { resolveResumeContent } from "./shared";
+import { getResumeSectionLabels, resolveResumeContent } from "./shared";
 
 const ACCENT = "#4f46e5";
 
-function createStyles(scale: number) {
-  const px = (v: number) => v * scale;
+function createStyles(
+  fontScale: number,
+  spacingScale: number,
+  lineHeightScale: number,
+) {
+  const px = (v: number) => v * spacingScale;
+  const fs = (v: number) => v * fontScale;
+  const lh = (v: number, floor = 1.18) =>
+    Math.max(floor, v * lineHeightScale);
   return StyleSheet.create({
     page: {
       paddingTop: px(42),
       paddingBottom: px(42),
       paddingHorizontal: px(46),
-      fontSize: px(9.5),
-      lineHeight: 1.4,
+      fontSize: fs(9.5),
+      lineHeight: lh(1.4),
       color: "#18181b",
       fontFamily: "Helvetica",
     },
@@ -25,21 +32,21 @@ function createStyles(scale: number) {
       objectFit: "cover",
     },
     name: {
-      fontSize: px(24),
-      lineHeight: 1.1,
+      fontSize: fs(24),
+      lineHeight: lh(1.1, 1.02),
       fontFamily: "Helvetica-Bold",
       color: "#18181b",
       letterSpacing: -0.4,
     },
     title: {
-      fontSize: px(11),
+      fontSize: fs(11),
       color: ACCENT,
       marginTop: px(8),
       fontFamily: "Helvetica",
     },
-    contact: { fontSize: px(8.5), color: "#71717a", marginTop: px(6) },
+    contact: { fontSize: fs(8.5), color: "#71717a", marginTop: px(6) },
     sectionTag: {
-      fontSize: px(7.5),
+      fontSize: fs(7.5),
       fontFamily: "Helvetica-Bold",
       color: "#ffffff",
       backgroundColor: ACCENT,
@@ -52,14 +59,14 @@ function createStyles(scale: number) {
     },
     section: { marginTop: px(18) },
     summary: {
-      fontSize: px(9.5),
+      fontSize: fs(9.5),
       color: "#3f3f46",
-      lineHeight: 1.55,
+      lineHeight: lh(1.55),
       marginTop: px(8),
     },
     skillWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: px(8) },
     skillPill: {
-      fontSize: px(8.5),
+      fontSize: fs(8.5),
       color: ACCENT,
       backgroundColor: "#eef2ff",
       paddingVertical: px(3),
@@ -71,28 +78,28 @@ function createStyles(scale: number) {
     roleBlock: { marginTop: px(12) },
     roleHeader: { flexDirection: "row", justifyContent: "space-between" },
     roleHeading: {
-      fontSize: px(10),
+      fontSize: fs(10),
       fontFamily: "Helvetica-Bold",
       color: "#18181b",
     },
-    roleSub: { fontSize: px(9), color: "#52525b" },
+    roleSub: { fontSize: fs(9), color: "#52525b" },
     roleDates: {
-      fontSize: px(8.5),
+      fontSize: fs(8.5),
       color: "#71717a",
       fontFamily: "Helvetica-Bold",
     },
-    roleLocation: { fontSize: px(8.5), color: "#a1a1aa", marginTop: px(1) },
+    roleLocation: { fontSize: fs(8.5), color: "#a1a1aa", marginTop: px(1) },
     bulletRow: { flexDirection: "row", marginTop: px(5), paddingLeft: px(2) },
     bulletDash: {
       width: px(12),
-      fontSize: px(9.5),
+      fontSize: fs(9.5),
       color: ACCENT,
       fontFamily: "Helvetica-Bold",
     },
     bulletText: {
       flex: 1,
-      fontSize: px(9.5),
-      lineHeight: 1.45,
+      fontSize: fs(9.5),
+      lineHeight: lh(1.45),
       color: "#27272a",
     },
     eduRow: {
@@ -101,26 +108,40 @@ function createStyles(scale: number) {
       marginTop: px(6),
     },
     eduSchool: {
-      fontSize: px(9.5),
+      fontSize: fs(9.5),
       fontFamily: "Helvetica-Bold",
       color: "#18181b",
     },
-    eduDetail: { fontSize: px(9), color: "#52525b" },
+    eduDetail: { fontSize: fs(9), color: "#52525b" },
   });
 }
 
 export function ResumePdfMinimal({
   resume,
   optimization,
-  scale = 1,
+  fontScale = 1,
+  spacingScale = 1,
+  lineHeightScale = 1,
 }: {
   resume: Resume;
   optimization: Optimization | null;
-  scale?: number;
+  fontScale?: number;
+  spacingScale?: number;
+  lineHeightScale?: number;
 }) {
-  const styles = createStyles(scale);
-  const { summary, title, skills, experience, projects, education } =
+  const styles = createStyles(fontScale, spacingScale, lineHeightScale);
+  const {
+    summary,
+    title,
+    skills,
+    experience,
+    projects,
+    education,
+    additionalSections,
+    language,
+  } =
     resolveResumeContent(resume, optimization);
+  const labels = getResumeSectionLabels(language);
 
   return (
     <Document
@@ -145,14 +166,14 @@ export function ResumePdfMinimal({
 
         {summary ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>Summary</Text>
+            <Text style={styles.sectionTag}>{labels.summary}</Text>
             <Text style={styles.summary}>{summary}</Text>
           </View>
         ) : null}
 
         {skills.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>Skills</Text>
+            <Text style={styles.sectionTag}>{labels.skills}</Text>
             <View style={styles.skillWrap}>
               {skills.map((s) => (
                 <Text key={s} style={styles.skillPill}>
@@ -165,10 +186,10 @@ export function ResumePdfMinimal({
 
         {experience.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>Experience</Text>
+            <Text style={styles.sectionTag}>{labels.experience}</Text>
             {experience.map((block) => (
-              <View key={block.id} style={styles.roleBlock} wrap={false}>
-                <View style={styles.roleHeader}>
+              <View key={block.id} style={styles.roleBlock}>
+                <View style={styles.roleHeader} wrap={false}>
                   <View>
                     <Text style={styles.roleHeading}>{block.heading}</Text>
                     <Text style={styles.roleSub}>{block.subheading}</Text>
@@ -193,10 +214,10 @@ export function ResumePdfMinimal({
 
         {projects.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>Projects</Text>
+            <Text style={styles.sectionTag}>{labels.projects}</Text>
             {projects.map((block) => (
-              <View key={block.id} style={styles.roleBlock} wrap={false}>
-                <View style={styles.roleHeader}>
+              <View key={block.id} style={styles.roleBlock}>
+                <View style={styles.roleHeader} wrap={false}>
                   <View>
                     <Text style={styles.roleHeading}>{block.heading}</Text>
                     <Text style={styles.roleSub}>{block.subheading}</Text>
@@ -221,7 +242,7 @@ export function ResumePdfMinimal({
 
         {education.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>Education</Text>
+            <Text style={styles.sectionTag}>{labels.education}</Text>
             {education.map((e, i) => (
               <View key={i} style={styles.eduRow}>
                 <View>
@@ -233,6 +254,40 @@ export function ResumePdfMinimal({
             ))}
           </View>
         ) : null}
+
+        {additionalSections.map((section) =>
+          section.items.length > 0 ? (
+            <View key={section.id} style={styles.section}>
+              <Text style={styles.sectionTag}>
+                {section.title || labels[section.kind]}
+              </Text>
+              {section.items.map((item) => (
+                <View key={item.id} style={styles.roleBlock}>
+                  <View style={styles.roleHeader} wrap={false}>
+                    <View>
+                      <Text style={styles.roleHeading}>{item.heading}</Text>
+                      {item.subheading ? (
+                        <Text style={styles.roleSub}>{item.subheading}</Text>
+                      ) : null}
+                    </View>
+                    <Text style={styles.roleDates}>
+                      {[item.start, item.end].filter(Boolean).join(" — ")}
+                    </Text>
+                  </View>
+                  {item.location ? (
+                    <Text style={styles.roleLocation}>{item.location}</Text>
+                  ) : null}
+                  {item.bullets.map((bullet) => (
+                    <View key={bullet.id} style={styles.bulletRow}>
+                      <Text style={styles.bulletDash}>–</Text>
+                      <Text style={styles.bulletText}>{bullet.text}</Text>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          ) : null,
+        )}
       </Page>
     </Document>
   );

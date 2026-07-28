@@ -1,6 +1,13 @@
-// Shared "what goes on the resume" resolution, reused by every PDF style
-// variant so they don't each re-implement the optimization/resume merge.
-import type { Optimization, Resume } from "@/lib/types";
+// The canonical "what goes on the resume" resolution. Every PDF style must
+// consume this document rather than deciding independently which content to
+// show. That makes style a presentation choice only.
+import type {
+  Optimization,
+  Resume,
+  ResumeAdditionalSection,
+  ResumeLanguage,
+  ResumeSectionRef,
+} from "@/lib/types";
 
 export type ResolvedBlock = {
   id: string;
@@ -12,10 +19,120 @@ export type ResolvedBlock = {
   bullets: string[];
 };
 
+export type ResolvedResumeDocument = {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  location: string;
+  photo?: string;
+  language: ResumeLanguage;
+  summary: string;
+  skills: string[];
+  experience: ResolvedBlock[];
+  projects: ResolvedBlock[];
+  education: Resume["education"];
+  additionalSections: ResumeAdditionalSection[];
+  sectionOrder: ResumeSectionRef[];
+};
+
+const CORE_ORDER: ResumeSectionRef[] = [
+  "summary",
+  "skills",
+  "experience",
+  "projects",
+  "education",
+];
+
+export function detectResumeLanguage(_resume: Resume): ResumeLanguage {
+  return "en";
+}
+
+export function getResumeSectionLabels(_language: ResumeLanguage) {
+  return {
+    summary: "Summary",
+    skills: "Skills",
+    experience: "Experience",
+    projects: "Projects",
+    education: "Education",
+    awards: "Awards",
+    certifications: "Certifications",
+    publications: "Publications",
+    languages: "Languages",
+    volunteering: "Volunteering",
+    custom: "Additional Information",
+  };
+}
+
+function sectionHasContent(
+  ref: ResumeSectionRef,
+  content: Pick<
+    ResolvedResumeDocument,
+    | "summary"
+    | "skills"
+    | "experience"
+    | "projects"
+    | "education"
+    | "additionalSections"
+  >,
+): boolean {
+  if (ref === "summary") return Boolean(content.summary);
+  if (ref === "skills") return content.skills.length > 0;
+  if (ref === "experience") return content.experience.length > 0;
+  if (ref === "projects") return content.projects.length > 0;
+  if (ref === "education") return content.education.length > 0;
+  if (ref.startsWith("additional:")) {
+    const id = ref.slice("additional:".length);
+    return Boolean(
+      content.additionalSections.find(
+        (section) => section.id === id && section.items.length > 0,
+      ),
+    );
+  }
+  return false;
+}
+
+function resolveSectionOrder(
+  resume: Resume,
+  content: Pick<
+    ResolvedResumeDocument,
+    | "summary"
+    | "skills"
+    | "experience"
+    | "projects"
+    | "education"
+    | "additionalSections"
+  >,
+): ResumeSectionRef[] {
+  const additionalRefs = content.additionalSections.map(
+    (section) => `additional:${section.id}` as const,
+  );
+  const sourceOrder = (resume.sectionOrder ?? []).filter((ref) =>
+    sectionHasContent(ref, content),
+  );
+  const seen = new Set<ResumeSectionRef>();
+  const deduped = sourceOrder.filter((ref) => {
+    if (seen.has(ref)) return false;
+    seen.add(ref);
+    return true;
+  });
+
+  // Sections introduced by optimization but absent from the source resume
+  // belong immediately after the header. Preserve the remaining source order.
+  const introduced = (["summary", "skills"] as ResumeSectionRef[]).filter(
+    (ref) => sectionHasContent(ref, content) && !seen.has(ref),
+  );
+  for (const ref of introduced) seen.add(ref);
+  const missing = [...CORE_ORDER, ...additionalRefs].filter(
+    (ref) => sectionHasContent(ref, content) && !seen.has(ref),
+  );
+  return [...introduced, ...deduped, ...missing];
+}
+
 export function resolveResumeContent(
   resume: Resume,
   optimization: Optimization | null,
-) {
+): ResolvedResumeDocument {
   const summary = optimization?.summary || resume.summary;
   const title = optimization?.title || resume.title;
   const skills =
@@ -57,5 +174,24 @@ export function resolveResumeContent(
     },
   );
 
-  return { summary, title, skills, experience, projects, education: resume.education };
+  const base = {
+    summary,
+    skills,
+    experience,
+    projects,
+    education: resume.education ?? [],
+    additionalSections: resume.additionalSections ?? [],
+  };
+
+  return {
+    name: resume.name,
+    title,
+    email: resume.email,
+    phone: resume.phone,
+    location: resume.location,
+    photo: resume.photo,
+    language: detectResumeLanguage(resume),
+    ...base,
+    sectionOrder: resolveSectionOrder(resume, base),
+  };
 }

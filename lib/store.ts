@@ -10,18 +10,24 @@ import type {
   OptimizedBullet,
   PreviewBullet,
   Resume,
+  ResumeStyleProfile,
+  ResumeStyleSource,
 } from "./types";
 
 export const VOICE_QUOTA = 10;
 
 type Step = "upload" | "job" | "analysis" | "checkout" | "result";
-export type PdfStyle = "classic" | "sidebar" | "minimal";
+export type PdfStyle = "classic" | "sidebar" | "minimal" | "personalized";
+export type PersonalizedStatus = "idle" | "generating" | "ready" | "failed";
 
 type State = {
   fileName: string | null;
   fileType: "pdf" | "docx" | null;
   fileSize: number | null;
   resume: Resume | null;
+  resumeStyleSource: ResumeStyleSource | null;
+  personalizedStyleProfile: ResumeStyleProfile | null;
+  personalizedStatus: PersonalizedStatus;
 
   jobDescription: string;
   jobUrl: string;
@@ -44,6 +50,9 @@ type State = {
 type Actions = {
   setFileMeta: (name: string, type: "pdf" | "docx", size: number) => void;
   setResume: (r: Resume) => void;
+  setResumeStyleSource: (source: ResumeStyleSource | null) => void;
+  setPersonalizedStyleProfile: (profile: ResumeStyleProfile | null) => void;
+  setPersonalizedStatus: (s: PersonalizedStatus) => void;
   clearFile: () => void;
 
   setJobDescription: (text: string) => void;
@@ -75,6 +84,9 @@ const initial: State = {
   fileType: null,
   fileSize: null,
   resume: null,
+  resumeStyleSource: null,
+  personalizedStyleProfile: null,
+  personalizedStatus: "idle",
   jobDescription: "",
   jobUrl: "",
   job: null,
@@ -83,7 +95,7 @@ const initial: State = {
   optimization: null,
   optimizationModel: null,
   selectedModel: DEFAULT_MODEL_ID,
-  pdfStyle: "classic",
+  pdfStyle: "personalized",
   paid: false,
   step: "upload",
   voiceCount: 0,
@@ -96,12 +108,27 @@ export const useFlow = create<State & Actions>()(
       setFileMeta: (name, type, size) =>
         set({ fileName: name, fileType: type, fileSize: size }),
       setResume: (r) => set({ resume: r }),
+      setResumeStyleSource: (source) =>
+        set({
+          resumeStyleSource: source,
+          personalizedStyleProfile: null,
+          personalizedStatus: "idle",
+        }),
+      setPersonalizedStyleProfile: (profile) =>
+        set({
+          personalizedStyleProfile: profile,
+          personalizedStatus: profile ? "ready" : "idle",
+        }),
+      setPersonalizedStatus: (s) => set({ personalizedStatus: s }),
       clearFile: () =>
         set({
           fileName: null,
           fileType: null,
           fileSize: null,
           resume: null,
+          resumeStyleSource: null,
+          personalizedStyleProfile: null,
+          personalizedStatus: "idle",
           report: null,
           preview: null,
           optimization: null,
