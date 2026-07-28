@@ -91,6 +91,7 @@ export function ResumeView({
         </section>
       )}
 
+      {resume.experience.length > 0 && (
       <section className="mt-5">
         <SectionLabel>Experience</SectionLabel>
         <div className="space-y-5 mt-2">
@@ -153,6 +154,7 @@ export function ResumeView({
           })}
         </div>
       </section>
+      )}
 
       {resume.projects && resume.projects.length > 0 && (
         <section className="mt-5">

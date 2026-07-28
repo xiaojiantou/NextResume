@@ -3,98 +3,148 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { Optimization, Resume } from "@/lib/types";
 
-const styles = StyleSheet.create({
-  page: {
-    paddingTop: 44,
-    paddingBottom: 44,
-    paddingHorizontal: 52,
-    fontSize: 10,
-    lineHeight: 1.42,
-    color: "#18181b",
-    fontFamily: "Times-Roman",
-  },
-  header: {
-    textAlign: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e4e4e7",
-    paddingBottom: 10,
-  },
-  name: {
-    fontSize: 22,
-    fontFamily: "Times-Bold",
-    letterSpacing: -0.3,
-  },
-  title: {
-    fontSize: 11,
-    color: "#3f3f46",
-    marginTop: 2,
-  },
-  contact: {
-    fontSize: 9,
-    color: "#71717a",
-    marginTop: 4,
-    fontFamily: "Helvetica",
-  },
-  sectionLabel: {
-    fontSize: 8,
-    fontFamily: "Helvetica-Bold",
-    letterSpacing: 1.4,
-    color: "#71717a",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  section: { marginTop: 14 },
-  summary: { fontSize: 10, color: "#27272a" },
-  skills: {
-    fontSize: 9.5,
-    color: "#3f3f46",
-    fontFamily: "Helvetica",
-  },
-  roleHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
-    fontFamily: "Helvetica",
-  },
-  roleTitle: { fontSize: 10.5, fontFamily: "Helvetica-Bold", color: "#18181b" },
-  roleTitleMuted: { fontSize: 10.5, color: "#52525b" },
-  roleDates: { fontSize: 9, color: "#71717a" },
-  roleLocation: { fontSize: 9, color: "#a1a1aa", fontFamily: "Helvetica" },
-  bulletRow: {
-    flexDirection: "row",
-    marginTop: 3,
-    paddingLeft: 4,
-  },
-  bulletDot: {
-    width: 10,
-    fontSize: 10,
-    color: "#3f3f46",
-  },
-  bulletText: {
-    flex: 1,
-    fontSize: 10,
-  },
-  eduRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 3,
-    fontFamily: "Helvetica",
-    fontSize: 9.5,
-  },
-  eduSchool: { fontFamily: "Helvetica-Bold", color: "#18181b" },
-});
+// Matches the web app's accent-600 (tailwind.config.ts) — used sparingly for
+// a few branded touches (header rule, job title, bullet markers, section
+// underlines), not as a wholesale color scheme. Resumes need to stay
+// print-friendly and scannable, not look like a marketing page.
+const ACCENT = "#4f46e5";
+
+// Scales font sizes and spacing (not line-height multipliers, letter-spacing,
+// or hairline border widths) so the export route can shrink the whole
+// template a notch at a time until the resume fits on one page.
+function createStyles(scale: number) {
+  const px = (v: number) => v * scale;
+  return StyleSheet.create({
+    page: {
+      paddingTop: px(44),
+      paddingBottom: px(44),
+      paddingHorizontal: px(52),
+      fontSize: px(10),
+      lineHeight: 1.42,
+      color: "#18181b",
+      fontFamily: "Times-Roman",
+    },
+    header: {
+      textAlign: "center",
+      borderBottomWidth: 2,
+      borderBottomColor: ACCENT,
+      paddingBottom: px(12),
+    },
+    headerWithPhoto: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderBottomWidth: 2,
+      borderBottomColor: ACCENT,
+      paddingBottom: px(12),
+    },
+    photo: {
+      width: px(60),
+      height: px(60),
+      borderRadius: px(30),
+      marginRight: px(16),
+      objectFit: "cover",
+    },
+    headerTextBlock: {
+      flex: 1,
+      textAlign: "left",
+    },
+    name: {
+      fontSize: px(23),
+      lineHeight: 1.1,
+      fontFamily: "Times-Bold",
+      letterSpacing: -0.3,
+      color: "#18181b",
+    },
+    title: {
+      fontSize: px(11),
+      color: ACCENT,
+      marginTop: px(8),
+      fontFamily: "Helvetica-Bold",
+    },
+    contact: {
+      fontSize: px(9),
+      color: "#71717a",
+      marginTop: px(5),
+      fontFamily: "Helvetica",
+    },
+    sectionLabel: {
+      fontSize: px(8.5),
+      fontFamily: "Helvetica-Bold",
+      letterSpacing: 1.6,
+      color: ACCENT,
+      textTransform: "uppercase",
+      marginBottom: px(6),
+      paddingBottom: px(3),
+      borderBottomWidth: 0.75,
+      borderBottomColor: "#e4e4e7",
+    },
+    section: { marginTop: px(16) },
+    summary: { fontSize: px(10), color: "#27272a", lineHeight: 1.5 },
+    skills: {
+      fontSize: px(9.5),
+      color: "#3f3f46",
+      fontFamily: "Helvetica",
+      lineHeight: 1.6,
+    },
+    roleHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: px(9),
+      fontFamily: "Helvetica",
+    },
+    roleTitle: {
+      fontSize: px(10.5),
+      fontFamily: "Helvetica-Bold",
+      color: "#18181b",
+    },
+    roleTitleMuted: { fontSize: px(10.5), color: "#52525b" },
+    roleDates: {
+      fontSize: px(9),
+      color: "#3f3f46",
+      fontFamily: "Helvetica-Bold",
+    },
+    roleLocation: { fontSize: px(9), color: "#a1a1aa", fontFamily: "Helvetica" },
+    bulletRow: {
+      flexDirection: "row",
+      marginTop: px(4),
+      paddingLeft: px(4),
+    },
+    bulletDot: {
+      width: px(10),
+      fontSize: px(10),
+      color: ACCENT,
+    },
+    bulletText: {
+      flex: 1,
+      fontSize: px(10),
+      lineHeight: 1.45,
+    },
+    eduRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: px(4),
+      fontFamily: "Helvetica",
+      fontSize: px(9.5),
+    },
+    eduSchool: { fontFamily: "Helvetica-Bold", color: "#18181b" },
+  });
+}
 
 export function ResumePdf({
   resume,
   optimization,
+  scale = 1,
 }: {
   resume: Resume;
   optimization: Optimization | null;
+  scale?: number;
 }) {
+  const styles = createStyles(scale);
   const summary = optimization?.summary || resume.summary;
   const title = optimization?.title || resume.title;
   const skills =
@@ -110,15 +160,30 @@ export function ResumePdf({
       producer="NextResume"
     >
       <Page size="LETTER" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.name}>{resume.name}</Text>
-          {title ? <Text style={styles.title}>{title}</Text> : null}
-          <Text style={styles.contact}>
-            {[resume.email, resume.phone, resume.location]
-              .filter(Boolean)
-              .join("  ·  ")}
-          </Text>
-        </View>
+        {resume.photo ? (
+          <View style={styles.headerWithPhoto}>
+            <Image src={resume.photo} style={styles.photo} />
+            <View style={styles.headerTextBlock}>
+              <Text style={styles.name}>{resume.name}</Text>
+              {title ? <Text style={styles.title}>{title}</Text> : null}
+              <Text style={styles.contact}>
+                {[resume.email, resume.phone, resume.location]
+                  .filter(Boolean)
+                  .join("  ·  ")}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.header}>
+            <Text style={styles.name}>{resume.name}</Text>
+            {title ? <Text style={styles.title}>{title}</Text> : null}
+            <Text style={styles.contact}>
+              {[resume.email, resume.phone, resume.location]
+                .filter(Boolean)
+                .join("  ·  ")}
+            </Text>
+          </View>
+        )}
 
         {summary ? (
           <View style={styles.section}>
@@ -134,42 +199,44 @@ export function ResumePdf({
           </View>
         ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Experience</Text>
-          {resume.experience.map((role) => {
-            const opt = optimization?.roles.find((r) => r.id === role.id);
-            const bullets = opt?.bullets.length
-              ? opt.bullets.map((b) => b.text)
-              : role.bullets.map((b) => b.text);
-            return (
-              <View key={role.id} wrap={false}>
-                <View style={styles.roleHeader}>
-                  <Text>
-                    <Text style={styles.roleTitle}>{role.company}</Text>
-                    {role.title ? (
-                      <Text style={styles.roleTitleMuted}>
-                        {"  ·  "}
-                        {role.title}
-                      </Text>
-                    ) : null}
-                  </Text>
-                  <Text style={styles.roleDates}>
-                    {role.start} — {role.end}
-                  </Text>
-                </View>
-                {role.location ? (
-                  <Text style={styles.roleLocation}>{role.location}</Text>
-                ) : null}
-                {bullets.map((text, i) => (
-                  <View key={i} style={styles.bulletRow}>
-                    <Text style={styles.bulletDot}>•</Text>
-                    <Text style={styles.bulletText}>{text}</Text>
+        {resume.experience.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Experience</Text>
+            {resume.experience.map((role) => {
+              const opt = optimization?.roles.find((r) => r.id === role.id);
+              const bullets = opt?.bullets.length
+                ? opt.bullets.map((b) => b.text)
+                : role.bullets.map((b) => b.text);
+              return (
+                <View key={role.id} wrap={false}>
+                  <View style={styles.roleHeader}>
+                    <Text>
+                      <Text style={styles.roleTitle}>{role.company}</Text>
+                      {role.title ? (
+                        <Text style={styles.roleTitleMuted}>
+                          {"  ·  "}
+                          {role.title}
+                        </Text>
+                      ) : null}
+                    </Text>
+                    <Text style={styles.roleDates}>
+                      {role.start} — {role.end}
+                    </Text>
                   </View>
-                ))}
-              </View>
-            );
-          })}
-        </View>
+                  {role.location ? (
+                    <Text style={styles.roleLocation}>{role.location}</Text>
+                  ) : null}
+                  {bullets.map((text, i) => (
+                    <View key={i} style={styles.bulletRow}>
+                      <Text style={styles.bulletDot}>•</Text>
+                      <Text style={styles.bulletText}>{text}</Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
 
         {resume.projects && resume.projects.length > 0 ? (
           <View style={styles.section}>

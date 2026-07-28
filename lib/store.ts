@@ -15,6 +15,7 @@ import type {
 export const VOICE_QUOTA = 10;
 
 type Step = "upload" | "job" | "analysis" | "checkout" | "result";
+export type PdfStyle = "classic" | "sidebar" | "minimal";
 
 type State = {
   fileName: string | null;
@@ -32,6 +33,7 @@ type State = {
   optimizationModel: string | null;
 
   selectedModel: string;
+  pdfStyle: PdfStyle;
 
   paid: boolean;
   step: Step;
@@ -59,6 +61,7 @@ type Actions = {
   ) => void;
 
   setSelectedModel: (m: string) => void;
+  setPdfStyle: (s: PdfStyle) => void;
 
   incrementVoiceCount: () => void;
 
@@ -80,6 +83,7 @@ const initial: State = {
   optimization: null,
   optimizationModel: null,
   selectedModel: DEFAULT_MODEL_ID,
+  pdfStyle: "classic",
   paid: false,
   step: "upload",
   voiceCount: 0,
@@ -153,6 +157,7 @@ export const useFlow = create<State & Actions>()(
           };
         }),
       setSelectedModel: (m) => set({ selectedModel: m }),
+      setPdfStyle: (s) => set({ pdfStyle: s }),
       incrementVoiceCount: () => set((s) => ({ voiceCount: s.voiceCount + 1 })),
       markPaid: () => set({ paid: true }),
       setStep: (s) => set({ step: s }),

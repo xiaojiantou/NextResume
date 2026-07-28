@@ -2,6 +2,7 @@
 
 import { AppShell } from "@/components/AppShell";
 import { ModelPicker } from "@/components/ModelPicker";
+import { PdfStylePicker } from "@/components/PdfStylePicker";
 import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
@@ -54,12 +55,14 @@ function ResultPageInner() {
     optimization,
     optimizationModel,
     selectedModel,
+    pdfStyle,
     paid,
     setResume,
     setJob,
     setReport,
     setOptimization,
     setSelectedModel,
+    setPdfStyle,
     clearOptimization,
     markPaid,
   } = useFlow();
@@ -122,6 +125,7 @@ function ResultPageInner() {
           resume,
           optimization,
           targetTitle: job?.title || "",
+          style: pdfStyle,
         }),
       });
       if (!res.ok) {
@@ -440,6 +444,11 @@ function ResultPageInner() {
               regenerating={generating}
               compact
             />
+            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
+            <span className="text-xs text-ink-500 hidden md:inline">
+              PDF style
+            </span>
+            <PdfStylePicker current={pdfStyle} onPick={setPdfStyle} />
           </div>
         </div>
 
