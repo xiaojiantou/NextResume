@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 "use client";
 
 import { MODELS, PROVIDER_LABEL, findModel } from "@/lib/models";

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import OpenAI from "openai";
 import {
   DEFAULT_MODEL_ID,

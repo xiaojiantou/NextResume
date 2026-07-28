@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { Logo } from "./Logo";
 import Link from "next/link";
 import { Stepper } from "./Stepper";

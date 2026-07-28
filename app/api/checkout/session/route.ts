@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { NextRequest, NextResponse } from "next/server";
 import { retrieveCheckoutSession } from "@/lib/stripe";
 import { markOrderFromCheckoutSession } from "@/lib/orders";

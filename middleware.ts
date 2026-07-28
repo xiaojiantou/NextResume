@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 

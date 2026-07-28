@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";

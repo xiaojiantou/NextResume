@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2026 HowBe LLC. All rights reserved.
 # NextResume Deploy Script
 # Usage: ./deploy.sh
 #

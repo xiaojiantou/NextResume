@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 # NextResume Deployment Script
 # Usage: npm run deploy or ./scripts/deploy.sh
