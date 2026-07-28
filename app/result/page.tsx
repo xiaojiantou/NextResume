@@ -274,6 +274,19 @@ function ResultPageInner() {
               Optimization failed
             </h2>
             <p className="text-ink-500 text-sm mt-2">{error}</p>
+            <p className="text-ink-400 text-xs mt-3">
+              If this model isn't available, try a different one.
+            </p>
+            <div className="mt-3 flex justify-center">
+              <ModelPicker
+                current={selectedModel}
+                onPick={(id) => {
+                  setSelectedModel(id);
+                  setError(null);
+                  regenerate(id);
+                }}
+              />
+            </div>
             <button
               onClick={() => {
                 setError(null);

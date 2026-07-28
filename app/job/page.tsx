@@ -74,7 +74,7 @@ export default function JobPage() {
       const res = await fetch("/api/parse-job", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: jobDescription, model: selectedModel }),
+        body: JSON.stringify({ text: jobDescription }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Parse failed");
