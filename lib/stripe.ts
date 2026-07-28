@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 const STRIPE_API = "https://api.stripe.com/v1";
 
 function stripeKey(): string {

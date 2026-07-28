@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Transactional email via MailerSend.
 //
 // Fails safe: if MAILERSEND_API_KEY isn't set, this logs a warning and no-ops

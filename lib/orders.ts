@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Order store — durable across serverless cold starts + concurrent webhooks.
 //
 // Backends (auto-selected by env):

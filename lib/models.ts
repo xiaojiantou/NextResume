@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Curated model registry. Routed via provider adapters in lib/ai.ts.
 // To add/remove, edit this file — the picker UI reads from here automatically.
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 HowBe LLC. All rights reserved.
 # NextResume — dev runner.
 # Usage:
 #   ./scripts/run.sh            # dev mode on :3000

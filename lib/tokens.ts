@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // HMAC-signed order access tokens. Used in the "your resume is ready" email
 // so clicking the link on any device grants access to the buyer's snapshot.
 //

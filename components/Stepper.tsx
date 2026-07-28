@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 

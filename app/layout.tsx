@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import {ClerkProvider} from "@clerk/nextjs";
 import "./globals.css";
 import type { Metadata } from "next";

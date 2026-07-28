@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Lightweight per-IP rate limiter. Zero infra — lives in the function process.
 //
 // Caveats:

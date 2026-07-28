@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Extract raw text from a resume file. Server-only.
 import "server-only";
 

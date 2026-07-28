@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { NextRequest, NextResponse } from "next/server";
 import { createCheckoutSession } from "@/lib/stripe";
 import { createOrder, saveOrderSnapshot } from "@/lib/orders";
