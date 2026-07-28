@@ -81,6 +81,7 @@ export const LIMITS = {
   optimize:    { key: "optimize",     limit: 6,  windowMs: 60_000 },
   redeem:      { key: "redeem",       limit: 10, windowMs: 60_000 },
   importJobUrl:{ key: "import-job-url", limit: 10, windowMs: 60_000 },
+  importJobImage:{ key: "import-job-image", limit: 5, windowMs: 60_000 },
   voiceRewrite:{ key: "voice-rewrite",  limit: 10, windowMs: 60_000 },
 } as const;
 

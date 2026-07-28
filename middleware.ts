@@ -17,6 +17,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/parse-resume(.*)",
   "/api/parse-job(.*)",
   "/api/import-job-url(.*)",
+  "/api/import-job-image(.*)",
   "/api/analyze(.*)",
   "/api/optimize(.*)",
   "/api/export(.*)",

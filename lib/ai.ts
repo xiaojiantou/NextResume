@@ -172,6 +172,48 @@ async function anthropicJson({
   return text;
 }
 
+// Novita hosts vision-capable models on the same OpenAI-compatible endpoint,
+// so image uploads can be transcribed with the existing NOVITA_API_KEY — no
+// separate vision provider/key needed. Docs: https://novita.ai/docs/guides/llm-vision
+// Note: the model id in Novita's own docs (qwen/qwen2.5-vl-72b-instruct) came
+// back "model not available" on this account; verified against GET /models
+// that qwen3-vl-235b-a22b-instruct is actually servable.
+const VISION_MODEL = "qwen/qwen3-vl-235b-a22b-instruct";
+
+export async function transcribeImage({
+  base64,
+  mimeType,
+}: {
+  base64: string;
+  mimeType: string;
+}): Promise<string> {
+  const client = openaiCompatClient("novita");
+  const res = await client.chat.completions.create({
+    model: VISION_MODEL,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Transcribe every piece of text visible in this image, verbatim, in reading order. Preserve line breaks between sections and bullet points. Output plain text only — no commentary, no markdown.",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64}`,
+              detail: "high",
+            },
+          },
+        ],
+      },
+    ],
+    temperature: 0,
+    max_tokens: 4000,
+  });
+  return res.choices[0]?.message?.content?.trim() || "";
+}
+
 export async function jsonCompletion<T>({
   system,
   user,

@@ -8,10 +8,11 @@ import {
   ArrowRight,
   Briefcase,
   Globe,
+  ImageUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const SAMPLE_JD = `Senior Product Engineer — Vercel
 
@@ -39,13 +40,14 @@ export default function JobPage() {
     setJobUrl,
     setJob,
     job,
-    selectedModel,
   } = useFlow();
-  const [mode, setMode] = useState<"paste" | "url">("paste");
+  const [mode, setMode] = useState<"paste" | "url" | "image">("paste");
   const [importing, setImporting] = useState(false);
+  const [importingImage, setImportingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const importFromUrl = async () => {
     setImporting(true);
@@ -64,6 +66,47 @@ export default function JobPage() {
       setError(e instanceof Error ? e.message : "Could not import job URL.");
     } finally {
       setImporting(false);
+    }
+  };
+
+  const importFromImage = async (file: File) => {
+    setImportingImage(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/import-job-image", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Import failed");
+      setJobDescription(data.text);
+      setMode("paste");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not read job image.");
+    } finally {
+      setImportingImage(false);
+    }
+  };
+
+  // Pulls an image out of a clipboard paste event and hands it to
+  // importFromImage, giving it a real filename since pasted blobs usually
+  // don't have one (the backend's file-type check needs the extension).
+  const handlePasteImage = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of Array.from(items)) {
+      if (item.type !== "image/png" && item.type !== "image/jpeg") continue;
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      e.preventDefault();
+      const ext = item.type === "image/png" ? "png" : "jpg";
+      const file = new File([blob], `pasted-image.${ext}`, {
+        type: item.type,
+      });
+      importFromImage(file);
+      break;
     }
   };
 
@@ -122,6 +165,17 @@ export default function JobPage() {
             <Globe size={13} className="inline mr-1.5 -mt-0.5" />
             Import from URL
           </button>
+          <button
+            onClick={() => setMode("image")}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+              mode === "image"
+                ? "bg-white text-ink-900 shadow-soft"
+                : "text-ink-500"
+            }`}
+          >
+            <ImageUp size={13} className="inline mr-1.5 -mt-0.5" />
+            Upload image
+          </button>
         </div>
 
         {mode === "paste" ? (
@@ -148,7 +202,7 @@ export default function JobPage() {
               className="w-full h-72 p-4 text-sm text-ink-800 placeholder:text-ink-300 resize-none outline-none font-sans leading-relaxed"
             />
           </div>
-        ) : (
+        ) : mode === "url" ? (
           <div className="mt-4 card p-5">
             <label className="text-sm text-ink-700 font-medium">
               Job posting URL
@@ -172,6 +226,35 @@ export default function JobPage() {
               Some job boards block automated reading. If import fails, paste
               the description directly.
             </p>
+          </div>
+        ) : (
+          <div
+            tabIndex={0}
+            onClick={() => imageInputRef.current?.click()}
+            onPaste={handlePasteImage}
+            className="mt-4 card p-10 text-center cursor-pointer transition-all hover:border-ink-300 outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10"
+          >
+            <input
+              ref={imageInputRef}
+              type="file"
+              hidden
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importFromImage(f);
+              }}
+            />
+            <div className="w-12 h-12 rounded-xl bg-ink-900 text-white mx-auto inline-flex items-center justify-center">
+              <ImageUp size={20} />
+            </div>
+            <div className="mt-4 font-medium text-ink-900">
+              {importingImage
+                ? "Reading image…"
+                : "Click here, then paste (Ctrl/Cmd+V) — or click to browse"}
+            </div>
+            <div className="text-sm text-ink-400 mt-1">
+              JPG or PNG · Max 10MB
+            </div>
           </div>
         )}
 
