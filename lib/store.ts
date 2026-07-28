@@ -123,15 +123,28 @@ export const useFlow = create<State & Actions>()(
       replaceOptimizedBullet: (roleId, bulletId, next) =>
         set((s) => {
           if (!s.optimization) return {};
+          const inRoles = s.optimization.roles.some((r) => r.id === roleId);
           return {
             optimization: {
               ...s.optimization,
-              roles: s.optimization.roles.map((r) =>
-                r.id !== roleId
-                  ? r
+              roles: inRoles
+                ? s.optimization.roles.map((r) =>
+                    r.id !== roleId
+                      ? r
+                      : {
+                          ...r,
+                          bullets: r.bullets.map((b) =>
+                            b.id === bulletId ? { ...next, id: bulletId } : b,
+                          ),
+                        },
+                  )
+                : s.optimization.roles,
+              projects: (s.optimization.projects ?? []).map((p) =>
+                p.id !== roleId
+                  ? p
                   : {
-                      ...r,
-                      bullets: r.bullets.map((b) =>
+                      ...p,
+                      bullets: p.bullets.map((b) =>
                         b.id === bulletId ? { ...next, id: bulletId } : b,
                       ),
                     },

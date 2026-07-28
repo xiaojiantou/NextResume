@@ -650,11 +650,15 @@ function Switch({
 function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
   const { resume, optimization } = useFlow();
   if (!resume || !optimization) return null;
-  const all = optimization.roles.flatMap((r) => r.bullets);
+  const all = [
+    ...optimization.roles.flatMap((r) => r.bullets),
+    ...(optimization.projects?.flatMap((p) => p.bullets) ?? []),
+  ];
   const bullet = all.find((b) => b.id === hoveredId);
-  const orig = resume.experience
-    .flatMap((r) => r.bullets)
-    .filter((b) => bullet?.evidence.includes(b.id));
+  const orig = [
+    ...resume.experience.flatMap((r) => r.bullets),
+    ...(resume.projects?.flatMap((p) => p.bullets) ?? []),
+  ].filter((b) => bullet?.evidence.includes(b.id));
 
   return (
     <div className="mt-5 card p-5">
@@ -747,8 +751,9 @@ function BulletDiff() {
         </h2>
         <div className="text-xs text-ink-400 flex items-center gap-3">
           <span>
-            {optimization.roles.flatMap((r) => r.bullets).length} bullets
-            rewritten
+            {optimization.roles.flatMap((r) => r.bullets).length +
+              (optimization.projects?.flatMap((p) => p.bullets).length ?? 0)}{" "}
+            bullets rewritten
           </span>
           <span className="hidden sm:inline">·</span>
           <span
@@ -801,6 +806,76 @@ function BulletDiff() {
                           </div>
                           <VoiceRefine
                             roleId={role.id}
+                            bullet={b}
+                            job={job}
+                            model={selectedModel}
+                            quotaRemaining={quotaRemaining}
+                            onAccept={replaceOptimizedBullet}
+                            onQuotaConsume={incrementVoiceCount}
+                          />
+                        </div>
+                        <div className="text-ink-900">{b.text}</div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {b.matchedKeywords.map((k) => (
+                            <span
+                              key={k}
+                              className="text-[11px] px-2 py-0.5 rounded-md bg-accent-50 text-accent-700 border border-accent-100"
+                            >
+                              +{k}
+                            </span>
+                          ))}
+                          {b.evidence.includes("voice-transcript") && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                              🎙 voice-attested
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {optimization.projects?.map((project) => {
+          const original = resume.projects?.find((p) => p.id === project.id);
+          if (!original) return null;
+          return (
+            <div key={project.id}>
+              <div className="px-5 py-3 bg-ink-50/60 border-b border-ink-100 text-sm font-medium text-ink-900">
+                {original.name}{" "}
+                <span className="text-ink-500 font-normal">
+                  · {original.role}
+                </span>
+              </div>
+              <div className="divide-y divide-ink-100">
+                {project.bullets.map((b) => {
+                  const orig = original.bullets.filter((o) =>
+                    b.evidence.includes(o.id),
+                  );
+                  return (
+                    <div
+                      key={b.id}
+                      className="grid md:grid-cols-2 gap-0 md:gap-4 p-5 text-sm"
+                    >
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
+                          Before
+                        </div>
+                        <div className="text-ink-500">
+                          {orig.length
+                            ? orig.map((o) => o.text).join(" / ")
+                            : "Inferred from context"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium">
+                            After
+                          </div>
+                          <VoiceRefine
+                            roleId={project.id}
                             bullet={b}
                             job={job}
                             model={selectedModel}
