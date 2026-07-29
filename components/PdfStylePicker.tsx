@@ -3,32 +3,16 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import type { PdfStyle, PersonalizedStatus } from "@/lib/store";
+import type { PersonalizedStatus } from "@/lib/store";
+import {
+  PDF_STYLE_DEFINITIONS,
+  type AtsCompatibility,
+  type PdfStyle,
+} from "@/lib/pdf/config";
 import { Check, ChevronDown, FileText, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const STYLES: { id: PdfStyle; label: string; blurb: string }[] = [
-  {
-    id: "personalized",
-    label: "Personalized",
-    blurb: "AI-matched to your original resume's look",
-  },
-  {
-    id: "classic",
-    label: "Classic",
-    blurb: "Traditional single column, serif type",
-  },
-  {
-    id: "sidebar",
-    label: "Sidebar",
-    blurb: "Colored sidebar for photo & contact",
-  },
-  {
-    id: "minimal",
-    label: "Minimal",
-    blurb: "Modern single column, tag-style labels",
-  },
-];
+const STYLES = PDF_STYLE_DEFINITIONS;
 
 // Small CSS mockups — not real renders of the PDF, just enough visual
 // structure (column layout / accent placement) to tell the 3 apart at a
@@ -66,6 +50,56 @@ function StyleThumb({ id }: { id: PdfStyle }) {
         <div className="w-5 h-1.5 bg-accent-600 rounded-sm mt-1" />
         <div className="w-full h-0.5 bg-ink-200 rounded-full mt-0.5" />
         <div className="w-3/4 h-0.5 bg-ink-200 rounded-full" />
+      </div>
+    );
+  }
+  if (id === "academic") {
+    return (
+      <div className="w-14 h-[72px] rounded border border-ink-200 bg-white p-1.5 flex flex-col gap-1 shrink-0">
+        <div className="w-9 h-1 bg-slate-900" />
+        <div className="w-7 h-0.5 bg-slate-400" />
+        <div className="w-full h-px bg-slate-700 mt-1" />
+        <div className="w-8 h-0.5 bg-slate-700 mt-1" />
+        <div className="w-full h-0.5 bg-slate-200" />
+        <div className="w-4/5 h-0.5 bg-slate-200" />
+      </div>
+    );
+  }
+  if (id === "executive") {
+    return (
+      <div className="w-14 h-[72px] rounded border border-ink-200 bg-white p-1.5 flex gap-1.5 shrink-0">
+        <div className="w-1 h-6 bg-slate-800" />
+        <div className="flex-1 flex flex-col gap-1">
+          <div className="w-8 h-1.5 bg-slate-900" />
+          <div className="w-6 h-0.5 bg-slate-400" />
+          <div className="w-full h-2 bg-slate-100 mt-1" />
+          <div className="w-full h-0.5 bg-slate-200 mt-1" />
+          <div className="w-4/5 h-0.5 bg-slate-200" />
+        </div>
+      </div>
+    );
+  }
+  if (id === "tech") {
+    return (
+      <div className="w-14 h-[72px] rounded border border-ink-200 bg-white p-1.5 flex flex-col gap-1 shrink-0">
+        <div className="w-8 h-1 bg-blue-800" />
+        <div className="w-10 h-0.5 bg-blue-300" />
+        <div className="w-full h-2 bg-blue-50 border-l-2 border-blue-600 mt-1" />
+        <div className="w-7 h-0.5 bg-blue-700 mt-1" />
+        <div className="w-full h-0.5 bg-ink-200" />
+        <div className="w-3/4 h-0.5 bg-ink-200" />
+      </div>
+    );
+  }
+  if (id === "elegant") {
+    return (
+      <div className="w-14 h-[72px] rounded border border-stone-200 bg-white p-1.5 flex flex-col gap-1 shrink-0">
+        <div className="w-9 h-1.5 bg-stone-800" />
+        <div className="w-6 h-px bg-rose-800" />
+        <div className="w-5 h-px bg-rose-800 mt-1" />
+        <div className="w-full h-0.5 bg-stone-200 mt-1" />
+        <div className="w-full h-0.5 bg-stone-200" />
+        <div className="w-4/5 h-0.5 bg-stone-200" />
       </div>
     );
   }
@@ -131,7 +165,7 @@ export function PdfStylePicker({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 z-20 w-72 card p-1.5 shadow-pop">
+        <div className="absolute right-0 top-full mt-1.5 z-20 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto card p-1.5 shadow-pop">
           {STYLES.map((s) => {
             const selected = s.id === current;
             const isPersonalized = s.id === "personalized";
@@ -152,6 +186,7 @@ export function PdfStylePicker({
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
                     {s.label}
+                    <AtsBadge level={s.ats} />
                     {isPersonalized && personalizedStatus === "generating" && (
                       <Loader2 size={12} className="text-accent-600 animate-spin" />
                     )}
@@ -180,5 +215,28 @@ export function PdfStylePicker({
         </div>
       )}
     </div>
+  );
+}
+
+function AtsBadge({ level }: { level: AtsCompatibility }) {
+  const label =
+    level === "optimized"
+      ? "ATS optimized"
+      : level === "compatible"
+        ? "ATS compatible"
+        : "Source-dependent";
+  return (
+    <span
+      className={cn(
+        "rounded px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+        level === "optimized"
+          ? "bg-emerald-50 text-emerald-700"
+          : level === "compatible"
+            ? "bg-blue-50 text-blue-700"
+            : "bg-amber-50 text-amber-700",
+      )}
+    >
+      {label}
+    </span>
   );
 }

@@ -5,6 +5,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { DEFAULT_MODEL_ID } from "./models";
+import {
+  normalizeTargetPages,
+  type PdfStyle,
+  type TargetPages,
+} from "./pdf/config";
 import type {
   AtsCategory,
   AtsReport,
@@ -20,7 +25,7 @@ import type {
 export const VOICE_QUOTA = 10;
 
 type Step = "upload" | "job" | "analysis" | "checkout" | "result";
-export type PdfStyle = "classic" | "sidebar" | "minimal" | "personalized";
+export type { PdfStyle, TargetPages } from "./pdf/config";
 export type PersonalizedStatus = "idle" | "generating" | "ready" | "failed";
 
 type State = {
@@ -48,6 +53,8 @@ type State = {
    * include it only when the source resume already had a summary section.
    */
   includeSummary: boolean | null;
+  pdfPalette: string;
+  targetPages: TargetPages;
 
   paid: boolean;
   step: Step;
@@ -84,6 +91,8 @@ type Actions = {
   setSelectedModel: (m: string) => void;
   setPdfStyle: (s: PdfStyle) => void;
   setIncludeSummary: (v: boolean) => void;
+  setPdfPalette: (paletteId: string) => void;
+  setTargetPages: (pages: TargetPages) => void;
 
   incrementVoiceCount: () => void;
 
@@ -110,6 +119,8 @@ const initial: State = {
   selectedModel: DEFAULT_MODEL_ID,
   pdfStyle: "personalized",
   includeSummary: null,
+  pdfPalette: "classic-ink",
+  targetPages: "auto",
   paid: false,
   step: "upload",
   voiceCount: 0,
@@ -219,6 +230,9 @@ export const useFlow = create<State & Actions>()(
       setSelectedModel: (m) => set({ selectedModel: m }),
       setPdfStyle: (s) => set({ pdfStyle: s }),
       setIncludeSummary: (v) => set({ includeSummary: v }),
+      setPdfPalette: (paletteId) => set({ pdfPalette: paletteId }),
+      setTargetPages: (pages) =>
+        set({ targetPages: normalizeTargetPages(pages) }),
       incrementVoiceCount: () => set((s) => ({ voiceCount: s.voiceCount + 1 })),
       markPaid: () => set({ paid: true }),
       setStep: (s) => set({ step: s }),
