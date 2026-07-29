@@ -4,6 +4,10 @@
 
 import type { Optimization, Resume } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import {
+  detectResumeLanguage,
+  getResumeSectionLabels,
+} from "@/lib/pdf/shared";
 
 type Mode = "original" | "optimized";
 
@@ -32,24 +36,47 @@ export function ResumeView({
     mode === "optimized" ? optimization?.title ?? resume.title : resume.title;
   const skills =
     mode === "optimized" ? optimization?.skills ?? resume.skills : resume.skills;
+  const labels = getResumeSectionLabels(detectResumeLanguage(resume));
 
   return (
     <div className="paper p-10 text-[12.5px] leading-relaxed text-ink-800 font-serif">
-      <header className="text-center border-b border-ink-100 pb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
-          {resume.name}
-        </h1>
-        <div className="text-sm text-ink-600 mt-0.5">{title}</div>
-        <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-          {[resume.email, resume.phone, resume.location]
-            .filter(Boolean)
-            .join(" · ")}
-        </div>
-      </header>
+      {resume.photo ? (
+        <header className="flex items-center gap-4 border-b border-ink-100 pb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={resume.photo}
+            alt=""
+            className="w-14 h-14 rounded-full object-cover shrink-0"
+          />
+          <div className="text-left">
+            <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+              {resume.name}
+            </h1>
+            <div className="text-sm text-ink-600 mt-0.5">{title}</div>
+            <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
+              {[resume.email, resume.phone, resume.location]
+                .filter(Boolean)
+                .join(" · ")}
+            </div>
+          </div>
+        </header>
+      ) : (
+        <header className="text-center border-b border-ink-100 pb-4">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
+            {resume.name}
+          </h1>
+          <div className="text-sm text-ink-600 mt-0.5">{title}</div>
+          <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
+            {[resume.email, resume.phone, resume.location]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
+        </header>
+      )}
 
       {summary && (
         <section className="mt-5">
-          <SectionLabel>Summary</SectionLabel>
+          <SectionLabel>{labels.summary}</SectionLabel>
           <p
             className={cn(
               "mt-1.5",
@@ -64,15 +91,16 @@ export function ResumeView({
 
       {skills.length > 0 && (
         <section className="mt-5">
-          <SectionLabel>Skills</SectionLabel>
+          <SectionLabel>{labels.skills}</SectionLabel>
           <p className="mt-1.5 font-sans text-[11.5px] text-ink-700">
             {skills.join(" · ")}
           </p>
         </section>
       )}
 
+      {resume.experience.length > 0 && (
       <section className="mt-5">
-        <SectionLabel>Experience</SectionLabel>
+        <SectionLabel>{labels.experience}</SectionLabel>
         <div className="space-y-5 mt-2">
           {resume.experience.map((role) => {
             const optRole = optimization?.roles.find((o) => o.id === role.id);
@@ -133,10 +161,11 @@ export function ResumeView({
           })}
         </div>
       </section>
+      )}
 
       {resume.projects && resume.projects.length > 0 && (
         <section className="mt-5">
-          <SectionLabel>Projects</SectionLabel>
+          <SectionLabel>{labels.projects}</SectionLabel>
           <div className="space-y-5 mt-2">
             {resume.projects.map((project) => {
               const optProject = optimization?.projects?.find(
@@ -205,7 +234,7 @@ export function ResumeView({
 
       {resume.education.length > 0 && (
         <section className="mt-5">
-          <SectionLabel>Education</SectionLabel>
+          <SectionLabel>{labels.education}</SectionLabel>
           <div className="mt-2 space-y-1">
             {resume.education.map((e, i) => (
               <div
@@ -223,6 +252,50 @@ export function ResumeView({
             ))}
           </div>
         </section>
+      )}
+
+      {(resume.additionalSections ?? []).map((section) =>
+        section.items.length > 0 ? (
+          <section key={section.id} className="mt-5">
+            <SectionLabel>
+              {section.title || labels[section.kind]}
+            </SectionLabel>
+            <div className="space-y-4 mt-2">
+              {section.items.map((item) => (
+                <div key={item.id}>
+                  <div className="flex items-baseline justify-between gap-4 font-sans">
+                    <div>
+                      <span className="font-semibold text-ink-900">
+                        {item.heading}
+                      </span>
+                      {item.subheading ? (
+                        <span className="text-ink-500">
+                          {" · "}
+                          {item.subheading}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-[11px] text-ink-500">
+                      {[item.start, item.end].filter(Boolean).join(" — ")}
+                    </div>
+                  </div>
+                  {item.location ? (
+                    <div className="text-[11px] text-ink-400 font-sans">
+                      {item.location}
+                    </div>
+                  ) : null}
+                  {item.bullets.length > 0 ? (
+                    <ul className="mt-2 space-y-1.5 list-disc pl-5">
+                      {item.bullets.map((bullet) => (
+                        <li key={bullet.id}>{bullet.text}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null,
       )}
     </div>
   );

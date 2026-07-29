@@ -3,11 +3,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { extractText } from "@/lib/extract";
+import { screenshotResume } from "@/lib/resumeScreenshot";
+import {
+  mergeParsedResumes,
+  normalizeParsedResume,
+  splitResumeText,
+} from "@/lib/resumeParser";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { Resume } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JSON matching this schema (no prose, no markdown):
 
@@ -49,13 +55,41 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
   ],
   "education": [
     { "school": string, "degree": string, "year": string }
+  ],
+  "language": "en",
+  "sectionOrder": [
+    // Preserve the source resume's reading order. Core values are:
+    // "summary", "skills", "experience", "projects", "education".
+    // Additional sections use "additional:<section id>".
+    string
+  ],
+  "additionalSections": [
+    {
+      "id": string,           // "extra1", "extra2"...
+      "kind": "awards" | "certifications" | "publications" | "languages" | "volunteering" | "custom",
+      "title": string,        // original section heading
+      "items": [
+        {
+          "id": string,
+          "heading": string,  // award/certificate/publication/item name
+          "subheading": string,
+          "location": string,
+          "start": string,
+          "end": string,
+          "bullets": [{ "id": string, "text": string }]
+        }
+      ]
+    }
   ]
 }
 
 Rules:
-- Preserve bullet text VERBATIM. Do not rewrite or summarize.
+- Preserve ALL source content VERBATIM. Do not rewrite, summarize, or omit.
+- This product uses English resume labels. Set language to "en".
 - Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across all roles AND projects.
 - A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".
+- Put awards, certifications, publications, languages, volunteering, and every other non-core section in additionalSections. Never discard an unfamiliar section.
+- sectionOrder must include every non-empty section in its original reading order.
 - If a field is missing, use "" (or [] for arrays).
 - Skills should be a flat deduplicated list.`;
 
@@ -70,7 +104,18 @@ export async function POST(req: NextRequest) {
     }
 
     const buf = Buffer.from(await file.arrayBuffer());
-    const text = await extractText(buf, file.name);
+    // Screenshot runs alongside text extraction (not after) so the
+    // "personalized" PDF style's prerequisite doesn't add latency to the
+    // critical path every user already goes through. Best-effort: a failure
+    // here just means "personalized" style won't be offered later, not a
+    // failed upload.
+    const [{ text, photo }, styleSource] = await Promise.all([
+      extractText(buf, file.name),
+      screenshotResume(buf, file.name).catch((e) => {
+        console.warn("[parse-resume] screenshot failed", e);
+        return null;
+      }),
+    ]);
 
     if (text.length < 50) {
       return NextResponse.json(
@@ -79,13 +124,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const resume = await jsonCompletion<Resume>({
-      system: SYSTEM,
-      user: `Resume text:\n\n${text.slice(0, 12000)}`,
-      maxTokens: 4000,
-    });
+    const chunks = splitResumeText(text);
+    const parsed: Resume[] = [];
+    // A small concurrency cap keeps long resumes inside the route duration
+    // without flooding the model provider.
+    for (let start = 0; start < chunks.length; start += 3) {
+      const batch = chunks.slice(start, start + 3);
+      const results = await Promise.all(
+        batch.map(async (chunk, batchIndex) => {
+          const chunkIndex = start + batchIndex;
+          const value = await jsonCompletion<Resume>({
+            system: SYSTEM,
+            user: `Resume text chunk ${chunkIndex + 1} of ${chunks.length}. Parse only content actually present in this chunk; do not invent missing sections:\n\n${chunk}`,
+            maxTokens: 6000,
+          });
+          return normalizeParsedResume(value);
+        }),
+      );
+      parsed.push(...results);
+    }
+    const resume = mergeParsedResumes(parsed);
+    if (photo) resume.photo = photo;
 
-    return NextResponse.json({ resume, rawText: text });
+    return NextResponse.json({
+      resume,
+      rawText: text,
+      styleSource,
+      // Backwards-compatible response for clients persisted before the
+      // multi-page style source was introduced.
+      screenshot: styleSource?.screenshots[0] ?? null,
+    });
   } catch (e) {
     console.error("parse-resume failed", e);
     return NextResponse.json(

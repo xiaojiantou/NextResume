@@ -12,17 +12,24 @@ import type {
   OptimizedBullet,
   PreviewBullet,
   Resume,
+  ResumeStyleProfile,
+  ResumeStyleSource,
 } from "./types";
 
 export const VOICE_QUOTA = 10;
 
 type Step = "upload" | "job" | "analysis" | "checkout" | "result";
+export type PdfStyle = "classic" | "sidebar" | "minimal" | "personalized";
+export type PersonalizedStatus = "idle" | "generating" | "ready" | "failed";
 
 type State = {
   fileName: string | null;
   fileType: "pdf" | "docx" | null;
   fileSize: number | null;
   resume: Resume | null;
+  resumeStyleSource: ResumeStyleSource | null;
+  personalizedStyleProfile: ResumeStyleProfile | null;
+  personalizedStatus: PersonalizedStatus;
 
   jobDescription: string;
   jobUrl: string;
@@ -34,6 +41,7 @@ type State = {
   optimizationModel: string | null;
 
   selectedModel: string;
+  pdfStyle: PdfStyle;
 
   paid: boolean;
   step: Step;
@@ -44,6 +52,9 @@ type State = {
 type Actions = {
   setFileMeta: (name: string, type: "pdf" | "docx", size: number) => void;
   setResume: (r: Resume) => void;
+  setResumeStyleSource: (source: ResumeStyleSource | null) => void;
+  setPersonalizedStyleProfile: (profile: ResumeStyleProfile | null) => void;
+  setPersonalizedStatus: (s: PersonalizedStatus) => void;
   clearFile: () => void;
 
   setJobDescription: (text: string) => void;
@@ -61,6 +72,7 @@ type Actions = {
   ) => void;
 
   setSelectedModel: (m: string) => void;
+  setPdfStyle: (s: PdfStyle) => void;
 
   incrementVoiceCount: () => void;
 
@@ -74,6 +86,9 @@ const initial: State = {
   fileType: null,
   fileSize: null,
   resume: null,
+  resumeStyleSource: null,
+  personalizedStyleProfile: null,
+  personalizedStatus: "idle",
   jobDescription: "",
   jobUrl: "",
   job: null,
@@ -82,6 +97,7 @@ const initial: State = {
   optimization: null,
   optimizationModel: null,
   selectedModel: DEFAULT_MODEL_ID,
+  pdfStyle: "personalized",
   paid: false,
   step: "upload",
   voiceCount: 0,
@@ -94,12 +110,27 @@ export const useFlow = create<State & Actions>()(
       setFileMeta: (name, type, size) =>
         set({ fileName: name, fileType: type, fileSize: size }),
       setResume: (r) => set({ resume: r }),
+      setResumeStyleSource: (source) =>
+        set({
+          resumeStyleSource: source,
+          personalizedStyleProfile: null,
+          personalizedStatus: "idle",
+        }),
+      setPersonalizedStyleProfile: (profile) =>
+        set({
+          personalizedStyleProfile: profile,
+          personalizedStatus: profile ? "ready" : "idle",
+        }),
+      setPersonalizedStatus: (s) => set({ personalizedStatus: s }),
       clearFile: () =>
         set({
           fileName: null,
           fileType: null,
           fileSize: null,
           resume: null,
+          resumeStyleSource: null,
+          personalizedStyleProfile: null,
+          personalizedStatus: "idle",
           report: null,
           preview: null,
           optimization: null,
@@ -125,15 +156,28 @@ export const useFlow = create<State & Actions>()(
       replaceOptimizedBullet: (roleId, bulletId, next) =>
         set((s) => {
           if (!s.optimization) return {};
+          const inRoles = s.optimization.roles.some((r) => r.id === roleId);
           return {
             optimization: {
               ...s.optimization,
-              roles: s.optimization.roles.map((r) =>
-                r.id !== roleId
-                  ? r
+              roles: inRoles
+                ? s.optimization.roles.map((r) =>
+                    r.id !== roleId
+                      ? r
+                      : {
+                          ...r,
+                          bullets: r.bullets.map((b) =>
+                            b.id === bulletId ? { ...next, id: bulletId } : b,
+                          ),
+                        },
+                  )
+                : s.optimization.roles,
+              projects: (s.optimization.projects ?? []).map((p) =>
+                p.id !== roleId
+                  ? p
                   : {
-                      ...r,
-                      bullets: r.bullets.map((b) =>
+                      ...p,
+                      bullets: p.bullets.map((b) =>
                         b.id === bulletId ? { ...next, id: bulletId } : b,
                       ),
                     },
@@ -142,6 +186,7 @@ export const useFlow = create<State & Actions>()(
           };
         }),
       setSelectedModel: (m) => set({ selectedModel: m }),
+      setPdfStyle: (s) => set({ pdfStyle: s }),
       incrementVoiceCount: () => set((s) => ({ voiceCount: s.voiceCount + 1 })),
       markPaid: () => set({ paid: true }),
       setStep: (s) => set({ step: s }),

@@ -33,7 +33,6 @@ export default function AnalysisPage() {
     job,
     report,
     preview,
-    selectedModel,
     setReport,
     setPreview,
   } = useFlow();
@@ -59,7 +58,6 @@ export default function AnalysisPage() {
             job,
             report,
             mode: "preview",
-            model: selectedModel,
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -76,7 +74,7 @@ export default function AnalysisPage() {
         setPreviewLoading(false);
       }
     })();
-  }, [report, resume, job, preview, selectedModel, setPreview]);
+  }, [report, resume, job, preview, setPreview]);
 
   useEffect(() => {
     if (ran.current) return;
@@ -101,7 +99,7 @@ export default function AnalysisPage() {
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resume, job, model: selectedModel }),
+          body: JSON.stringify({ resume, job }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Analysis failed");

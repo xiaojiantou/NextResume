@@ -7,7 +7,13 @@ import {
   patchOrderSnapshot,
 } from "@/lib/orders";
 import { verifyOrderToken } from "@/lib/tokens";
-import type { JobAnalysis, Optimization, Resume } from "@/lib/types";
+import type {
+  JobAnalysis,
+  Optimization,
+  Resume,
+  ResumeStyleProfile,
+  ResumeStyleSource,
+} from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -49,6 +55,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     job?: JobAnalysis | null;
     optimization?: Optimization | null;
     optimizationModel?: string | null;
+    resumeStyleSource?: ResumeStyleSource | null;
+    personalizedStyleProfile?: ResumeStyleProfile | null;
   };
 
   const patch: Record<string, unknown> = {};
@@ -57,6 +65,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (body.optimization !== undefined) patch.optimization = body.optimization;
   if (body.optimizationModel !== undefined)
     patch.optimizationModel = body.optimizationModel;
+  if (body.resumeStyleSource !== undefined)
+    patch.resumeStyleSource = body.resumeStyleSource;
+  if (body.personalizedStyleProfile !== undefined)
+    patch.personalizedStyleProfile = body.personalizedStyleProfile;
 
   const updated = await patchOrderSnapshot(id, patch);
   if (!updated) {

@@ -1,0 +1,127 @@
+{
+  "resume": {
+    "name": "Alex Morgan",
+    "title": "Software Engineer",
+    "email": "candidate@example.com",
+    "phone": "13800000000",
+    "location": "Seattle, WA",
+    "summary": "Software engineer focused on reliable systems and product delivery.",
+    "skills": ["TypeScript", "React", "Node.js"],
+    "experience": [
+      {
+        "id": "r1",
+        "company": "Northstar Labs",
+        "title": "Senior Engineer",
+        "location": "Seattle, WA",
+        "start": "2023",
+        "end": "Present",
+        "bullets": [
+          { "id": "b1", "text": "Designed and delivered the core business platform." },
+          { "id": "b2", "text": "Established automated testing and release workflows." }
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "id": "p1",
+        "name": "Intelligent Documents",
+        "role": "Project Lead",
+        "location": "",
+        "start": "2022",
+        "end": "2023",
+        "bullets": [
+          { "id": "b3", "text": "Implemented multi-format document parsing and evidence retrieval." }
+        ]
+      }
+    ],
+    "education": [
+      {
+        "school": "Example University",
+        "degree": "BSc in Computer Science",
+        "year": "2022"
+      }
+    ],
+    "language": "en",
+    "sectionOrder": [
+      "education",
+      "projects",
+      "experience",
+      "additional:extra1"
+    ],
+    "additionalSections": [
+      {
+        "id": "extra1",
+        "kind": "awards",
+        "title": "Competition Awards",
+        "items": [
+          {
+            "id": "extra1-item1",
+            "heading": "National Competition First Prize",
+            "subheading": "",
+            "location": "",
+            "start": "2024",
+            "end": "",
+            "bullets": []
+          }
+        ]
+      }
+    ]
+  },
+  "optimization": null,
+  "targetTitle": "Software Engineer",
+  "style": "personalized",
+  "personalizedStyleProfile": {
+    "version": 1,
+    "layout": "single-column",
+    "sidebarWidthPercent": 32,
+    "sidebarSections": ["contact", "skills"],
+    "fontFamily": "Arial",
+    "headingFontFamily": "Arial",
+    "colors": {
+      "text": "#18181b",
+      "muted": "#52525b",
+      "accent": "#1f2937",
+      "background": "#ffffff",
+      "sidebarBackground": "#1f2937",
+      "sidebarText": "#ffffff"
+    },
+    "marginsPt": {
+      "top": 36,
+      "right": 42,
+      "bottom": 36,
+      "left": 42
+    },
+    "typography": {
+      "bodyPt": 9.5,
+      "lineHeight": 1.4,
+      "namePt": 23,
+      "titlePt": 11,
+      "sectionPt": 9,
+      "metaPt": 8.5
+    },
+    "spacing": {
+      "sectionPt": 13,
+      "entryPt": 8,
+      "bulletPt": 3
+    },
+    "header": {
+      "alignment": "center",
+      "divider": true,
+      "photoPosition": "none",
+      "photoShape": "circle",
+      "photoSizePt": 60
+    },
+    "sectionHeading": {
+      "uppercase": false,
+      "divider": true,
+      "filled": false,
+      "alignment": "left"
+    },
+    "bulletMarker": "disc",
+    "page": {
+      "widthPt": 612,
+      "heightPt": 792,
+      "orientation": "portrait"
+    }
+  }
+}

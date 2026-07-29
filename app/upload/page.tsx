@@ -25,6 +25,7 @@ export default function UploadPage() {
     resume,
     setFileMeta,
     setResume,
+    setResumeStyleSource,
     clearFile,
   } = useFlow();
   const [dragging, setDragging] = useState(false);
@@ -60,6 +61,7 @@ export default function UploadPage() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Parse failed");
         setResume(data.resume);
+        setResumeStyleSource(data.styleSource ?? null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not parse resume.");
         clearFile();
@@ -67,7 +69,7 @@ export default function UploadPage() {
         setParsing(false);
       }
     },
-    [setFileMeta, setResume, clearFile],
+    [setFileMeta, setResume, setResumeStyleSource, clearFile],
   );
 
   const bulletCount =

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import OpenAI from "openai";
+import type { ResumeStyleSource } from "./types";
 import {
   DEFAULT_MODEL_ID,
   findModel,
@@ -172,6 +173,128 @@ async function anthropicJson({
 
   const text = data.content?.find((b) => b.type === "text")?.text?.trim() || "";
   return text;
+}
+
+// Novita hosts vision-capable models on the same OpenAI-compatible endpoint,
+// so image uploads can be transcribed with the existing NOVITA_API_KEY — no
+// separate vision provider/key needed. Docs: https://novita.ai/docs/guides/llm-vision
+// Note: the model id in Novita's own docs (qwen/qwen2.5-vl-72b-instruct) came
+// back "model not available" on this account; verified against GET /models
+// that qwen3-vl-235b-a22b-instruct is actually servable.
+const VISION_MODEL = "qwen/qwen3-vl-235b-a22b-instruct";
+
+export async function transcribeImage({
+  base64,
+  mimeType,
+}: {
+  base64: string;
+  mimeType: string;
+}): Promise<string> {
+  const client = openaiCompatClient("novita");
+  const res = await client.chat.completions.create({
+    model: VISION_MODEL,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Transcribe every piece of text visible in this image, verbatim, in reading order. Preserve line breaks between sections and bullet points. Output plain text only — no commentary, no markdown.",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:${mimeType};base64,${base64}`,
+              detail: "high",
+            },
+          },
+        ],
+      },
+    ],
+    temperature: 0,
+    max_tokens: 4000,
+  });
+  return res.choices[0]?.message?.content?.trim() || "";
+}
+
+// The model describes appearance only. It never receives or creates resume
+// content and cannot emit HTML/CSS, which prevents a visual decision from
+// deleting a section or bullet.
+const STYLE_PROFILE_PROMPT = `Study the attached resume page screenshots and describe their visual system as JSON. Do not transcribe or return any resume content.
+
+Return ONLY one JSON object matching this exact shape:
+{
+  "layout": "single-column" | "sidebar-left" | "sidebar-right",
+  "sidebarWidthPercent": number,
+  "sidebarSections": ("contact" | "summary" | "skills" | "education" | "additional")[],
+  "fontFamily": "Arial" | "Helvetica" | "Verdana" | "Georgia" | "Times New Roman",
+  "headingFontFamily": "Arial" | "Helvetica" | "Verdana" | "Georgia" | "Times New Roman",
+  "colors": {
+    "text": "#rrggbb",
+    "muted": "#rrggbb",
+    "accent": "#rrggbb",
+    "background": "#rrggbb",
+    "sidebarBackground": "#rrggbb",
+    "sidebarText": "#rrggbb"
+  },
+  "marginsPt": { "top": number, "right": number, "bottom": number, "left": number },
+  "typography": {
+    "bodyPt": number,
+    "lineHeight": number,
+    "namePt": number,
+    "titlePt": number,
+    "sectionPt": number,
+    "metaPt": number
+  },
+  "spacing": { "sectionPt": number, "entryPt": number, "bulletPt": number },
+  "header": {
+    "alignment": "left" | "center",
+    "divider": boolean,
+    "photoPosition": "none" | "left" | "right",
+    "photoShape": "circle" | "square" | "rounded",
+    "photoSizePt": number
+  },
+  "sectionHeading": {
+    "uppercase": boolean,
+    "divider": boolean,
+    "filled": boolean,
+    "alignment": "left" | "center"
+  },
+  "bulletMarker": "disc" | "dash" | "square"
+}
+
+Choose the closest supported layout. Estimate sizes in print points. Match the source's visual hierarchy, spacing, colors, divider treatment, bullets, sidebar, and photo placement. Never output HTML, CSS, selectors, content, display rules, fixed heights, or overflow rules.`;
+
+export async function generateResumeStyleProfile({
+  source,
+}: {
+  source: ResumeStyleSource;
+}): Promise<unknown> {
+  const client = openaiCompatClient("novita");
+  const res = await client.chat.completions.create({
+    model: VISION_MODEL,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `${STYLE_PROFILE_PROMPT}\n\nMeasured source page: ${source.page.widthPt.toFixed(1)}pt × ${source.page.heightPt.toFixed(1)}pt, ${source.page.orientation}. Screenshots: ${source.screenshots.length} of ${source.pageCount} page(s).`,
+          },
+          ...source.screenshots.slice(0, 3).map((url) => ({
+            type: "image_url" as const,
+            image_url: { url, detail: "high" as const },
+          })),
+        ],
+      },
+    ],
+    temperature: 0.2,
+    max_tokens: 2200,
+  });
+
+  const raw = res.choices[0]?.message?.content?.trim() || "";
+  if (!raw) throw new Error("Empty style profile from vision model");
+  return tryParse<unknown>(raw);
 }
 
 export async function jsonCompletion<T>({

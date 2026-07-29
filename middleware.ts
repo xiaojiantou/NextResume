@@ -19,9 +19,11 @@ const isPublicRoute = createRouteMatcher([
   "/api/parse-resume(.*)",
   "/api/parse-job(.*)",
   "/api/import-job-url(.*)",
+  "/api/import-job-image(.*)",
   "/api/analyze(.*)",
   "/api/optimize(.*)",
   "/api/export(.*)",
+  "/api/personalize(.*)",
   "/api/voice-rewrite(.*)",
   // Its own token check (verifyOrderToken) is the real gate here, so buyers
   // can open their order from any device via the emailed link.

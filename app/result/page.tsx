@@ -4,6 +4,7 @@
 
 import { AppShell } from "@/components/AppShell";
 import { ModelPicker } from "@/components/ModelPicker";
+import { PdfStylePicker } from "@/components/PdfStylePicker";
 import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
@@ -26,7 +27,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type View = "split" | "optimized" | "original" | "edit";
 
@@ -56,12 +64,20 @@ function ResultPageInner() {
     optimization,
     optimizationModel,
     selectedModel,
+    pdfStyle,
+    resumeStyleSource,
+    personalizedStyleProfile,
+    personalizedStatus,
     paid,
     setResume,
     setJob,
     setReport,
     setOptimization,
     setSelectedModel,
+    setPdfStyle,
+    setResumeStyleSource,
+    setPersonalizedStyleProfile,
+    setPersonalizedStatus,
     clearOptimization,
     markPaid,
   } = useFlow();
@@ -74,6 +90,7 @@ function ResultPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [hydrating, setHydrating] = useState(false);
   const ran = useRef(false);
+  const personalizeRan = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -111,12 +128,23 @@ function ResultPageInner() {
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [personalizedError, setPersonalizedError] = useState<string | null>(
+    null,
+  );
 
   const downloadPdf = async () => {
-    if (!resume) return;
+    if (!resume || !optimization) return;
     setExporting(true);
     setExportError(null);
     try {
+      if (pdfStyle === "personalized" && !personalizedStyleProfile) {
+        throw new Error(
+          personalizedStatus === "failed"
+            ? personalizedError ||
+                "Personalized layout failed. Retry or choose Classic."
+            : "Personalized layout is still generating.",
+        );
+      }
       const res = await fetch("/api/export/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,32 +152,97 @@ function ResultPageInner() {
           resume,
           optimization,
           targetTitle: job?.title || "",
+          style: pdfStyle,
+          personalizedStyleProfile:
+            pdfStyle === "personalized"
+              ? personalizedStyleProfile
+              : undefined,
         }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Export failed (${res.status})`);
+        throw new Error(data.error || `PDF export failed (${res.status})`);
       }
       const blob = await res.blob();
-      const disp = res.headers.get("Content-Disposition") || "";
-      const match = disp.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = disposition.match(
+        /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i,
+      );
       const filename = match
         ? decodeURIComponent(match[1])
         : `${resume.name || "resume"}.pdf`;
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setExportError(e instanceof Error ? e.message : "PDF export failed.");
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    } catch (downloadFailure) {
+      setExportError(
+        downloadFailure instanceof Error
+          ? downloadFailure.message
+          : "PDF export failed.",
+      );
     } finally {
       setExporting(false);
     }
   };
+
+  const generatePersonalized = useCallback(async () => {
+    if (!resumeStyleSource) {
+      setPersonalizedError(
+        "The original resume style source is unavailable. Re-upload the resume or choose Classic.",
+      );
+      setPersonalizedStatus("failed");
+      return;
+    }
+    setPersonalizedStatus("generating");
+    setPersonalizedError(null);
+    try {
+      const res = await fetch("/api/personalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ styleSource: resumeStyleSource }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.styleProfile) {
+        throw new Error(data.error || "Personalized layout generation failed.");
+      }
+      setPersonalizedStyleProfile(data.styleProfile);
+    } catch (personalizeFailure) {
+      setPersonalizedStatus("failed");
+      setPersonalizedError(
+        personalizeFailure instanceof Error
+          ? personalizeFailure.message
+          : "Personalized layout generation failed.",
+      );
+    }
+  }, [
+    resumeStyleSource,
+    setPersonalizedStatus,
+    setPersonalizedStyleProfile,
+  ]);
+
+  // Runs alongside runOptimize (not blocking it) — the personalized style
+  // takes far longer than the fixed templates, so it shouldn't hold up the
+  // rest of the page. Only fires once per resume, at most.
+  useEffect(() => {
+    if (!paid || !resume) return;
+    if (pdfStyle !== "personalized") return;
+    if (personalizedStyleProfile || personalizedStatus !== "idle") return;
+    if (personalizeRan.current) return;
+    personalizeRan.current = true;
+    void generatePersonalized();
+  }, [
+    generatePersonalized,
+    paid,
+    pdfStyle,
+    personalizedStatus,
+    personalizedStyleProfile,
+    resume,
+  ]);
 
   useEffect(() => {
     if (ran.current) return;
@@ -170,6 +263,12 @@ function ResultPageInner() {
 
           if (snap?.resume) setResume(snap.resume);
           if (snap?.job) setJob(snap.job);
+          if (snap?.resumeStyleSource) {
+            setResumeStyleSource(snap.resumeStyleSource);
+          }
+          if (snap?.personalizedStyleProfile) {
+            setPersonalizedStyleProfile(snap.personalizedStyleProfile);
+          }
           if (snap?.optimization && snap?.optimizationModel) {
             setOptimization(snap.optimization, snap.optimizationModel);
           }
@@ -220,12 +319,23 @@ function ResultPageInner() {
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ optimization, optimizationModel }),
+        body: JSON.stringify({
+          optimization,
+          optimizationModel,
+          personalizedStyleProfile,
+        }),
       },
     ).catch(() => {
       /* non-fatal — user still sees the resume */
     });
-  }, [optimization, optimizationModel, hasEmailAccess, orderIdFromUrl, tokenFromUrl]);
+  }, [
+    optimization,
+    optimizationModel,
+    personalizedStyleProfile,
+    hasEmailAccess,
+    orderIdFromUrl,
+    tokenFromUrl,
+  ]);
 
   const allOptimized = useMemo(
     () => [
@@ -276,6 +386,19 @@ function ResultPageInner() {
               Optimization failed
             </h2>
             <p className="text-ink-500 text-sm mt-2">{error}</p>
+            <p className="text-ink-400 text-xs mt-3">
+              If this model isn't available, try a different one.
+            </p>
+            <div className="mt-3 flex justify-center">
+              <ModelPicker
+                current={selectedModel}
+                onPick={(id) => {
+                  setSelectedModel(id);
+                  setError(null);
+                  regenerate(id);
+                }}
+              />
+            </div>
             <button
               onClick={() => {
                 setError(null);
@@ -354,7 +477,13 @@ function ResultPageInner() {
             <button
               className="btn btn-primary"
               onClick={downloadPdf}
-              disabled={exporting || generating || !optimization}
+              disabled={
+                exporting ||
+                generating ||
+                !optimization ||
+                (pdfStyle === "personalized" &&
+                  personalizedStatus !== "ready")
+              }
             >
               {exporting ? (
                 <>
@@ -371,10 +500,45 @@ function ResultPageInner() {
         </div>
 
         {exportError && (
-          <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div
+            role="alert"
+            className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+          >
             {exportError}
           </div>
         )}
+
+        {pdfStyle === "personalized" &&
+          personalizedStatus === "failed" && (
+            <div
+              role="alert"
+              className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex flex-wrap items-center justify-between gap-3"
+            >
+              <span>
+                {personalizedError ||
+                  "Personalized layout failed. Retry or choose Classic."}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline min-h-11"
+                  onClick={() => {
+                    personalizeRan.current = true;
+                    void generatePersonalized();
+                  }}
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline min-h-11"
+                  onClick={() => setPdfStyle("classic")}
+                >
+                  Use Classic
+                </button>
+              </div>
+            </div>
+          )}
 
         {/* Toolbar */}
         <div className="mt-6 card p-2 flex flex-wrap items-center gap-2 justify-between">
@@ -428,6 +592,22 @@ function ResultPageInner() {
               onRegenerate={() => regenerate(selectedModel)}
               regenerating={generating}
               compact
+            />
+            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
+            <span className="text-xs text-ink-500 hidden md:inline">
+              PDF style
+            </span>
+            <PdfStylePicker
+              current={pdfStyle}
+                onPick={(id) => {
+                  setPdfStyle(id);
+                  if (id === "personalized" && personalizedStatus === "failed") {
+                    setPersonalizedError(null);
+                    setPersonalizedStatus("idle");
+                    personalizeRan.current = false;
+                  }
+              }}
+              personalizedStatus={personalizedStatus}
             />
           </div>
         </div>
@@ -539,7 +719,13 @@ function ResultPageInner() {
               <button
                 className="btn btn-primary !px-5"
                 onClick={downloadPdf}
-                disabled={exporting || generating || !optimization}
+                disabled={
+                  exporting ||
+                  generating ||
+                  !optimization ||
+                  (pdfStyle === "personalized" &&
+                    personalizedStatus !== "ready")
+                }
               >
                 {exporting ? (
                   <>
@@ -652,11 +838,15 @@ function Switch({
 function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
   const { resume, optimization } = useFlow();
   if (!resume || !optimization) return null;
-  const all = optimization.roles.flatMap((r) => r.bullets);
+  const all = [
+    ...optimization.roles.flatMap((r) => r.bullets),
+    ...(optimization.projects?.flatMap((p) => p.bullets) ?? []),
+  ];
   const bullet = all.find((b) => b.id === hoveredId);
-  const orig = resume.experience
-    .flatMap((r) => r.bullets)
-    .filter((b) => bullet?.evidence.includes(b.id));
+  const orig = [
+    ...resume.experience.flatMap((r) => r.bullets),
+    ...(resume.projects?.flatMap((p) => p.bullets) ?? []),
+  ].filter((b) => bullet?.evidence.includes(b.id));
 
   return (
     <div className="mt-5 card p-5">
@@ -749,8 +939,9 @@ function BulletDiff() {
         </h2>
         <div className="text-xs text-ink-400 flex items-center gap-3">
           <span>
-            {optimization.roles.flatMap((r) => r.bullets).length} bullets
-            rewritten
+            {optimization.roles.flatMap((r) => r.bullets).length +
+              (optimization.projects?.flatMap((p) => p.bullets).length ?? 0)}{" "}
+            bullets rewritten
           </span>
           <span className="hidden sm:inline">·</span>
           <span
@@ -803,6 +994,76 @@ function BulletDiff() {
                           </div>
                           <VoiceRefine
                             roleId={role.id}
+                            bullet={b}
+                            job={job}
+                            model={selectedModel}
+                            quotaRemaining={quotaRemaining}
+                            onAccept={replaceOptimizedBullet}
+                            onQuotaConsume={incrementVoiceCount}
+                          />
+                        </div>
+                        <div className="text-ink-900">{b.text}</div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {b.matchedKeywords.map((k) => (
+                            <span
+                              key={k}
+                              className="text-[11px] px-2 py-0.5 rounded-md bg-accent-50 text-accent-700 border border-accent-100"
+                            >
+                              +{k}
+                            </span>
+                          ))}
+                          {b.evidence.includes("voice-transcript") && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                              🎙 voice-attested
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {optimization.projects?.map((project) => {
+          const original = resume.projects?.find((p) => p.id === project.id);
+          if (!original) return null;
+          return (
+            <div key={project.id}>
+              <div className="px-5 py-3 bg-ink-50/60 border-b border-ink-100 text-sm font-medium text-ink-900">
+                {original.name}{" "}
+                <span className="text-ink-500 font-normal">
+                  · {original.role}
+                </span>
+              </div>
+              <div className="divide-y divide-ink-100">
+                {project.bullets.map((b) => {
+                  const orig = original.bullets.filter((o) =>
+                    b.evidence.includes(o.id),
+                  );
+                  return (
+                    <div
+                      key={b.id}
+                      className="grid md:grid-cols-2 gap-0 md:gap-4 p-5 text-sm"
+                    >
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
+                          Before
+                        </div>
+                        <div className="text-ink-500">
+                          {orig.length
+                            ? orig.map((o) => o.text).join(" / ")
+                            : "Inferred from context"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium">
+                            After
+                          </div>
+                          <VoiceRefine
+                            roleId={project.id}
                             bullet={b}
                             job={job}
                             model={selectedModel}

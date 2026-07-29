@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCheckoutSession } from "@/lib/stripe";
 import { createOrder, saveOrderSnapshot } from "@/lib/orders";
-import type { JobAnalysis, Resume } from "@/lib/types";
+import type { JobAnalysis, Resume, ResumeStyleSource } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -13,13 +13,16 @@ export async function POST(req: NextRequest) {
     // so the buyer can access their resume from any device via the email link.
     let resume: Resume | null = null;
     let job: JobAnalysis | null = null;
+    let resumeStyleSource: ResumeStyleSource | null = null;
     try {
       const body = (await req.json()) as {
         resume?: Resume;
         job?: JobAnalysis;
+        resumeStyleSource?: ResumeStyleSource | null;
       };
       resume = body?.resume ?? null;
       job = body?.job ?? null;
+      resumeStyleSource = body?.resumeStyleSource ?? null;
     } catch {
       // No body / not JSON — fine, older client behaviour.
     }
@@ -47,6 +50,8 @@ export async function POST(req: NextRequest) {
           job,
           optimization: null,
           optimizationModel: null,
+          resumeStyleSource,
+          personalizedStyleProfile: null,
         });
       } catch (e) {
         console.error("[checkout] saveOrderSnapshot failed", e);

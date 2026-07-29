@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function CheckoutPage() {
-  const { markPaid, resume, job } = useFlow();
+  const { markPaid, resume, job, resumeStyleSource } = useFlow();
   const [processing, setProcessing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -35,7 +35,7 @@ export default function CheckoutPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, job }),
+        body: JSON.stringify({ resume, job, resumeStyleSource }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Checkout failed");
