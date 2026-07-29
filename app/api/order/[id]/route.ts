@@ -14,6 +14,12 @@ import type {
   ResumeStyleProfile,
   ResumeStyleSource,
 } from "@/lib/types";
+import {
+  isPdfStyle,
+  normalizeTargetPages,
+  type PdfStyle,
+  type TargetPages,
+} from "@/lib/pdf/config";
 
 export const runtime = "nodejs";
 
@@ -57,6 +63,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     optimizationModel?: string | null;
     resumeStyleSource?: ResumeStyleSource | null;
     personalizedStyleProfile?: ResumeStyleProfile | null;
+    pdfStyle?: PdfStyle;
+    pdfPalette?: string;
+    targetPages?: TargetPages;
   };
 
   const patch: Record<string, unknown> = {};
@@ -69,6 +78,12 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     patch.resumeStyleSource = body.resumeStyleSource;
   if (body.personalizedStyleProfile !== undefined)
     patch.personalizedStyleProfile = body.personalizedStyleProfile;
+  if (body.pdfStyle !== undefined && isPdfStyle(body.pdfStyle))
+    patch.pdfStyle = body.pdfStyle;
+  if (body.pdfPalette !== undefined && typeof body.pdfPalette === "string")
+    patch.pdfPalette = body.pdfPalette.slice(0, 80);
+  if (body.targetPages !== undefined)
+    patch.targetPages = normalizeTargetPages(body.targetPages);
 
   const updated = await patchOrderSnapshot(id, patch);
   if (!updated) {

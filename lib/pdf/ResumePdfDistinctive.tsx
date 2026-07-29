@@ -239,6 +239,7 @@ export function ResumePdfDistinctive({
   palette,
   resume,
   optimization,
+  includeSummary,
   fontScale = 1,
   spacingScale = 1,
   lineHeightScale = 1,
@@ -247,6 +248,7 @@ export function ResumePdfDistinctive({
   palette: ResumePalette;
   resume: Resume;
   optimization: Optimization | null;
+  includeSummary?: boolean;
   fontScale?: number;
   spacingScale?: number;
   lineHeightScale?: number;
@@ -267,7 +269,7 @@ export function ResumePdfDistinctive({
     education,
     additionalSections,
     language,
-  } = resolveResumeContent(resume, optimization);
+  } = resolveResumeContent(resume, optimization, { includeSummary });
   const labels = getResumeSectionLabels(language);
   const sectionLabel = (label: string) =>
     variant === "tech" ? `[ ${label} ]` : label;

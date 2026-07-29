@@ -4,19 +4,32 @@
 
 import { EditableResumeCanvas } from "./EditableResumeCanvas";
 import { LivePdfPreview } from "./LivePdfPreview";
-import type { Resume, Optimization } from "@/lib/types";
+import type {
+  Resume,
+  Optimization,
+  ResumeStyleProfile,
+} from "@/lib/types";
+import type { PdfStyle, TargetPages } from "@/lib/pdf/config";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useState } from "react";
 
 export function EditorWithPreview({
   resume,
   optimization,
+  pdfStyle,
+  pdfPalette,
+  targetPages,
+  personalizedStyleProfile,
   onResumeChange,
   onRegenerate,
   regenerating,
 }: {
   resume: Resume;
   optimization: Optimization | null;
+  pdfStyle: PdfStyle;
+  pdfPalette: string;
+  targetPages: TargetPages;
+  personalizedStyleProfile: ResumeStyleProfile | null;
   onResumeChange: (resume: Resume) => void;
   onRegenerate: () => void;
   regenerating: boolean;
@@ -76,7 +89,14 @@ export function EditorWithPreview({
 
           {/* Preview Side */}
           <div className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
-            <LivePdfPreview resume={resume} optimization={optimization} />
+            <LivePdfPreview
+              resume={resume}
+              optimization={optimization}
+              style={pdfStyle}
+              palette={pdfPalette}
+              targetPages={targetPages}
+              personalizedStyleProfile={personalizedStyleProfile}
+            />
           </div>
         </div>
       ) : layout === "editor" ? (
@@ -90,7 +110,14 @@ export function EditorWithPreview({
         </div>
       ) : (
         <div className="h-[calc(100vh-200px)] rounded-lg border border-ink-100 bg-ink-50 overflow-hidden">
-          <LivePdfPreview resume={resume} optimization={optimization} />
+          <LivePdfPreview
+            resume={resume}
+            optimization={optimization}
+            style={pdfStyle}
+            palette={pdfPalette}
+            targetPages={targetPages}
+            personalizedStyleProfile={personalizedStyleProfile}
+          />
         </div>
       )}
     </div>

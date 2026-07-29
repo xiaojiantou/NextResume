@@ -20,6 +20,7 @@ import type {
   ResumeStyleProfile,
   ResumeStyleSource,
 } from "./types";
+import type { PdfStyle, TargetPages } from "./pdf/config";
 
 type OrderStatus = "pending" | "paid" | "expired";
 
@@ -42,6 +43,9 @@ export type OrderSnapshot = {
   optimizationModel: string | null;
   resumeStyleSource?: ResumeStyleSource | null;
   personalizedStyleProfile?: ResumeStyleProfile | null;
+  pdfStyle?: PdfStyle;
+  pdfPalette?: string;
+  targetPages?: TargetPages;
   updatedAt: string;
 };
 

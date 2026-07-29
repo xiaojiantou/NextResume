@@ -9,49 +9,48 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { Optimization, Resume } from "@/lib/types";
+import type { ResumePalette } from "./config";
 import {
   getResumeSectionLabels,
   resolveResumeContent,
 } from "./shared";
 
-// Matches the web app's accent-600 (tailwind.config.ts) — used sparingly for
-// a few branded touches (header rule, job title, bullet markers, section
-// underlines), not as a wholesale color scheme. Resumes need to stay
-// print-friendly and scannable, not look like a marketing page.
-const ACCENT = "#4f46e5";
-
 // Font size, whitespace, and leading are controlled independently so the
 // export route can compact layout before it reduces text size.
 function createStyles(
+  palette: ResumePalette,
   fontScale: number,
   spacingScale: number,
   lineHeightScale: number,
 ) {
   const px = (v: number) => v * spacingScale;
+  const margin = (v: number) => Math.max(36, v * spacingScale);
   const fs = (v: number) => v * fontScale;
+  const body = (v = 10) => Math.max(10, fs(v));
   const lh = (v: number, floor = 1.18) =>
     Math.max(floor, v * lineHeightScale);
   return StyleSheet.create({
     page: {
-      paddingTop: px(44),
-      paddingBottom: px(44),
-      paddingHorizontal: px(52),
-      fontSize: fs(10),
+      paddingTop: margin(44),
+      paddingBottom: margin(44),
+      paddingHorizontal: margin(52),
+      fontSize: body(),
       lineHeight: lh(1.42),
-      color: "#18181b",
+      color: palette.text,
+      backgroundColor: palette.background,
       fontFamily: "Times-Roman",
     },
     header: {
       textAlign: "center",
       borderBottomWidth: 2,
-      borderBottomColor: ACCENT,
+      borderBottomColor: palette.accent,
       paddingBottom: px(12),
     },
     headerWithPhoto: {
       flexDirection: "row",
       alignItems: "center",
       borderBottomWidth: 2,
-      borderBottomColor: ACCENT,
+      borderBottomColor: palette.accent,
       paddingBottom: px(12),
     },
     photo: {
@@ -70,17 +69,17 @@ function createStyles(
       lineHeight: lh(1.1, 1.02),
       fontFamily: "Times-Bold",
       letterSpacing: -0.3,
-      color: "#18181b",
+      color: palette.text,
     },
     title: {
       fontSize: fs(11),
-      color: ACCENT,
+      color: palette.accent,
       marginTop: px(8),
       fontFamily: "Helvetica-Bold",
     },
     contact: {
       fontSize: fs(9),
-      color: "#71717a",
+      color: palette.muted,
       marginTop: px(5),
       fontFamily: "Helvetica",
     },
@@ -88,18 +87,18 @@ function createStyles(
       fontSize: fs(8.5),
       fontFamily: "Helvetica-Bold",
       letterSpacing: 1.6,
-      color: ACCENT,
+      color: palette.accent,
       textTransform: "uppercase",
       marginBottom: px(6),
       paddingBottom: px(3),
       borderBottomWidth: 0.75,
-      borderBottomColor: "#e4e4e7",
+      borderBottomColor: palette.border,
     },
     section: { marginTop: px(16) },
-    summary: { fontSize: fs(10), color: "#27272a", lineHeight: lh(1.5) },
+    summary: { fontSize: body(), color: palette.text, lineHeight: lh(1.5) },
     skills: {
-      fontSize: fs(9.5),
-      color: "#3f3f46",
+      fontSize: body(),
+      color: palette.text,
       fontFamily: "Helvetica",
       lineHeight: lh(1.6, 1.22),
     },
@@ -110,23 +109,32 @@ function createStyles(
     roleHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
+      alignItems: "flex-start",
       marginTop: px(9),
       fontFamily: "Helvetica",
+    },
+    roleTitleGroup: {
+      flexGrow: 1,
+      flexBasis: 0,
+      paddingRight: px(9),
     },
     roleTitle: {
       fontSize: fs(10.5),
       fontFamily: "Helvetica-Bold",
-      color: "#18181b",
+      color: palette.text,
     },
-    roleTitleMuted: { fontSize: fs(10.5), color: "#52525b" },
+    roleTitleMuted: { fontSize: fs(10.5), color: palette.muted },
     roleDates: {
+      flexShrink: 0,
+      maxWidth: "30%",
+      textAlign: "right",
       fontSize: fs(9),
-      color: "#3f3f46",
+      color: palette.muted,
       fontFamily: "Helvetica-Bold",
     },
     roleLocation: {
       fontSize: fs(9),
-      color: "#a1a1aa",
+      color: palette.muted,
       fontFamily: "Helvetica",
     },
     bulletRow: {
@@ -136,12 +144,12 @@ function createStyles(
     },
     bulletDot: {
       width: px(10),
-      fontSize: fs(10),
-      color: ACCENT,
+      fontSize: body(),
+      color: palette.accent,
     },
     bulletText: {
       flex: 1,
-      fontSize: fs(10),
+      fontSize: body(),
       lineHeight: lh(1.45),
     },
     eduRow: {
@@ -153,12 +161,13 @@ function createStyles(
     },
     eduSchool: {
       fontFamily: "Helvetica-Bold",
-      color: "#18181b",
+      color: palette.text,
     },
   });
 }
 
 export function ResumePdf({
+  palette,
   resume,
   optimization,
   includeSummary,
@@ -166,6 +175,7 @@ export function ResumePdf({
   spacingScale = 1,
   lineHeightScale = 1,
 }: {
+  palette: ResumePalette;
   resume: Resume;
   optimization: Optimization | null;
   includeSummary?: boolean;
@@ -184,7 +194,12 @@ export function ResumePdf({
     additionalSections,
     language,
   } = resolveResumeContent(resume, optimization, { includeSummary });
-  const styles = createStyles(fontScale, spacingScale, lineHeightScale);
+  const styles = createStyles(
+    palette,
+    fontScale,
+    spacingScale,
+    lineHeightScale,
+  );
   const labels = getResumeSectionLabels(language);
 
   return (
@@ -253,28 +268,32 @@ export function ResumePdf({
             {experience.map((role) => {
               return (
                 <View key={role.id}>
-                  <View
-                    style={styles.roleHeader}
-                    wrap={false}
-                    minPresenceAhead={36}
-                  >
-                    <Text>
-                      <Text style={styles.roleTitle}>{role.heading}</Text>
-                      {role.subheading ? (
-                        <Text style={styles.roleTitleMuted}>
-                          {"  ·  "}
-                          {role.subheading}
-                        </Text>
-                      ) : null}
-                    </Text>
-                    <Text style={styles.roleDates}>
-                      {role.start} — {role.end}
-                    </Text>
+                  <View wrap={false} minPresenceAhead={36}>
+                    <View style={styles.roleHeader}>
+                      <Text style={styles.roleTitleGroup}>
+                        <Text style={styles.roleTitle}>{role.heading}</Text>
+                        {role.subheading ? (
+                          <Text style={styles.roleTitleMuted}>
+                            {"  ·  "}
+                            {role.subheading}
+                          </Text>
+                        ) : null}
+                      </Text>
+                      <Text style={styles.roleDates}>
+                        {role.start} — {role.end}
+                      </Text>
+                    </View>
+                    {role.location ? (
+                      <Text style={styles.roleLocation}>{role.location}</Text>
+                    ) : null}
+                    {role.bullets[0] ? (
+                      <View style={styles.bulletRow}>
+                        <Text style={styles.bulletDot}>•</Text>
+                        <Text style={styles.bulletText}>{role.bullets[0]}</Text>
+                      </View>
+                    ) : null}
                   </View>
-                  {role.location ? (
-                    <Text style={styles.roleLocation}>{role.location}</Text>
-                  ) : null}
-                  {role.bullets.map((text, i) => (
+                  {role.bullets.slice(1).map((text, i) => (
                     <View key={i} style={styles.bulletRow}>
                       <Text style={styles.bulletDot}>•</Text>
                       <Text style={styles.bulletText}>{text}</Text>
@@ -294,28 +313,34 @@ export function ResumePdf({
             {projects.map((project) => {
               return (
                 <View key={project.id}>
-                  <View
-                    style={styles.roleHeader}
-                    wrap={false}
-                    minPresenceAhead={36}
-                  >
-                    <Text>
-                      <Text style={styles.roleTitle}>{project.heading}</Text>
-                      {project.subheading ? (
-                        <Text style={styles.roleTitleMuted}>
-                          {"  ·  "}
-                          {project.subheading}
+                  <View wrap={false} minPresenceAhead={36}>
+                    <View style={styles.roleHeader}>
+                      <Text style={styles.roleTitleGroup}>
+                        <Text style={styles.roleTitle}>{project.heading}</Text>
+                        {project.subheading ? (
+                          <Text style={styles.roleTitleMuted}>
+                            {"  ·  "}
+                            {project.subheading}
+                          </Text>
+                        ) : null}
+                      </Text>
+                      <Text style={styles.roleDates}>
+                        {project.start} — {project.end}
+                      </Text>
+                    </View>
+                    {project.location ? (
+                      <Text style={styles.roleLocation}>{project.location}</Text>
+                    ) : null}
+                    {project.bullets[0] ? (
+                      <View style={styles.bulletRow}>
+                        <Text style={styles.bulletDot}>•</Text>
+                        <Text style={styles.bulletText}>
+                          {project.bullets[0]}
                         </Text>
-                      ) : null}
-                    </Text>
-                    <Text style={styles.roleDates}>
-                      {project.start} — {project.end}
-                    </Text>
+                      </View>
+                    ) : null}
                   </View>
-                  {project.location ? (
-                    <Text style={styles.roleLocation}>{project.location}</Text>
-                  ) : null}
-                  {project.bullets.map((text, i) => (
+                  {project.bullets.slice(1).map((text, i) => (
                     <View key={i} style={styles.bulletRow}>
                       <Text style={styles.bulletDot}>•</Text>
                       <Text style={styles.bulletText}>{text}</Text>
@@ -337,13 +362,13 @@ export function ResumePdf({
                 <Text>
                   <Text style={styles.eduSchool}>{e.school}</Text>
                   {e.degree ? (
-                    <Text style={{ color: "#52525b" }}>
+                    <Text style={{ color: palette.muted }}>
                       {"  ·  "}
                       {e.degree}
                     </Text>
                   ) : null}
                 </Text>
-                <Text style={{ color: "#71717a" }}>{e.year}</Text>
+                <Text style={{ color: palette.muted }}>{e.year}</Text>
               </View>
             ))}
           </View>
@@ -362,7 +387,7 @@ export function ResumePdf({
                     wrap={false}
                     minPresenceAhead={36}
                   >
-                    <Text>
+                    <Text style={styles.roleTitleGroup}>
                       <Text style={styles.roleTitle}>{item.heading}</Text>
                       {item.subheading ? (
                         <Text style={styles.roleTitleMuted}>

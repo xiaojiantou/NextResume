@@ -5,6 +5,8 @@
 import { AppShell } from "@/components/AppShell";
 import { ModelPicker } from "@/components/ModelPicker";
 import { PdfStylePicker } from "@/components/PdfStylePicker";
+import { PdfPalettePicker } from "@/components/PdfPalettePicker";
+import { TargetPagesPicker } from "@/components/TargetPagesPicker";
 import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
@@ -12,6 +14,10 @@ import { findModel } from "@/lib/models";
 import { applyOptimizationToResume } from "@/lib/applyOptimization";
 import { VOICE_QUOTA, useFlow } from "@/lib/store";
 import { cn } from "@/lib/cn";
+import {
+  getDefaultPaletteId,
+  type FixedPdfStyle,
+} from "@/lib/pdf/config";
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -68,6 +74,8 @@ function ResultPageInner() {
     pdfStyle,
     includeSummary,
     setIncludeSummary,
+    pdfPalette,
+    targetPages,
     resumeStyleSource,
     personalizedStyleProfile,
     personalizedStatus,
@@ -79,6 +87,8 @@ function ResultPageInner() {
     setOptimization,
     setSelectedModel,
     setPdfStyle,
+    setPdfPalette,
+    setTargetPages,
     setResumeStyleSource,
     setPersonalizedStyleProfile,
     setPersonalizedStatus,
@@ -175,6 +185,7 @@ function ResultPageInner() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportedPages, setExportedPages] = useState<number | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [personalizedError, setPersonalizedError] = useState<string | null>(
     null,
   );
@@ -183,6 +194,7 @@ function ResultPageInner() {
     if (!resume || !optimization) return;
     setExporting(true);
     setExportError(null);
+    setExportNotice(null);
     try {
       if (pdfStyle === "personalized" && !personalizedStyleProfile) {
         throw new Error(
@@ -201,6 +213,8 @@ function ResultPageInner() {
           targetTitle: job?.title || "",
           style: pdfStyle,
           includeSummary: summaryEnabled,
+          palette: pdfPalette,
+          targetPages,
           personalizedStyleProfile:
             pdfStyle === "personalized"
               ? personalizedStyleProfile
@@ -211,8 +225,17 @@ function ResultPageInner() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `PDF export failed (${res.status})`);
       }
-      const pages = Number(res.headers.get("X-Resume-Pages"));
-      setExportedPages(Number.isFinite(pages) && pages > 0 ? pages : null);
+      const actualPages = Number(res.headers.get("X-Resume-Pages") || "0");
+      setExportedPages(
+        Number.isFinite(actualPages) && actualPages > 0 ? actualPages : null,
+      );
+      const desiredPages = res.headers.get("X-Resume-Target-Pages");
+      const overflow = res.headers.get("X-Resume-Overflow") === "true";
+      if (overflow && actualPages > 0 && desiredPages) {
+        setExportNotice(
+          `The complete resume needs ${actualPages} pages at the safe readability limit, so it exceeds the ${desiredPages}-page target.`,
+        );
+      }
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") || "";
       const match = disposition.match(
@@ -329,6 +352,11 @@ function ResultPageInner() {
             missingKeywords: [],
             presentKeywords: [],
           };
+          if (snap?.pdfStyle) setPdfStyle(snap.pdfStyle);
+          if (snap?.pdfPalette) setPdfPalette(snap.pdfPalette);
+          if (snap?.targetPages !== undefined) {
+            setTargetPages(snap.targetPages);
+          }
           if (snap?.optimization && snap?.optimizationModel) {
             setOptimization(snap.optimization, snap.optimizationModel);
             if (!useFlow.getState().report) setReport(stubReport);
@@ -383,6 +411,9 @@ function ResultPageInner() {
           optimization,
           optimizationModel,
           personalizedStyleProfile,
+          pdfStyle,
+          pdfPalette,
+          targetPages,
         }),
       },
     ).catch(() => {
@@ -392,6 +423,9 @@ function ResultPageInner() {
     optimization,
     optimizationModel,
     personalizedStyleProfile,
+    pdfStyle,
+    pdfPalette,
+    targetPages,
     hasEmailAccess,
     orderIdFromUrl,
     tokenFromUrl,
@@ -587,6 +621,14 @@ function ResultPageInner() {
             {exportError}
           </div>
         )}
+        {exportNotice && (
+          <div
+            role="status"
+            className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          >
+            {exportNotice}
+          </div>
+        )}
 
         {exportedPages !== null && !exportError && (
           <div
@@ -714,15 +756,33 @@ function ResultPageInner() {
             </span>
             <PdfStylePicker
               current={pdfStyle}
-                onPick={(id) => {
-                  setPdfStyle(id);
-                  if (id === "personalized" && personalizedStatus === "failed") {
-                    setPersonalizedError(null);
-                    setPersonalizedStatus("idle");
-                    personalizeRan.current = false;
-                  }
+              onPick={(id) => {
+                setPdfStyle(id);
+                if (id !== "personalized") {
+                  setPdfPalette(getDefaultPaletteId(id));
+                }
+                if (id === "personalized" && personalizedStatus === "failed") {
+                  setPersonalizedError(null);
+                  setPersonalizedStatus("idle");
+                  personalizeRan.current = false;
+                }
               }}
               personalizedStatus={personalizedStatus}
+            />
+            {pdfStyle !== "personalized" ? (
+              <PdfPalettePicker
+                style={pdfStyle as FixedPdfStyle}
+                current={pdfPalette}
+                onPick={setPdfPalette}
+              />
+            ) : null}
+            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
+            <span className="text-xs text-ink-500 hidden md:inline">
+              Target length
+            </span>
+            <TargetPagesPicker
+              current={targetPages}
+              onPick={setTargetPages}
             />
           </div>
         </div>
@@ -775,6 +835,10 @@ function ResultPageInner() {
               <EditorWithPreview
                 resume={resume}
                 optimization={optimization}
+                pdfStyle={pdfStyle}
+                pdfPalette={pdfPalette}
+                targetPages={targetPages}
+                personalizedStyleProfile={personalizedStyleProfile}
                 onResumeChange={setResume}
                 onRegenerate={() => regenerate(selectedModel)}
                 regenerating={generating}
@@ -784,7 +848,11 @@ function ResultPageInner() {
         ) : (
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             {(view === "split" || view === "original") && (
-              <PaneWrapper title="Your original" tone="muted">
+              <PaneWrapper
+                title="Your original"
+                tone="muted"
+                meta="Source content"
+              >
                 <ResumeView
                   mode="original"
                   resume={resume}
@@ -800,6 +868,11 @@ function ResultPageInner() {
               <PaneWrapper
                 title={`Optimized for ${job.title}`}
                 tone="accent"
+                meta={
+                  targetPages === "auto"
+                    ? "Target · Auto"
+                    : `Target · ${targetPages} ${targetPages === 1 ? "page" : "pages"}`
+                }
               >
                 <ResumeView
                   mode="optimized"
@@ -870,10 +943,12 @@ function PaneWrapper({
   title,
   children,
   tone,
+  meta,
 }: {
   title: string;
   children: React.ReactNode;
   tone: "muted" | "accent";
+  meta: string;
 }) {
   return (
     <div>
@@ -884,7 +959,7 @@ function PaneWrapper({
         )}
       >
         <span className="font-medium">{title}</span>
-        <span className="text-ink-400">US Letter</span>
+        <span className="text-ink-400">Letter · {meta}</span>
       </div>
       {children}
     </div>

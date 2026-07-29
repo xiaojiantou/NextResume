@@ -2,15 +2,28 @@
 
 "use client";
 
-import type { Resume, Optimization } from "@/lib/types";
+import type {
+  Resume,
+  Optimization,
+  ResumeStyleProfile,
+} from "@/lib/types";
+import type { PdfStyle, TargetPages } from "@/lib/pdf/config";
 import { useEffect, useState } from "react";
 
 export function LivePdfPreview({
   resume,
   optimization,
+  style,
+  palette,
+  targetPages,
+  personalizedStyleProfile,
 }: {
   resume: Resume;
   optimization: Optimization | null;
+  style: PdfStyle;
+  palette: string;
+  targetPages: TargetPages;
+  personalizedStyleProfile: ResumeStyleProfile | null;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +40,11 @@ export function LivePdfPreview({
       body: JSON.stringify({
         resume,
         optimization,
-        style: "classic",
+        style,
+        palette,
+        targetPages,
+        personalizedStyleProfile:
+          style === "personalized" ? personalizedStyleProfile : undefined,
       }),
     })
       .then(async (response) => {
@@ -55,7 +72,14 @@ export function LivePdfPreview({
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [optimization, resume]);
+  }, [
+    optimization,
+    palette,
+    personalizedStyleProfile,
+    resume,
+    style,
+    targetPages,
+  ]);
 
   if (error) {
     return (

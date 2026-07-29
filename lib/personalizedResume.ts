@@ -11,6 +11,7 @@ import {
   type ResolvedBlock,
   type ResolvedResumeDocument,
 } from "./pdf/shared";
+import type { TargetPages } from "./pdf/config";
 import {
   sanitizeResumeStyleProfile,
 } from "./resumeStyle";
@@ -24,7 +25,7 @@ import type {
 } from "./types";
 
 const MAX_STYLE_ATTEMPTS = 3;
-const MIN_BODY_PT = 8.5;
+const MIN_BODY_PT = 10;
 
 type FitPreset = {
   fontScale: number;
@@ -83,25 +84,25 @@ const COMPACT_FIT_PRESETS: FitPreset[] = [
     lineHeightScale: 0.95,
   },
   {
-    fontScale: 0.98,
+    fontScale: 1,
     spacingScale: 0.82,
     marginScale: 0.9,
     lineHeightScale: 0.92,
   },
   {
-    fontScale: 0.96,
+    fontScale: 1,
     spacingScale: 0.75,
     marginScale: 0.86,
     lineHeightScale: 0.88,
   },
   {
-    fontScale: 0.92,
+    fontScale: 1,
     spacingScale: 0.68,
     marginScale: 0.82,
     lineHeightScale: 0.84,
   },
   {
-    fontScale: 0.9,
+    fontScale: 1,
     spacingScale: 0.62,
     marginScale: 0.78,
     lineHeightScale: 0.82,
@@ -363,10 +364,10 @@ export function buildPersonalizedHtml({
   const headerPhoto = sidebarPhoto ? "" : photo;
 
   const margins = {
-    top: profile.marginsPt.top * fit.marginScale,
-    right: profile.marginsPt.right * fit.marginScale,
-    bottom: profile.marginsPt.bottom * fit.marginScale,
-    left: profile.marginsPt.left * fit.marginScale,
+    top: Math.max(36, profile.marginsPt.top * fit.marginScale),
+    right: Math.max(36, profile.marginsPt.right * fit.marginScale),
+    bottom: Math.max(36, profile.marginsPt.bottom * fit.marginScale),
+    left: Math.max(36, profile.marginsPt.left * fit.marginScale),
   };
   const sidebarFirst = profile.layout === "sidebar-left";
   const sidebarWidth = profile.sidebarWidthPercent;
@@ -659,6 +660,9 @@ async function assertContentIntegrity(
     const normalize = (value: string | null | undefined) =>
       (value || "").replace(/\s+/g, " ").trim();
     const problems: string[] = [];
+    const visibleNodes: Array<{ id: string; element: HTMLElement; rect: DOMRect }> = [];
+    const root = document.querySelector(".resume") as HTMLElement | null;
+    const rootRect = root?.getBoundingClientRect() ?? null;
     for (const item of expected) {
       const nodes = document.querySelectorAll(
         `[data-content-id="${CSS.escape(item.id)}"]`,
@@ -683,6 +687,36 @@ async function assertContentIntegrity(
       if (item.value && normalize(element.textContent) !== normalize(item.value)) {
         problems.push(`${item.id}: text mismatch`);
       }
+      if (
+        rootRect &&
+        (rect.left < rootRect.left - 1 || rect.right > rootRect.right + 1)
+      ) {
+        problems.push(`${item.id}: outside horizontal page bounds`);
+      }
+      visibleNodes.push({ id: item.id, element, rect });
+    }
+    for (let i = 0; i < visibleNodes.length; i++) {
+      const first = visibleNodes[i];
+      for (let j = i + 1; j < visibleNodes.length; j++) {
+        const second = visibleNodes[j];
+        if (
+          first.element.contains(second.element) ||
+          second.element.contains(first.element)
+        ) {
+          continue;
+        }
+        const overlapWidth =
+          Math.min(first.rect.right, second.rect.right) -
+          Math.max(first.rect.left, second.rect.left);
+        const overlapHeight =
+          Math.min(first.rect.bottom, second.rect.bottom) -
+          Math.max(first.rect.top, second.rect.top);
+        if (overlapWidth > 2 && overlapHeight > 2) {
+          problems.push(`${first.id} overlaps ${second.id}`);
+        }
+        if (problems.length >= 16) break;
+      }
+      if (problems.length >= 16) break;
     }
     return problems;
   }, manifest);
@@ -744,11 +778,13 @@ export async function renderPersonalizedPdf({
   resume,
   optimization,
   includeSummary,
+  targetPages = "auto",
 }: {
   styleProfile: ResumeStyleProfile;
   resume: Resume;
   optimization: Optimization | null;
   includeSummary?: boolean;
+  targetPages?: TargetPages;
 }): Promise<Buffer> {
   const source: ResumeStyleSource = {
     screenshots: [],
@@ -782,44 +818,18 @@ export async function renderPersonalizedPdf({
       return { buffer, fill, pageCount };
     };
 
-    let closestOnePage:
-      | { buffer: Buffer; distanceFromTarget: number }
-      | null = null;
-    for (const fit of [...EXPANDED_FIT_PRESETS, BASE_FIT_PRESET]) {
+    const baseline = await renderFit(BASE_FIT_PRESET);
+    const desiredPages =
+      targetPages === "auto"
+        ? Math.min(10, Math.max(1, baseline.pageCount))
+        : targetPages;
+    for (const fit of [
+      ...EXPANDED_FIT_PRESETS,
+      BASE_FIT_PRESET,
+      ...COMPACT_FIT_PRESETS,
+    ]) {
       const rendered = await renderFit(fit);
-      if (rendered.pageCount > 1) continue;
-
-      const distanceFromTarget = Math.abs(
-        rendered.fill - TARGET_PAGE_FILL,
-      );
-      if (
-        !closestOnePage ||
-        distanceFromTarget < closestOnePage.distanceFromTarget
-      ) {
-        closestOnePage = {
-          buffer: rendered.buffer,
-          distanceFromTarget,
-        };
-      }
-
-      if (
-        rendered.fill >= BALANCED_PAGE_FILL.min &&
-        rendered.fill <= BALANCED_PAGE_FILL.max
-      ) {
-        return rendered.buffer;
-      }
-
-      // Presets are ordered from roomiest to densest. If even the roomiest
-      // layout is under-filled, smaller presets cannot improve the balance.
-      if (rendered.fill < BALANCED_PAGE_FILL.min) {
-        return rendered.buffer;
-      }
-    }
-    if (closestOnePage) return closestOnePage.buffer;
-
-    for (const fit of COMPACT_FIT_PRESETS) {
-      const rendered = await renderFit(fit);
-      if (rendered.pageCount <= 1) return rendered.buffer;
+      if (rendered.pageCount <= desiredPages) return rendered.buffer;
     }
     return lastBuffer!;
   } finally {

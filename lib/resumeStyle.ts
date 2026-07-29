@@ -78,7 +78,7 @@ export function defaultResumeStyleProfile(
     },
     marginsPt: { top: 38, right: 44, bottom: 38, left: 44 },
     typography: {
-      bodyPt: 9.5,
+      bodyPt: 10,
       lineHeight: 1.42,
       namePt: 23,
       titlePt: 11,
@@ -180,16 +180,16 @@ export function sanitizeResumeStyleProfile(
       sidebarText: color(colors.sidebarText, fallback.colors.sidebarText),
     },
     marginsPt: {
-      top: numberIn(margins.top, fallback.marginsPt.top, 20, 64),
-      right: numberIn(margins.right, fallback.marginsPt.right, 20, 64),
-      bottom: numberIn(margins.bottom, fallback.marginsPt.bottom, 20, 64),
-      left: numberIn(margins.left, fallback.marginsPt.left, 20, 64),
+      top: numberIn(margins.top, fallback.marginsPt.top, 36, 64),
+      right: numberIn(margins.right, fallback.marginsPt.right, 36, 64),
+      bottom: numberIn(margins.bottom, fallback.marginsPt.bottom, 36, 64),
+      left: numberIn(margins.left, fallback.marginsPt.left, 36, 64),
     },
     typography: {
       bodyPt: numberIn(
         typography.bodyPt,
         fallback.typography.bodyPt,
-        8.5,
+        10,
         12,
       ),
       lineHeight: numberIn(
