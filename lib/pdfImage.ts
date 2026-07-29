@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Best-effort extraction of an embedded photo from a resume PDF.
 //
 // pdf-lib has no "give me the images" API (it's built for creating/editing

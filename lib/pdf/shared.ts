@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // The canonical "what goes on the resume" resolution. Every PDF style must
 // consume this document rather than deciding independently which content to
 // show. That makes style a presentation choice only.

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import "server-only";
 import { PDFDocument } from "pdf-lib";
 import type { Page } from "puppeteer-core";

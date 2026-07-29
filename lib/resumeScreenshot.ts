@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Captures up to the first three pages of the ORIGINAL resume for visual-style
 // analysis. Text parsing remains independent and always processes the entire
 // document.

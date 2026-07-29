@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 // Shared headless-browser launcher for the "personalized" PDF style —
 // screenshotting the original resume and rendering AI-generated HTML back
 // out to a PDF both need an actual browser (Yoga-based react-pdf can't do
