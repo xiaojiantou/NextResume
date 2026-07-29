@@ -6,6 +6,12 @@ import {
   splitResumeText,
 } from "../lib/resumeParser.ts";
 import { resolveResumeContent } from "../lib/pdf/shared.ts";
+import {
+  PDF_STYLE_DEFINITIONS,
+  getResumePalette,
+  normalizeTargetPages,
+} from "../lib/pdf/config.ts";
+import { TEMPLATE_DESIGN_SPECS } from "../lib/pdf/templateDesignSpecs.ts";
 
 test("splitResumeText retains all paragraphs without a hard tail cutoff", () => {
   const paragraphs = Array.from(
@@ -174,4 +180,43 @@ test("all PDF styles can consume one canonical complete document", () => {
     "experience",
     "additional:extra1",
   ]);
+});
+
+test("fixed PDF styles expose three curated palettes and one design spec", () => {
+  const fixed = PDF_STYLE_DEFINITIONS.filter(
+    (definition) => definition.id !== "personalized",
+  );
+  assert.equal(fixed.length, 7);
+  assert.equal(
+    PDF_STYLE_DEFINITIONS.find(
+      (definition) => definition.id === "personalized",
+    )?.palettes.length,
+    0,
+  );
+
+  const paletteIds = new Set();
+  for (const definition of fixed) {
+    assert.equal(definition.palettes.length, 3, definition.id);
+    assert.ok(
+      TEMPLATE_DESIGN_SPECS.some((spec) => spec.style === definition.id),
+      `missing design spec for ${definition.id}`,
+    );
+    for (const candidate of definition.palettes) {
+      assert.ok(!paletteIds.has(candidate.id), candidate.id);
+      paletteIds.add(candidate.id);
+    }
+    assert.equal(
+      getResumePalette(definition.id, "not-a-real-palette").id,
+      definition.palettes[0].id,
+    );
+  }
+});
+
+test("target page values are constrained to Auto or 1–10 pages", () => {
+  assert.equal(normalizeTargetPages("auto"), "auto");
+  assert.equal(normalizeTargetPages(1), 1);
+  assert.equal(normalizeTargetPages(7), 7);
+  assert.equal(normalizeTargetPages(0), 1);
+  assert.equal(normalizeTargetPages(99), 10);
+  assert.equal(normalizeTargetPages("invalid"), "auto");
 });
