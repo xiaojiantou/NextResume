@@ -12,7 +12,7 @@ const SYSTEM = `You are an ATS (applicant tracking system) scoring engine. Given
 
 {
   "overallBefore": number,        // 0-100, current resume vs THIS job
-  "overallAfter": number,         // 0-100, projected after optimization. Should be 85-97 unless resume is fundamentally wrong domain
+  "overallAfter": number,         // 0-100, honest projection of what a careful rewrite of the SAME experience could score. Derive it from the rubric — do NOT inflate it to look appealing
   "categoriesBefore": [
     { "label": string, "score": number, "detail": string }
   ],                              // EXACTLY these 5 labels in order: "Keyword match", "Quantified impact", "Role alignment", "ATS formatting", "Action verbs"
@@ -32,7 +32,7 @@ Scoring rubric:
 
 Rules:
 - Be honest. If a resume is weak for the role, before-scores should be low (30-60s).
-- After-scores should reflect what's achievable by a careful rewrite of the SAME experience — don't assume new experience.
+- After-scores should reflect what's achievable by a careful rewrite of the SAME experience — don't assume new experience. A rewrite can fix keywords, verbs, and framing; it cannot add missing domain experience, so the gap between before and after must stay plausible.
 - "detail" is one sentence, specific and actionable.`;
 
 export async function POST(req: NextRequest) {

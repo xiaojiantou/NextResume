@@ -6,6 +6,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { DEFAULT_MODEL_ID } from "./models";
 import type {
+  AtsCategory,
   AtsReport,
   JobAnalysis,
   Optimization,
@@ -62,6 +63,10 @@ type Actions = {
   setJob: (j: JobAnalysis) => void;
 
   setReport: (r: AtsReport) => void;
+  setMeasuredScore: (
+    measuredAfter: number,
+    measuredCategories: AtsCategory[],
+  ) => void;
   setPreview: (p: PreviewBullet) => void;
   setOptimization: (o: Optimization, model: string) => void;
   clearOptimization: () => void;
@@ -148,9 +153,27 @@ export const useFlow = create<State & Actions>()(
       setJobUrl: (url) => set({ jobUrl: url }),
       setJob: (j) => set({ job: j }),
       setReport: (r) => set({ report: r }),
+      setMeasuredScore: (measuredAfter, measuredCategories) =>
+        set((s) =>
+          s.report
+            ? { report: { ...s.report, measuredAfter, measuredCategories } }
+            : {},
+        ),
       setPreview: (p) => set({ preview: p }),
       setOptimization: (o, model) =>
-        set({ optimization: o, optimizationModel: model, voiceCount: 0 }),
+        set((s) => ({
+          optimization: o,
+          optimizationModel: model,
+          voiceCount: 0,
+          // A new rewrite invalidates any score measured on the previous one.
+          report: s.report
+            ? {
+                ...s.report,
+                measuredAfter: undefined,
+                measuredCategories: undefined,
+              }
+            : s.report,
+        })),
       clearOptimization: () =>
         set({ optimization: null, optimizationModel: null }),
       replaceOptimizedBullet: (roleId, bulletId, next) =>

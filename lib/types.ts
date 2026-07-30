@@ -12,6 +12,8 @@ export type ResumeRole = {
   location: string;
   start: string;
   end: string;
+  /** Verbatim tech-stack line from the source resume, e.g. "FastAPI, PostgreSQL, Redis". */
+  techStack?: string;
   bullets: ResumeBullet[];
 };
 
@@ -78,6 +80,8 @@ export type Resume = {
   experience: ResumeRole[];
   projects: ResumeProject[];
   education: ResumeEducation[];
+  /** Profile links from the header (LinkedIn, GitHub, portfolio) in display form. */
+  links?: string[];
   photo?: string; // base64 data URI, extracted from the uploaded PDF/DOCX
   /** Optional for backwards compatibility with previously persisted resumes. */
   language?: ResumeLanguage;
@@ -184,12 +188,18 @@ export type AtsCategory = {
 
 export type AtsReport = {
   overallBefore: number;
+  /** Model projection made BEFORE optimization runs. Display as "projected". */
   overallAfter: number;
   categoriesBefore: AtsCategory[];
   categoriesAfter: AtsCategory[];
   missingKeywords: string[];
   presentKeywords: string[];
+  /** Real score measured by re-running analysis on the optimized resume. */
+  measuredAfter?: number;
+  measuredCategories?: AtsCategory[];
 };
+
+export type BulletSuggestion = "keep" | "trim" | "cut";
 
 export type OptimizedBullet = {
   id: string;
@@ -197,6 +207,10 @@ export type OptimizedBullet = {
   evidence: string[];
   matchedKeywords: string[];
   rationale: string;
+  /** 0-100 relevance of this bullet to the target job description. */
+  relevance?: number;
+  /** Model's recommendation; the user decides — nothing is dropped silently. */
+  suggestion?: BulletSuggestion;
 };
 
 export type OptimizedRole = {

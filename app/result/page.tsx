@@ -9,6 +9,7 @@ import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
 import { findModel } from "@/lib/models";
+import { applyOptimizationToResume } from "@/lib/applyOptimization";
 import { VOICE_QUOTA, useFlow } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import {
@@ -72,6 +73,7 @@ function ResultPageInner() {
     setResume,
     setJob,
     setReport,
+    setMeasuredScore,
     setOptimization,
     setSelectedModel,
     setPdfStyle,
@@ -100,6 +102,39 @@ function ResultPageInner() {
   const tokenFromUrl = searchParams?.get("token") || null;
   const hasEmailAccess = !!(orderIdFromUrl && tokenFromUrl);
 
+  // Re-score the rewritten resume with the same rubric the original was
+  // scored with, so the "after" number the user sees is measured, not the
+  // pre-purchase projection. Best-effort: a failure just leaves the
+  // projected score in place.
+  const rescoreOptimized = async (
+    optimized: NonNullable<typeof optimization>,
+    modelId: string,
+    resumeArg = resume,
+    jobArg = job,
+  ) => {
+    if (!resumeArg || !jobArg) return;
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume: applyOptimizationToResume(resumeArg, optimized),
+          job: jobArg,
+          model: modelId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.report?.overallBefore === "number") {
+        setMeasuredScore(
+          data.report.overallBefore,
+          data.report.categoriesBefore ?? [],
+        );
+      }
+    } catch {
+      /* non-fatal — projected score stays */
+    }
+  };
+
   const runOptimize = async (modelId: string) => {
     if (!resume || !job || !report) return;
     setGenerating(true);
@@ -113,6 +148,7 @@ function ResultPageInner() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Optimization failed");
       setOptimization(data.optimization, modelId);
+      void rescoreOptimized(data.optimization, modelId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Optimization failed.");
     } finally {
@@ -269,23 +305,33 @@ function ResultPageInner() {
           if (snap?.personalizedStyleProfile) {
             setPersonalizedStyleProfile(snap.personalizedStyleProfile);
           }
+          // Snapshots predate the report, so email sessions need a stub for
+          // the page to render; the real "after" number comes from re-scoring.
+          const stubReport = {
+            overallBefore: 0,
+            overallAfter: 0,
+            categoriesBefore: [],
+            categoriesAfter: [],
+            missingKeywords: [],
+            presentKeywords: [],
+          };
           if (snap?.optimization && snap?.optimizationModel) {
             setOptimization(snap.optimization, snap.optimizationModel);
+            if (!useFlow.getState().report) setReport(stubReport);
+            if (snap?.resume && snap?.job) {
+              void rescoreOptimized(
+                snap.optimization,
+                snap.optimizationModel,
+                snap.resume,
+                snap.job,
+              );
+            }
           }
           if (order?.status === "paid") markPaid();
           setHydrating(false);
 
           // If snapshot has no optimization yet, run it now.
           if (!snap?.optimization && snap?.resume && snap?.job) {
-            // Need a report — build a minimal one so /api/optimize accepts input.
-            const stubReport = {
-              overallBefore: 0,
-              overallAfter: 0,
-              categoriesBefore: [],
-              categoriesAfter: [],
-              missingKeywords: [],
-              presentKeywords: [],
-            };
             setReport(stubReport);
             await runOptimize(selectedModel);
           }
@@ -462,8 +508,28 @@ function ResultPageInner() {
                 {job.title}
                 {job.company ? ` @ ${job.company}` : ""}
               </span>
-              . ATS score improved from {report.overallBefore} →{" "}
-              {report.overallAfter}.
+              .{" "}
+              {typeof report.measuredAfter === "number" ? (
+                <>
+                  ATS score:{" "}
+                  {report.overallBefore > 0 && (
+                    <>{report.overallBefore} → </>
+                  )}
+                  <span className="font-medium text-ink-900">
+                    {report.measuredAfter}
+                  </span>{" "}
+                  <span className="text-emerald-700">
+                    (measured on the rewrite)
+                  </span>
+                </>
+              ) : report.overallBefore > 0 ? (
+                <>
+                  ATS score: {report.overallBefore} → {report.overallAfter}{" "}
+                  <span className="text-ink-400">(projected, measuring…)</span>
+                </>
+              ) : (
+                <>Measuring ATS score…</>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1017,6 +1083,25 @@ function BulletDiff() {
                               🎙 voice-attested
                             </span>
                           )}
+                          {(b.suggestion === "cut" ||
+                            b.suggestion === "trim") && (
+                            <span
+                              className={cn(
+                                "text-[11px] px-2 py-0.5 rounded-md border font-medium",
+                                b.suggestion === "cut"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200",
+                              )}
+                              title={b.rationale || undefined}
+                            >
+                              {b.suggestion === "cut"
+                                ? "Low relevance — consider cutting"
+                                : "Consider trimming"}
+                              {typeof b.relevance === "number"
+                                ? ` · ${b.relevance}/100`
+                                : ""}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1085,6 +1170,25 @@ function BulletDiff() {
                           {b.evidence.includes("voice-transcript") && (
                             <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
                               🎙 voice-attested
+                            </span>
+                          )}
+                          {(b.suggestion === "cut" ||
+                            b.suggestion === "trim") && (
+                            <span
+                              className={cn(
+                                "text-[11px] px-2 py-0.5 rounded-md border font-medium",
+                                b.suggestion === "cut"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200",
+                              )}
+                              title={b.rationale || undefined}
+                            >
+                              {b.suggestion === "cut"
+                                ? "Low relevance — consider cutting"
+                                : "Consider trimming"}
+                              {typeof b.relevance === "number"
+                                ? ` · ${b.relevance}/100`
+                                : ""}
                             </span>
                           )}
                         </div>

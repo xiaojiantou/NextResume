@@ -23,6 +23,7 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
   "email": string,
   "phone": string,
   "location": string,
+  "links": string[],          // profile links from the header (LinkedIn, GitHub, portfolio, website) in short display form, e.g. "linkedin.com/in/jane" or "LinkedIn" if the URL is not visible; [] if none
   "summary": string,          // verbatim from resume; "" if absent
   "skills": string[],         // flat list
   "experience": [
@@ -33,6 +34,7 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
       "location": string,
       "start": string,        // e.g. "Jul 2022"
       "end": string,          // "Present" if current
+      "techStack": string,    // verbatim tech/tools line attached to this role (often after a "|"), e.g. "FastAPI, PostgreSQL, Redis"; "" if none
       "bullets": [
         { "id": string, "text": string }  // ID like "b1","b2"... unique across whole resume
       ]
@@ -85,6 +87,8 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
 
 Rules:
 - Preserve ALL source content VERBATIM. Do not rewrite, summarize, or omit.
+- Role/company lines often carry a tech-stack suffix (e.g. "Acme Corp | FastAPI, Redis, GCS"). Put that suffix in the role's "techStack" verbatim — never discard it, and never mix it into company/title.
+- Header links (LinkedIn, GitHub, portfolio) go in "links" — these matter to recruiters; never drop them.
 - This product uses English resume labels. Set language to "en".
 - Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across all roles AND projects.
 - A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".

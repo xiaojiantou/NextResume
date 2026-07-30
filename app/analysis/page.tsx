@@ -231,7 +231,7 @@ function Report({
         </div>
         <div className="md:col-span-2 rounded-xl bg-gradient-to-br from-ink-900 to-ink-700 text-white p-5">
           <div className="text-xs text-white/60">
-            With NextResume optimization
+            With NextResume optimization (projected)
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-5xl font-semibold tracking-tight tabular-nums">
@@ -244,7 +244,8 @@ function Report({
             </span>
           </div>
           <p className="mt-2 text-sm text-white/70 max-w-md">
-            Unlock the full rewrite to apply all improvements. Every change is
+            Projected from this report's gaps — after the rewrite we re-score
+            your optimized resume and show the measured number. Every change is
             evidence-backed and traceable to your real experience.
           </p>
         </div>

@@ -195,7 +195,7 @@ export function ResumePdf({
               <Text style={styles.name}>{resume.name}</Text>
               {title ? <Text style={styles.title}>{title}</Text> : null}
               <Text style={styles.contact}>
-                {[resume.email, resume.phone, resume.location]
+                {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
                   .filter(Boolean)
                   .join("  ·  ")}
               </Text>
@@ -206,7 +206,7 @@ export function ResumePdf({
             <Text style={styles.name}>{resume.name}</Text>
             {title ? <Text style={styles.title}>{title}</Text> : null}
             <Text style={styles.contact}>
-              {[resume.email, resume.phone, resume.location]
+              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
                 .filter(Boolean)
                 .join("  ·  ")}
             </Text>

@@ -27,6 +27,7 @@ export type ResolvedResumeDocument = {
   email: string;
   phone: string;
   location: string;
+  links: string[];
   photo?: string;
   language: ResumeLanguage;
   summary: string;
@@ -147,10 +148,15 @@ export function resolveResumeContent(
     const bullets = opt?.bullets.length
       ? opt.bullets.map((b) => b.text)
       : role.bullets.map((b) => b.text);
+    // The source tech-stack line carries real keyword weight — keep it on the
+    // title line the way the original resume printed it.
+    const subheading = role.techStack
+      ? `${role.title} | ${role.techStack}`
+      : role.title;
     return {
       id: role.id,
       heading: role.company,
-      subheading: role.title,
+      subheading,
       location: role.location,
       start: role.start,
       end: role.end,
@@ -191,6 +197,7 @@ export function resolveResumeContent(
     email: resume.email,
     phone: resume.phone,
     location: resume.location,
+    links: resume.links ?? [],
     photo: resume.photo,
     language: detectResumeLanguage(resume),
     ...base,

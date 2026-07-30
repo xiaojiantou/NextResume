@@ -56,6 +56,7 @@ function roles(value: unknown): ResumeRole[] {
       location: text(item.location),
       start: text(item.start),
       end: text(item.end),
+      techStack: text(item.techStack),
       bullets: bullets(item.bullets),
     };
   });
@@ -143,6 +144,7 @@ export function normalizeParsedResume(value: unknown): Resume {
     email: text(input.email),
     phone: text(input.phone),
     location: text(input.location),
+    links: array(input.links).map(text).filter(Boolean),
     summary: text(input.summary),
     skills: array(input.skills).map(text).filter(Boolean),
     experience: roles(input.experience),
@@ -179,6 +181,7 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     email: "",
     phone: "",
     location: "",
+    links: [],
     summary: "",
     skills: [],
     experience: [],
@@ -205,6 +208,17 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       if (!merged[key] && part[key]) merged[key] = part[key];
     }
     if (!merged.language && part.language) merged.language = part.language;
+
+    const linkKeys = new Set(
+      merged.links!.map((link) => link.toLocaleLowerCase()),
+    );
+    for (const link of part.links ?? []) {
+      const key = link.toLocaleLowerCase();
+      if (!linkKeys.has(key)) {
+        merged.links!.push(link);
+        linkKeys.add(key);
+      }
+    }
 
     const skillKeys = new Set(
       merged.skills.map((skill) => skill.toLocaleLowerCase()),
@@ -233,8 +247,14 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
             candidate.end,
           ]) === key,
       );
-      if (existing && key) mergeBullets(existing.bullets, role.bullets);
-      else merged.experience.push({ ...role, bullets: [...role.bullets] });
+      if (existing && key) {
+        mergeBullets(existing.bullets, role.bullets);
+        if (!existing.techStack && role.techStack) {
+          existing.techStack = role.techStack;
+        }
+      } else {
+        merged.experience.push({ ...role, bullets: [...role.bullets] });
+      }
     }
 
     for (const project of part.projects ?? []) {

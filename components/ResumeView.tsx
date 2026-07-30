@@ -54,7 +54,7 @@ export function ResumeView({
             </h1>
             <div className="text-sm text-ink-600 mt-0.5">{title}</div>
             <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-              {[resume.email, resume.phone, resume.location]
+              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
                 .filter(Boolean)
                 .join(" · ")}
             </div>
@@ -67,7 +67,7 @@ export function ResumeView({
           </h1>
           <div className="text-sm text-ink-600 mt-0.5">{title}</div>
           <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-            {[resume.email, resume.phone, resume.location]
+            {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
               .filter(Boolean)
               .join(" · ")}
           </div>
@@ -111,7 +111,11 @@ export function ResumeView({
                     <span className="font-semibold text-ink-900">
                       {role.company}
                     </span>
-                    <span className="text-ink-500"> · {role.title}</span>
+                    <span className="text-ink-500">
+                      {" "}
+                      · {role.title}
+                      {role.techStack ? ` | ${role.techStack}` : ""}
+                    </span>
                   </div>
                   <div className="text-[11px] text-ink-500">
                     {role.start} — {role.end}

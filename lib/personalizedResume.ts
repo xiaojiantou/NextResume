@@ -316,7 +316,7 @@ export function buildPersonalizedHtml({
     .join("");
 
   const hasSidebar = profile.layout !== "single-column";
-  const contact = [content.email, content.phone, content.location]
+  const contact = [content.email, content.phone, content.location, ...content.links]
     .filter(Boolean)
     .join(" · ");
   const photoPosition =
@@ -528,7 +528,7 @@ function createContentManifest(
 ): ManifestItem[] {
   const items: ManifestItem[] = [{ id: "name", value: content.name }];
   if (content.title) items.push({ id: "title", value: content.title });
-  const contact = [content.email, content.phone, content.location]
+  const contact = [content.email, content.phone, content.location, ...content.links]
     .filter(Boolean)
     .join(" · ");
   if (contact) items.push({ id: "contact", value: contact });

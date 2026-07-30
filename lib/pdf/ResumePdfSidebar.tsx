@@ -159,11 +159,11 @@ export function ResumePdfSidebar({
         <View style={styles.sidebar}>
           {resume.photo ? <Image src={resume.photo} style={styles.photo} /> : null}
 
-          {[resume.email, resume.phone, resume.location].filter(Boolean)
-            .length > 0 ? (
+          {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
+            .filter(Boolean).length > 0 ? (
             <>
               <Text style={styles.sideLabel}>Contact</Text>
-              {[resume.email, resume.phone, resume.location]
+              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
                 .filter(Boolean)
                 .map((line) => (
                   <Text key={line} style={styles.sideText}>

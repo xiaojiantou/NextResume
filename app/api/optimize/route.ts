@@ -16,7 +16,7 @@ export const maxDuration = 90;
 
 const FULL_SYSTEM = `You rewrite a resume to be tailored to a specific job description. This is the most important rule:
 
-EVERY rewritten bullet MUST be grounded in the candidate's ACTUAL experience. You are forbidden from inventing skills, companies, technologies, metrics, or responsibilities the candidate did not demonstrate. If you tighten or reframe a bullet, you must cite the original bullet IDs (from the input resume) that justify the rewrite.
+EVERY rewritten bullet MUST be grounded in the candidate's ACTUAL experience. You are forbidden from inventing skills, companies, technologies, metrics, or responsibilities the candidate did not demonstrate. Every rewrite cites the original bullet ID (from the input resume) that justifies it.
 
 Output ONLY valid JSON matching this schema:
 
@@ -33,7 +33,9 @@ Output ONLY valid JSON matching this schema:
           "text": string,
           "evidence": string[],
           "matchedKeywords": string[],
-          "rationale": string
+          "rationale": string,
+          "relevance": number,
+          "suggestion": "keep" | "trim" | "cut"
         }
       ]
     }
@@ -42,26 +44,28 @@ Output ONLY valid JSON matching this schema:
     {
       "id": string,
       "bullets": [
-        {
-          "id": string,
-          "text": string,
-          "evidence": string[],
-          "matchedKeywords": string[],
-          "rationale": string
-        }
+        // same bullet shape as roles
       ]
     }
   ]
 }
 
-Hard rules:
-- Preserve every original role AND every original project. Output the same number of roles (by id) and the same number of projects (by id) as the input resume.
-- Output 2-5 optimized bullets per role, and 2-4 optimized bullets per project.
-- "evidence" array must reference REAL bullet IDs from the input resume (from either experience or projects). Never invent ids.
-- If a bullet merges 2 original bullets, list both ids in evidence.
+Hard rules — content preservation:
+- Rewrite bullets ONE-TO-ONE. Every role and every project from the input appears in the output with the SAME id and the SAME number of bullets, and each output bullet reuses the id of the input bullet it rewrites. NEVER merge, drop, or add bullets. The user decides what to cut, not you.
+- Instead of cutting, advise: set "relevance" (0-100, how much this bullet supports THIS job description) and "suggestion" ("keep" for strong matches, "trim" if it could be shortened, "cut" only if it is irrelevant to this job). "rationale" is 1 sentence explaining the rewrite or the cut advice.
+- "evidence" must reference REAL bullet IDs from the input resume. Never invent ids.
+
+Hard rules — factual integrity:
+- A metric (number, percentage, dollar amount, latency) must stay attached to the exact action that produced it in the original bullet. Never move a metric onto a different action, tool, or system than the original credits.
 - You may insert a quantified estimate ONLY if the original bullet suggested impact. Otherwise stay qualitative.
-- Use verbs from this set first: Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered.
-- Skills must include items that map to JD requirements AND are credible given the experience.`;
+
+Hard rules — writing style:
+- Weave matched keywords into the factual claim itself — the tool used, the method applied, the thing built. NEVER append meta-commentary clauses such as "showcasing proficiency in X", "demonstrating expertise in Y", "highlighting Z", "proving ability to W". A bullet ends with a concrete outcome or fact, never with a comment about the candidate's skills.
+- Start bullets with verbs from this set first: Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered. Vary sentence structure across bullets.
+
+Hard rules — skills and summary:
+- "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
+- "summary": if the input resume has a summary, tailor it; if it has none, write a tight 2-3 line one grounded only in real experience.`;
 
 const PREVIEW_SYSTEM = `You rewrite a SINGLE resume bullet to be tailored to a specific job description. The bullet you are rewriting is the candidate's weakest one for this role — show them how a strong rewrite would look.
 
@@ -77,7 +81,83 @@ Output ONLY valid JSON:
   "rationale": string         // 1 sentence on WHY this rewrite is stronger
 }
 
-Start with a strong ownership verb (Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered).`;
+Start with a strong ownership verb (Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered). Weave keywords into the factual claim itself — NEVER append meta-commentary like "showcasing proficiency in X" or "demonstrating expertise in Y". End with a concrete outcome, not a comment about the candidate's skills.`;
+
+// The meta-commentary tails weak models bolt on to satisfy matchedKeywords
+// ("..., showcasing proficiency in React"). Gerund-after-comma is the
+// signature; leading verbs like "Demonstrated X to stakeholders" stay legal.
+const SLOP_PATTERN =
+  /[,;–—]\s*(showcasing|demonstrating|highlighting|proving|underscoring|exemplifying|evidencing)\b|\b(showcasing|demonstrating)\s+(expertise|proficiency|strong|robust|deep)\b/i;
+
+function validateOptimization(resume: Resume, opt: Optimization): string[] {
+  const problems: string[] = [];
+
+  const checkSection = (
+    label: "roles" | "projects",
+    originals: { id: string; bullets: { id: string }[] }[],
+    optimized: { id: string; bullets: OptimizedBullet[] }[],
+  ) => {
+    for (const original of originals) {
+      const match = optimized.find((o) => o.id === original.id);
+      if (!match) {
+        problems.push(`${label}: missing entry "${original.id}"`);
+        continue;
+      }
+      if (match.bullets.length !== original.bullets.length) {
+        problems.push(
+          `${label} "${original.id}": expected ${original.bullets.length} bullets (one-to-one rewrite), got ${match.bullets.length}`,
+        );
+      }
+      const originalIds = new Set(original.bullets.map((b) => b.id));
+      for (const bullet of match.bullets) {
+        if (!originalIds.has(bullet.id)) {
+          problems.push(
+            `${label} "${original.id}": bullet id "${bullet.id}" does not exist in the input resume`,
+          );
+        }
+      }
+    }
+  };
+
+  checkSection("roles", resume.experience, opt.roles);
+  checkSection("projects", resume.projects ?? [], opt.projects ?? []);
+
+  const allBullets = [
+    ...opt.roles.flatMap((r) => r.bullets),
+    ...(opt.projects ?? []).flatMap((p) => p.bullets),
+  ];
+  for (const bullet of allBullets) {
+    if (SLOP_PATTERN.test(bullet.text)) {
+      problems.push(
+        `bullet "${bullet.id}": remove the meta-commentary tail ("showcasing/demonstrating...") and weave the keyword into the factual claim instead`,
+      );
+    }
+  }
+  if (SLOP_PATTERN.test(opt.summary)) {
+    problems.push(
+      `summary: remove meta-commentary ("showcasing/demonstrating...")`,
+    );
+  }
+
+  const originalSkills = new Set(
+    resume.skills.map((s) => s.toLocaleLowerCase()),
+  );
+  const keptSkills = new Set(opt.skills.map((s) => s.toLocaleLowerCase()));
+  const dropped = [...originalSkills].filter((s) => !keptSkills.has(s));
+  if (dropped.length > 0) {
+    problems.push(
+      `skills: ${dropped.length} original skills were dropped (${dropped.slice(0, 5).join(", ")}...) — include every original skill, reordered by JD relevance`,
+    );
+  }
+
+  return problems;
+}
+
+// Structural problems (dropped bullets/roles/skills) make the result unusable;
+// style problems (slop tails) are worth one retry but not a hard failure.
+function isStructural(problem: string): boolean {
+  return !problem.startsWith("bullet ") && !problem.startsWith("summary:");
+}
 
 function pickWeakestBullet(resume: Resume): {
   bulletId: string;
@@ -147,12 +227,42 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const opt = await jsonCompletion<Optimization>({
+    const basePrompt = `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}`;
+
+    let opt = await jsonCompletion<Optimization>({
       system: FULL_SYSTEM,
-      user: `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}`,
+      user: basePrompt,
       model,
-      maxTokens: 6000,
+      maxTokens: 8000,
     });
+
+    let problems = validateOptimization(resume, opt);
+    if (problems.length > 0) {
+      console.warn("optimize validation failed, retrying once", problems);
+      opt = await jsonCompletion<Optimization>({
+        system: FULL_SYSTEM,
+        user: `${basePrompt}\n\nYour previous attempt violated these hard rules — fix ALL of them this time:\n- ${problems.join("\n- ")}`,
+        model,
+        maxTokens: 8000,
+      });
+      problems = validateOptimization(resume, opt);
+    }
+
+    const structural = problems.filter(isStructural);
+    if (structural.length > 0) {
+      console.error("optimize failed validation after retry", structural);
+      return NextResponse.json(
+        {
+          error:
+            "The model kept dropping content from your resume. Try again or pick a different model.",
+        },
+        { status: 502 },
+      );
+    }
+    if (problems.length > 0) {
+      // Style-only leftovers: deliver, but keep a trace for prompt tuning.
+      console.warn("optimize style issues remain after retry", problems);
+    }
 
     return NextResponse.json({ optimization: opt });
   } catch (e) {
