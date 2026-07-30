@@ -7,6 +7,11 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { PdfStylePicker } from "@/components/PdfStylePicker";
 import { PdfPalettePicker } from "@/components/PdfPalettePicker";
 import { TargetPagesPicker } from "@/components/TargetPagesPicker";
+import {
+  FIT_PROGRESS_STAGES,
+  ResumeFitPanel,
+  type FitProgressStage,
+} from "@/components/ResumeFitPanel";
 import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
@@ -18,6 +23,14 @@ import {
   getDefaultPaletteId,
   type FixedPdfStyle,
 } from "@/lib/pdf/config";
+import {
+  createFitCacheKey,
+  createResumeRevision,
+  defaultResumePage,
+  findFitVariant,
+  type FitConflict,
+} from "@/lib/resumeFit";
+import { isCurrentResumeStyleProfile } from "@/lib/resumeStyle";
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -31,6 +44,7 @@ import {
   Layers,
   Sparkles,
   Pencil,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -44,6 +58,7 @@ import {
 } from "react";
 
 type View = "split" | "optimized" | "original" | "edit";
+type ContentVersion = "full" | "fitted";
 
 export default function ResultPage() {
   return (
@@ -76,6 +91,9 @@ function ResultPageInner() {
     setIncludeSummary,
     pdfPalette,
     targetPages,
+    fitVariants,
+    fitKeepIds,
+    fitPriorityIds,
     resumeStyleSource,
     personalizedStyleProfile,
     personalizedStatus,
@@ -89,6 +107,11 @@ function ResultPageInner() {
     setPdfStyle,
     setPdfPalette,
     setTargetPages,
+    setFitVariants,
+    setFitKeepIds,
+    upsertFitVariant,
+    toggleFitKeepId,
+    clearFitVariantsForStyle,
     setResumeStyleSource,
     setPersonalizedStyleProfile,
     setPersonalizedStatus,
@@ -96,6 +119,8 @@ function ResultPageInner() {
     markPaid,
   } = useFlow();
   const [view, setView] = useState<View>("split");
+  const [contentVersion, setContentVersion] =
+    useState<ContentVersion>("full");
   const [evidenceMode, setEvidenceMode] = useState(true);
   const [hoveredOptimizedId, setHoveredOptimizedId] = useState<string | null>(
     null,
@@ -105,6 +130,8 @@ function ResultPageInner() {
   const [hydrating, setHydrating] = useState(false);
   const ran = useRef(false);
   const personalizeRan = useRef(false);
+  const fitAbortRef = useRef<AbortController | null>(null);
+  const fitCancelledRef = useRef(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -186,9 +213,193 @@ function ResultPageInner() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportedPages, setExportedPages] = useState<number | null>(null);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [fitting, setFitting] = useState(false);
+  const [fitStage, setFitStage] = useState<FitProgressStage | null>(null);
+  const [fitError, setFitError] = useState<string | null>(null);
+  const [fitConflict, setFitConflict] = useState<FitConflict | null>(null);
   const [personalizedError, setPersonalizedError] = useState<string | null>(
     null,
   );
+
+  const sourceRevision = useMemo(() => {
+    if (!resume) return null;
+    return createResumeRevision({
+      resume,
+      optimization,
+      job,
+      modelId: optimizationModel,
+    });
+  }, [job, optimization, optimizationModel, resume]);
+  const recommendedPages = useMemo(() => {
+    if (!resume) return 1;
+    const publicationCount = (resume.additionalSections ?? [])
+      .filter((section) => section.kind === "publications")
+      .reduce((total, section) => total + section.items.length, 0);
+    const bulletCount =
+      resume.experience.reduce(
+        (total, role) => total + role.bullets.length,
+        0,
+      ) +
+      (resume.projects ?? []).reduce(
+        (total, project) => total + project.bullets.length,
+        0,
+      );
+    if (publicationCount >= 8) return 3;
+    if (
+      resume.experience.length >= 5 ||
+      bulletCount >= 18 ||
+      /(research|scientist|professor|academic)/i.test(job?.title ?? "")
+    ) {
+      return 2;
+    }
+    return 1;
+  }, [job?.title, resume]);
+  const outputPage = useMemo(
+    () =>
+      defaultResumePage(
+        resumeStyleSource?.page ?? personalizedStyleProfile?.page,
+      ),
+    [personalizedStyleProfile?.page, resumeStyleSource?.page],
+  );
+  const activeFitKey = useMemo(() => {
+    if (
+      targetPages === "auto" ||
+      !sourceRevision ||
+      !optimizationModel
+    ) {
+      return null;
+    }
+    return createFitCacheKey({
+      sourceRevision,
+      targetPages,
+      style: pdfStyle,
+      page: outputPage,
+      modelId: optimizationModel,
+      keptContentIds: fitKeepIds,
+    });
+  }, [
+    fitKeepIds,
+    optimizationModel,
+    outputPage,
+    pdfStyle,
+    sourceRevision,
+    targetPages,
+  ]);
+  const activeFitVariant = useMemo(
+    () =>
+      activeFitKey ? findFitVariant(fitVariants, activeFitKey) : null,
+    [activeFitKey, fitVariants],
+  );
+  const activeFitVariantId = activeFitVariant?.id ?? null;
+  useEffect(() => {
+    if (targetPages === "auto") {
+      setContentVersion("full");
+      return;
+    }
+    if (activeFitVariantId) {
+      setContentVersion("fitted");
+    }
+  }, [activeFitVariantId, targetPages]);
+  const hasOutdatedFit =
+    targetPages !== "auto" &&
+    fitVariants.some(
+      (variant) =>
+        variant.style === pdfStyle &&
+        variant.targetPages === targetPages &&
+        variant.modelId === optimizationModel &&
+        variant.cacheKey !== activeFitKey,
+    );
+  const fittedViewActive =
+    contentVersion === "fitted" && Boolean(activeFitVariant);
+  const displayedResume =
+    fittedViewActive && activeFitVariant
+      ? activeFitVariant.fittedResume
+      : resume;
+  const displayedOptimization =
+    fittedViewActive && activeFitVariant
+      ? activeFitVariant.fittedOptimization
+      : optimization;
+
+  const runFit = async () => {
+    if (
+      !resume ||
+      !optimization ||
+      !job ||
+      !report ||
+      !optimizationModel ||
+      targetPages === "auto"
+    ) {
+      return;
+    }
+    setFitting(true);
+    setFitError(null);
+    setFitConflict(null);
+    setExportError(null);
+    fitCancelledRef.current = false;
+    setFitStage(FIT_PROGRESS_STAGES[0]);
+    let stageIndex = 0;
+    const progressTimer = window.setInterval(() => {
+      stageIndex = Math.min(
+        FIT_PROGRESS_STAGES.length - 1,
+        stageIndex + 1,
+      );
+      setFitStage(FIT_PROGRESS_STAGES[stageIndex]);
+    }, 6_500);
+    const controller = new AbortController();
+    fitAbortRef.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 45_000);
+    try {
+      const response = await fetch("/api/fit-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          resume,
+          optimization,
+          job,
+          report,
+          model: optimizationModel,
+          style: pdfStyle,
+          palette: pdfPalette,
+          targetPages,
+          pageSize: outputPage,
+          resumeStyleSourcePage: resumeStyleSource?.page ?? null,
+          personalizedStyleProfile:
+            pdfStyle === "personalized"
+              ? personalizedStyleProfile
+              : undefined,
+          keptContentIds: fitKeepIds,
+          priorityContentIds: fitPriorityIds,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 409 && data.conflict) {
+        setFitConflict(data.conflict as FitConflict);
+        return;
+      }
+      if (!response.ok || !data.variant) {
+        throw new Error(data.error || "Could not fit the resume.");
+      }
+      upsertFitVariant(data.variant);
+      setContentVersion("fitted");
+    } catch (fitFailure) {
+      if (fitCancelledRef.current) return;
+      setFitError(
+        fitFailure instanceof DOMException && fitFailure.name === "AbortError"
+          ? "Page fitting exceeded 45 seconds. Try again or choose a nearby page count."
+          : fitFailure instanceof Error
+            ? fitFailure.message
+            : "Could not fit the resume.",
+      );
+    } finally {
+      window.clearInterval(progressTimer);
+      window.clearTimeout(timeout);
+      fitAbortRef.current = null;
+      fitCancelledRef.current = false;
+      setFitStage(null);
+      setFitting(false);
+    }
+  };
 
   const downloadPdf = async () => {
     if (!resume || !optimization) return;
@@ -196,6 +407,13 @@ function ResultPageInner() {
     setExportError(null);
     setExportNotice(null);
     try {
+      if (targetPages !== "auto" && !activeFitVariant) {
+        throw new Error(
+          `Fit the latest resume to exactly ${targetPages} ${
+            targetPages === 1 ? "page" : "pages"
+          } before downloading.`,
+        );
+      }
       if (pdfStyle === "personalized" && !personalizedStyleProfile) {
         throw new Error(
           personalizedStatus === "failed"
@@ -215,6 +433,10 @@ function ResultPageInner() {
           includeSummary: summaryEnabled,
           palette: pdfPalette,
           targetPages,
+          pageSize: outputPage,
+          fitVariant:
+            targetPages === "auto" ? undefined : activeFitVariant,
+          sourceRevision: sourceRevision ?? undefined,
           personalizedStyleProfile:
             pdfStyle === "personalized"
               ? personalizedStyleProfile
@@ -283,6 +505,7 @@ function ResultPageInner() {
       if (!res.ok || !data.styleProfile) {
         throw new Error(data.error || "Personalized layout generation failed.");
       }
+      clearFitVariantsForStyle("personalized");
       setPersonalizedStyleProfile(data.styleProfile);
     } catch (personalizeFailure) {
       setPersonalizedStatus("failed");
@@ -294,7 +517,23 @@ function ResultPageInner() {
     }
   }, [
     resumeStyleSource,
+    clearFitVariantsForStyle,
     setPersonalizedStatus,
+    setPersonalizedStyleProfile,
+  ]);
+
+  useEffect(() => {
+    if (
+      personalizedStyleProfile &&
+      !isCurrentResumeStyleProfile(personalizedStyleProfile)
+    ) {
+      clearFitVariantsForStyle("personalized");
+      setPersonalizedStyleProfile(null);
+      personalizeRan.current = false;
+    }
+  }, [
+    clearFitVariantsForStyle,
+    personalizedStyleProfile,
     setPersonalizedStyleProfile,
   ]);
 
@@ -357,6 +596,12 @@ function ResultPageInner() {
           if (snap?.targetPages !== undefined) {
             setTargetPages(snap.targetPages);
           }
+          if (Array.isArray(snap?.fitVariants)) {
+            setFitVariants(snap.fitVariants);
+          }
+          if (Array.isArray(snap?.fitKeepIds)) {
+            setFitKeepIds(snap.fitKeepIds);
+          }
           if (snap?.optimization && snap?.optimizationModel) {
             setOptimization(snap.optimization, snap.optimizationModel);
             if (!useFlow.getState().report) setReport(stubReport);
@@ -410,10 +655,13 @@ function ResultPageInner() {
         body: JSON.stringify({
           optimization,
           optimizationModel,
+          resume,
           personalizedStyleProfile,
           pdfStyle,
           pdfPalette,
           targetPages,
+          fitVariants,
+          fitKeepIds,
         }),
       },
     ).catch(() => {
@@ -422,10 +670,13 @@ function ResultPageInner() {
   }, [
     optimization,
     optimizationModel,
+    resume,
     personalizedStyleProfile,
     pdfStyle,
     pdfPalette,
     targetPages,
+    fitVariants,
+    fitKeepIds,
     hasEmailAccess,
     orderIdFromUrl,
     tokenFromUrl,
@@ -536,6 +787,22 @@ function ResultPageInner() {
   }
 
   const bulletsRewritten = allOptimized.length;
+  const pageLabel =
+    Math.abs(outputPage.widthPt - 595) < 8 &&
+    Math.abs(outputPage.heightPt - 842) < 8
+      ? "A4"
+      : Math.abs(outputPage.widthPt - 612) < 8 &&
+          Math.abs(outputPage.heightPt - 792) < 8
+        ? "Letter"
+        : `${Math.round(outputPage.widthPt)}×${Math.round(outputPage.heightPt)}pt`;
+  const needsFit = targetPages !== "auto" && !activeFitVariant;
+  const primaryAction = needsFit ? runFit : downloadPdf;
+  const primaryDisabled =
+    fitting ||
+    exporting ||
+    generating ||
+    !optimization ||
+    (pdfStyle === "personalized" && personalizedStatus !== "ready");
 
   return (
     <AppShell step="result">
@@ -590,19 +857,23 @@ function ResultPageInner() {
             </button>
             <button
               className="btn btn-primary"
-              onClick={downloadPdf}
-              disabled={
-                exporting ||
-                generating ||
-                !optimization ||
-                (pdfStyle === "personalized" &&
-                  personalizedStatus !== "ready")
-              }
+              onClick={() => void primaryAction()}
+              disabled={primaryDisabled}
             >
-              {exporting ? (
+              {fitting ? (
+                <>
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Fitting…
+                </>
+              ) : exporting ? (
                 <>
                   <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Preparing…
+                </>
+              ) : needsFit ? (
+                <>
+                  <Sparkles size={14} /> Fit to {targetPages}{" "}
+                  {targetPages === 1 ? "page" : "pages"}
                 </>
               ) : (
                 <>
@@ -758,6 +1029,9 @@ function ResultPageInner() {
               current={pdfStyle}
               onPick={(id) => {
                 setPdfStyle(id);
+                setContentVersion("full");
+                setFitConflict(null);
+                setFitError(null);
                 if (id !== "personalized") {
                   setPdfPalette(getDefaultPaletteId(id));
                 }
@@ -769,6 +1043,34 @@ function ResultPageInner() {
               }}
               personalizedStatus={personalizedStatus}
             />
+            {pdfStyle === "personalized" && personalizedStyleProfile ? (
+              <button
+                type="button"
+                disabled={personalizedStatus === "generating"}
+                onClick={() => {
+                  personalizeRan.current = true;
+                  setContentVersion("full");
+                  setFitConflict(null);
+                  setFitError(null);
+                  clearFitVariantsForStyle("personalized");
+                  void generatePersonalized();
+                }}
+                className="btn btn-outline min-h-11 !px-2.5 text-xs"
+                title="Analyze the uploaded resume again and replace the cached visual style"
+              >
+                <RefreshCw
+                  size={13}
+                  className={
+                    personalizedStatus === "generating"
+                      ? "animate-spin"
+                      : undefined
+                  }
+                />
+                {personalizedStatus === "generating"
+                  ? "Detecting style…"
+                  : "Re-detect style"}
+              </button>
+            ) : null}
             {pdfStyle !== "personalized" ? (
               <PdfPalettePicker
                 style={pdfStyle as FixedPdfStyle}
@@ -782,7 +1084,13 @@ function ResultPageInner() {
             </span>
             <TargetPagesPicker
               current={targetPages}
-              onPick={setTargetPages}
+              recommended={recommendedPages}
+              onPick={(pages) => {
+                setTargetPages(pages);
+                setContentVersion("full");
+                setFitConflict(null);
+                setFitError(null);
+              }}
             />
           </div>
         </div>
@@ -797,6 +1105,70 @@ function ResultPageInner() {
             . Pick another model to compare rewrites.
           </div>
         )}
+
+        {targetPages !== "auto" ? (
+          <ResumeFitPanel
+            fitting={fitting}
+            stage={fitStage}
+            variant={activeFitVariant}
+            conflict={fitConflict}
+            error={fitError}
+            outdated={hasOutdatedFit}
+            onFit={() => void runFit()}
+            onCancel={() => {
+              fitCancelledRef.current = true;
+              fitAbortRef.current?.abort();
+            }}
+            onKeep={(contentId) => {
+              toggleFitKeepId(contentId);
+              setContentVersion("full");
+              setFitConflict(null);
+            }}
+          />
+        ) : null}
+
+        {activeFitVariant ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-100 bg-white px-3 py-2">
+            <div>
+              <div className="text-sm font-medium text-ink-900">
+                Content version
+              </div>
+              <div className="text-xs text-ink-500">
+                Page-fit choices never overwrite the complete optimized master.
+              </div>
+            </div>
+            <div
+              className="flex rounded-lg bg-ink-50 p-1"
+              role="group"
+              aria-label="Resume content version"
+            >
+              <button
+                type="button"
+                onClick={() => setContentVersion("full")}
+                className={cn(
+                  "min-h-10 rounded-md px-3 text-sm font-medium transition",
+                  contentVersion === "full"
+                    ? "bg-white text-ink-900 shadow-soft"
+                    : "text-ink-500 hover:text-ink-900",
+                )}
+              >
+                Full optimized
+              </button>
+              <button
+                type="button"
+                onClick={() => setContentVersion("fitted")}
+                className={cn(
+                  "min-h-10 rounded-md px-3 text-sm font-medium transition",
+                  contentVersion === "fitted"
+                    ? "bg-ink-900 text-white"
+                    : "text-ink-500 hover:text-ink-900",
+                )}
+              >
+                {targetPages}-page {pdfStyle}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {evidenceMode && (
           <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50/40 px-4 py-3 text-sm text-ink-700 flex items-start gap-2.5">
@@ -838,6 +1210,14 @@ function ResultPageInner() {
                 pdfStyle={pdfStyle}
                 pdfPalette={pdfPalette}
                 targetPages={targetPages}
+                previewTargetPages={
+                  fittedViewActive ? targetPages : "auto"
+                }
+                previewFitVariant={
+                  fittedViewActive ? activeFitVariant : null
+                }
+                sourceRevision={sourceRevision}
+                pageSize={outputPage}
                 personalizedStyleProfile={personalizedStyleProfile}
                 onResumeChange={setResume}
                 onRegenerate={() => regenerate(selectedModel)}
@@ -851,7 +1231,7 @@ function ResultPageInner() {
               <PaneWrapper
                 title="Your original"
                 tone="muted"
-                meta="Source content"
+                meta={`${pageLabel} · Source content`}
               >
                 <ResumeView
                   mode="original"
@@ -866,18 +1246,28 @@ function ResultPageInner() {
             )}
             {(view === "split" || view === "optimized") && (
               <PaneWrapper
-                title={`Optimized for ${job.title}`}
+                title={
+                  fittedViewActive
+                    ? `${targetPages}-page version for ${job.title}`
+                    : `Optimized for ${job.title}`
+                }
                 tone="accent"
                 meta={
-                  targetPages === "auto"
-                    ? "Target · Auto"
-                    : `Target · ${targetPages} ${targetPages === 1 ? "page" : "pages"}`
+                  `${pageLabel} · ${
+                    fittedViewActive
+                      ? `Exactly ${targetPages} ${
+                          targetPages === 1 ? "page" : "pages"
+                        }`
+                      : targetPages === "auto"
+                        ? "Target · Auto"
+                        : `Not fitted · ${targetPages}-page target`
+                  }`
                 }
               >
                 <ResumeView
                   mode="optimized"
-                  resume={resume}
-                  optimization={optimization}
+                  resume={displayedResume ?? resume}
+                  optimization={displayedOptimization}
                   hoveredEvidence={hoveredEvidence}
                   hoveredOptimizedId={hoveredOptimizedId}
                   setHoveredOptimizedId={setHoveredOptimizedId}
@@ -907,19 +1297,23 @@ function ResultPageInner() {
               </button>
               <button
                 className="btn btn-primary !px-5"
-                onClick={downloadPdf}
-                disabled={
-                  exporting ||
-                  generating ||
-                  !optimization ||
-                  (pdfStyle === "personalized" &&
-                    personalizedStatus !== "ready")
-                }
+                onClick={() => void primaryAction()}
+                disabled={primaryDisabled}
               >
-                {exporting ? (
+                {fitting ? (
+                  <>
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Fitting…
+                  </>
+                ) : exporting ? (
                   <>
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Preparing…
+                  </>
+                ) : needsFit ? (
+                  <>
+                    <Sparkles size={14} /> Fit to {targetPages}{" "}
+                    {targetPages === 1 ? "page" : "pages"}
                   </>
                 ) : (
                   <>
@@ -959,7 +1353,7 @@ function PaneWrapper({
         )}
       >
         <span className="font-medium">{title}</span>
-        <span className="text-ink-400">Letter · {meta}</span>
+        <span className="text-ink-400">{meta}</span>
       </div>
       {children}
     </div>

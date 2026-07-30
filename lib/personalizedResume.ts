@@ -11,6 +11,7 @@ import {
   type ResolvedBlock,
   type ResolvedResumeDocument,
 } from "./pdf/shared";
+import { partitionResumeForPages } from "./pdf/balancedPages";
 import type { TargetPages } from "./pdf/config";
 import {
   sanitizeResumeStyleProfile,
@@ -25,13 +26,13 @@ import type {
 } from "./types";
 
 const MAX_STYLE_ATTEMPTS = 3;
-const MIN_BODY_PT = 10;
-
 type FitPreset = {
   fontScale: number;
   spacingScale: number;
   marginScale: number;
   lineHeightScale: number;
+  minimumBodyPt?: number;
+  minimumMarginPt?: number;
 };
 
 const TARGET_PAGE_FILL = 0.88;
@@ -90,19 +91,19 @@ const COMPACT_FIT_PRESETS: FitPreset[] = [
     lineHeightScale: 0.92,
   },
   {
-    fontScale: 1,
+    fontScale: 0.98,
     spacingScale: 0.75,
     marginScale: 0.86,
     lineHeightScale: 0.88,
   },
   {
-    fontScale: 1,
+    fontScale: 0.96,
     spacingScale: 0.68,
     marginScale: 0.82,
     lineHeightScale: 0.84,
   },
   {
-    fontScale: 1,
+    fontScale: 0.94,
     spacingScale: 0.62,
     marginScale: 0.78,
     lineHeightScale: 0.82,
@@ -323,12 +324,12 @@ export function buildPersonalizedHtml({
   const bodyPt = fontSize(
     profile.typography.bodyPt,
     fit.fontScale,
-    MIN_BODY_PT,
+    fit.minimumBodyPt ?? 10,
   );
   const metaPt = fontSize(
     profile.typography.metaPt,
     fit.fontScale,
-    7.5,
+    8,
   );
   const mainSections = content.sectionOrder
     .filter((ref) => sectionRegion(ref, profile) === "main")
@@ -364,10 +365,22 @@ export function buildPersonalizedHtml({
   const headerPhoto = sidebarPhoto ? "" : photo;
 
   const margins = {
-    top: Math.max(36, profile.marginsPt.top * fit.marginScale),
-    right: Math.max(36, profile.marginsPt.right * fit.marginScale),
-    bottom: Math.max(36, profile.marginsPt.bottom * fit.marginScale),
-    left: Math.max(36, profile.marginsPt.left * fit.marginScale),
+    top: Math.max(
+      fit.minimumMarginPt ?? 36,
+      profile.marginsPt.top * fit.marginScale,
+    ),
+    right: Math.max(
+      fit.minimumMarginPt ?? 36,
+      profile.marginsPt.right * fit.marginScale,
+    ),
+    bottom: Math.max(
+      fit.minimumMarginPt ?? 36,
+      profile.marginsPt.bottom * fit.marginScale,
+    ),
+    left: Math.max(
+      fit.minimumMarginPt ?? 36,
+      profile.marginsPt.left * fit.marginScale,
+    ),
   };
   const sidebarFirst = profile.layout === "sidebar-left";
   const sidebarWidth = profile.sidebarWidthPercent;
@@ -387,7 +400,7 @@ export function buildPersonalizedHtml({
     : "none";
   const markerColor = profile.colors.accent;
   const lineHeight = Math.max(
-    1.18,
+    fit.minimumBodyPt === 9 ? 1.1 : 1.18,
     profile.typography.lineHeight * fit.lineHeightScale,
   );
 
@@ -779,12 +792,14 @@ export async function renderPersonalizedPdf({
   optimization,
   includeSummary,
   targetPages = "auto",
+  allowMinimumTypography = false,
 }: {
   styleProfile: ResumeStyleProfile;
   resume: Resume;
   optimization: Optimization | null;
   includeSummary?: boolean;
   targetPages?: TargetPages;
+  allowMinimumTypography?: boolean;
 }): Promise<Buffer> {
   const source: ResumeStyleSource = {
     screenshots: [],
@@ -799,11 +814,31 @@ export async function renderPersonalizedPdf({
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
-    let lastBuffer: Buffer | null = null;
-    const renderFit = async (fit: FitPreset) => {
-      const html = buildPersonalizedHtml({ content, profile, fit });
+    const renderedCandidates: Array<{
+      buffer: Buffer;
+      fill: number;
+      pageCount: number;
+    }> = [];
+    const renderFit = async (
+      fit: FitPreset,
+      candidateContent = content,
+      candidateManifest = manifest,
+      trackCandidate = true,
+    ) => {
+      const safeFit = allowMinimumTypography
+        ? {
+            ...fit,
+            minimumBodyPt: 9,
+            minimumMarginPt: 28.8,
+          }
+        : fit;
+      const html = buildPersonalizedHtml({
+        content: candidateContent,
+        profile,
+        fit: safeFit,
+      });
       await page.setContent(html, { waitUntil: "load", timeout: 15_000 });
-      await assertContentIntegrity(page, manifest);
+      await assertContentIntegrity(page, candidateManifest);
       const fill = await measurePageFill(page, profile.page.heightPt);
       const pdf = await page.pdf({
         width: `${profile.page.widthPt / 72}in`,
@@ -813,9 +848,10 @@ export async function renderPersonalizedPdf({
         margin: { top: 0, right: 0, bottom: 0, left: 0 },
       });
       const buffer = Buffer.from(pdf);
-      lastBuffer = buffer;
       const pageCount = (await PDFDocument.load(buffer)).getPageCount();
-      return { buffer, fill, pageCount };
+      const rendered = { buffer, fill, pageCount };
+      if (trackCandidate) renderedCandidates.push(rendered);
+      return rendered;
     };
 
     const baseline = await renderFit(BASE_FIT_PRESET);
@@ -823,15 +859,77 @@ export async function renderPersonalizedPdf({
       targetPages === "auto"
         ? Math.min(10, Math.max(1, baseline.pageCount))
         : targetPages;
-    for (const fit of [
+    const fitPresets = [
       ...EXPANDED_FIT_PRESETS,
       BASE_FIT_PRESET,
       ...COMPACT_FIT_PRESETS,
-    ]) {
+    ];
+    for (const fit of fitPresets) {
       const rendered = await renderFit(fit);
-      if (rendered.pageCount <= desiredPages) return rendered.buffer;
+      if (rendered.pageCount === desiredPages) return rendered.buffer;
     }
-    return lastBuffer!;
+    const maximumObserved = Math.max(
+      ...renderedCandidates.map((candidate) => candidate.pageCount),
+    );
+    if (
+      typeof desiredPages === "number" &&
+      desiredPages > maximumObserved
+    ) {
+      const chunks = partitionResumeForPages({
+        resume,
+        optimization,
+        pageCount: desiredPages,
+      });
+      if (chunks) {
+        const chunkBuffers: Buffer[] = [];
+        for (const chunk of chunks) {
+          const chunkContent = resolveResumeContent(
+            chunk.resume,
+            chunk.optimization,
+          );
+          const chunkManifest = createContentManifest(chunkContent, profile);
+          let selected: Buffer | null = null;
+          for (const fit of fitPresets) {
+            const rendered = await renderFit(
+              fit,
+              chunkContent,
+              chunkManifest,
+              false,
+            );
+            if (rendered.pageCount === 1) {
+              selected = rendered.buffer;
+              break;
+            }
+          }
+          if (!selected) {
+            chunkBuffers.length = 0;
+            break;
+          }
+          chunkBuffers.push(selected);
+        }
+        if (chunkBuffers.length === desiredPages) {
+          const merged = await PDFDocument.create();
+          merged.setTitle(`${resume.name} — Resume`);
+          merged.setAuthor(resume.name);
+          merged.setCreator("NextResume");
+          merged.setProducer("NextResume");
+          for (const chunkBuffer of chunkBuffers) {
+            const sourcePdf = await PDFDocument.load(chunkBuffer);
+            const [copied] = await merged.copyPages(sourcePdf, [0]);
+            merged.addPage(copied);
+          }
+          return Buffer.from(await merged.save());
+        }
+      }
+    }
+    const closest = renderedCandidates.sort((left, right) => {
+      const distance =
+        Math.abs(left.pageCount - desiredPages) -
+        Math.abs(right.pageCount - desiredPages);
+      if (distance !== 0) return distance;
+      return right.fill - left.fill;
+    })[0];
+    return closest?.buffer ?? baseline.buffer;
   } finally {
     await browser.close();
   }

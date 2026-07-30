@@ -6,12 +6,59 @@ import {
   splitResumeText,
 } from "../lib/resumeParser.ts";
 import { resolveResumeContent } from "../lib/pdf/shared.ts";
+import { partitionResumeForPages } from "../lib/pdf/balancedPages.ts";
 import {
   PDF_STYLE_DEFINITIONS,
   getResumePalette,
   normalizeTargetPages,
 } from "../lib/pdf/config.ts";
 import { TEMPLATE_DESIGN_SPECS } from "../lib/pdf/templateDesignSpecs.ts";
+import {
+  createFitCacheKey,
+  createResumeRevision,
+  defaultResumePage,
+  pruneFitVariants,
+} from "../lib/resumeFit.ts";
+import {
+  RESUME_STYLE_PROFILE_VERSION,
+  isCurrentResumeStyleProfile,
+  sanitizeResumeStyleProfile,
+} from "../lib/resumeStyle.ts";
+
+const fixtureResume = normalizeParsedResume({
+  name: "Candidate",
+  title: "Engineer",
+  summary: "Builds reliable systems.",
+  skills: ["TypeScript"],
+  experience: [
+    {
+      id: "r1",
+      company: "Company",
+      title: "Engineer",
+      bullets: [{ id: "b1", text: "Built a reliable platform." }],
+    },
+  ],
+});
+const fixtureOptimization = {
+  title: "Senior Engineer",
+  summary: "Builds reliable production systems.",
+  skills: ["TypeScript"],
+  roles: [
+    {
+      id: "r1",
+      bullets: [
+        {
+          id: "ob1",
+          text: "Built a reliable production platform.",
+          evidence: ["b1"],
+          matchedKeywords: ["reliable"],
+          rationale: "Clarifies the result.",
+        },
+      ],
+    },
+  ],
+  projects: [],
+};
 
 test("splitResumeText retains all paragraphs without a hard tail cutoff", () => {
   const paragraphs = Array.from(
@@ -212,6 +259,42 @@ test("fixed PDF styles expose three curated palettes and one design spec", () =>
   }
 });
 
+test("personalized style treats a header photo/contact rail as single-column", () => {
+  const source = {
+    screenshots: ["data:image/png;base64,fixture"],
+    page: {
+      widthPt: 595.276,
+      heightPt: 841.89,
+      orientation: "portrait",
+    },
+    pageCount: 1,
+  };
+  const headerRail = sanitizeResumeStyleProfile(
+    {
+      layout: "sidebar-right",
+      sidebarSections: ["contact"],
+      header: { photoPosition: "right" },
+    },
+    source,
+  );
+  assert.equal(headerRail.version, RESUME_STYLE_PROFILE_VERSION);
+  assert.equal(headerRail.layout, "single-column");
+  assert.deepEqual(headerRail.sidebarSections, []);
+  assert.equal(headerRail.header.photoPosition, "right");
+  assert.equal(isCurrentResumeStyleProfile(headerRail), true);
+  assert.equal(isCurrentResumeStyleProfile({ ...headerRail, version: 1 }), false);
+
+  const realSidebar = sanitizeResumeStyleProfile(
+    {
+      layout: "sidebar-right",
+      sidebarSections: ["contact", "skills"],
+    },
+    source,
+  );
+  assert.equal(realSidebar.layout, "sidebar-right");
+  assert.deepEqual(realSidebar.sidebarSections, ["contact", "skills"]);
+});
+
 test("target page values are constrained to Auto or 1–10 pages", () => {
   assert.equal(normalizeTargetPages("auto"), "auto");
   assert.equal(normalizeTargetPages(1), 1);
@@ -219,4 +302,118 @@ test("target page values are constrained to Auto or 1–10 pages", () => {
   assert.equal(normalizeTargetPages(0), 1);
   assert.equal(normalizeTargetPages(99), 10);
   assert.equal(normalizeTargetPages("invalid"), "auto");
+});
+
+test("balanced page chunks preserve content without duplicating body sections", () => {
+  const chunks = partitionResumeForPages({
+    resume: fixtureResume,
+    optimization: fixtureOptimization,
+    pageCount: 2,
+  });
+  assert.equal(chunks?.length, 2);
+  assert.equal(
+    chunks.reduce(
+      (total, chunk) => total + chunk.resume.experience.length,
+      0,
+    ),
+    fixtureResume.experience.length,
+  );
+  assert.equal(
+    chunks.filter(
+      (chunk) =>
+        Boolean(chunk.optimization?.summary) || Boolean(chunk.resume.summary),
+    ).length,
+    1,
+  );
+  assert.equal(
+    chunks.filter(
+      (chunk) =>
+        Boolean(chunk.optimization?.skills.length) ||
+        chunk.resume.skills.length > 0,
+    ).length,
+    1,
+  );
+  assert.equal(
+    partitionResumeForPages({
+      resume: fixtureResume,
+      optimization: fixtureOptimization,
+      pageCount: 4,
+    }),
+    null,
+  );
+});
+
+test("resume revisions change with content but not object key order", () => {
+  const first = createResumeRevision({
+    resume: fixtureResume,
+    optimization: fixtureOptimization,
+    job: { title: "Engineer", company: "", seniority: "", requiredKeywords: [], niceToHaveKeywords: [], responsibilities: [] },
+    modelId: "model-a",
+  });
+  const reordered = createResumeRevision({
+    resume: { ...fixtureResume },
+    optimization: { ...fixtureOptimization },
+    job: { responsibilities: [], niceToHaveKeywords: [], requiredKeywords: [], seniority: "", company: "", title: "Engineer" },
+    modelId: "model-a",
+  });
+  const edited = createResumeRevision({
+    resume: { ...fixtureResume, summary: `${fixtureResume.summary} Updated.` },
+    optimization: fixtureOptimization,
+    job: { title: "Engineer", company: "", seniority: "", requiredKeywords: [], niceToHaveKeywords: [], responsibilities: [] },
+    modelId: "model-a",
+  });
+  assert.equal(first, reordered);
+  assert.notEqual(first, edited);
+});
+
+test("fit cache keys include template, page target, paper, and keep choices", () => {
+  const page = defaultResumePage(null);
+  const base = {
+    sourceRevision: "revision",
+    targetPages: 1,
+    style: "classic",
+    page,
+    modelId: "model-a",
+    keptContentIds: [],
+  };
+  assert.notEqual(
+    createFitCacheKey(base),
+    createFitCacheKey({ ...base, targetPages: 2 }),
+  );
+  assert.notEqual(
+    createFitCacheKey(base),
+    createFitCacheKey({ ...base, style: "sidebar" }),
+  );
+  assert.notEqual(
+    createFitCacheKey(base),
+    createFitCacheKey({ ...base, keptContentIds: ["b1"] }),
+  );
+});
+
+test("fit variant pruning keeps the newest version per key and caps history", () => {
+  const variants = Array.from({ length: 14 }, (_, index) => ({
+    id: `variant-${index}`,
+    cacheKey: index < 2 ? "duplicate" : `key-${index}`,
+    sourceRevision: "revision",
+    targetPages: 1,
+    actualPages: 1,
+    style: "classic",
+    page: defaultResumePage(null),
+    modelId: "model-a",
+    density: "standard",
+    fittedResume: fixtureResume,
+    fittedOptimization: fixtureOptimization,
+    changes: [],
+    keptContentIds: [],
+    atsScore: 90,
+    sourceAtsScore: 92,
+    createdAt: new Date(index * 1000).toISOString(),
+    lastUsedAt: new Date((index < 2 ? 20 + index : index) * 1000).toISOString(),
+  }));
+  const pruned = pruneFitVariants(variants);
+  assert.equal(pruned.length, 12);
+  assert.equal(
+    pruned.find((variant) => variant.cacheKey === "duplicate")?.id,
+    "variant-1",
+  );
 });

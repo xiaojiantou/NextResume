@@ -119,6 +119,24 @@ const optimization = {
   ],
 };
 
+const job = {
+  title: "Senior Data & AI Engineer",
+  company: "Example Company",
+  seniority: "Senior",
+  requiredKeywords: ["TypeScript", "Machine Learning"],
+  niceToHaveKeywords: ["research"],
+  responsibilities: ["Build reliable data and AI systems."],
+};
+
+const report = {
+  overallBefore: 75,
+  overallAfter: 92,
+  categoriesBefore: [],
+  categoriesAfter: [],
+  missingKeywords: [],
+  presentKeywords: ["TypeScript", "Machine Learning"],
+};
+
 const expectedText = [
   "Alex Morgan",
   "Northstar Labs",
@@ -169,6 +187,65 @@ for (const definition of PDF_STYLE_DEFINITIONS) {
   );
 }
 
+const fitResponse = await fetch(`${baseUrl}/api/fit-resume`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    resume,
+    optimization,
+    job,
+    report,
+    model: "test-model-not-used-for-layout-only-fit",
+    style: "classic",
+    palette: "classic-ink",
+    targetPages: 2,
+    pageSize: {
+      widthPt: 612,
+      heightPt: 792,
+      orientation: "portrait",
+    },
+    keptContentIds: [],
+    priorityContentIds: [],
+  }),
+});
+if (!fitResponse.ok) {
+  const detail = await fitResponse.text();
+  assert.fail(`fit API: ${fitResponse.status} ${detail}`);
+}
+const fitData = await fitResponse.json();
+assert.equal(fitData.variant.actualPages, 2);
+assert.equal(fitData.variant.targetPages, 2);
+assert.equal(fitData.variant.style, "classic");
+assert.equal(fitData.variant.changes.length, 0);
+
+const fittedExportResponse = await fetch(`${baseUrl}/api/export/pdf`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    resume,
+    optimization,
+    targetTitle: job.title,
+    style: "classic",
+    palette: "classic-ink",
+    targetPages: 2,
+    pageSize: fitData.variant.page,
+    fitVariant: fitData.variant,
+    sourceRevision: fitData.variant.sourceRevision,
+  }),
+});
+if (!fittedExportResponse.ok) {
+  const detail = await fittedExportResponse.text();
+  assert.fail(
+    `fitted export: ${fittedExportResponse.status} ${detail}`,
+  );
+}
+assert.equal(fittedExportResponse.headers.get("x-resume-pages"), "2");
+const fittedBuffer = Buffer.from(await fittedExportResponse.arrayBuffer());
+const fittedParsed = await pdfParse(fittedBuffer);
+assert.ok(fittedParsed.text.includes("Northstar Labs"));
+assert.ok(fittedParsed.text.includes("Research Excellence Award"));
+process.stdout.write("fit API: exact balanced 2-page variant exported\n");
+
 const denseResume = {
   ...resume,
   summary:
@@ -204,7 +281,10 @@ if (!denseResponse.ok) {
   assert.fail(`dense overflow: ${denseResponse.status} ${detail}`);
 }
 assert.equal(denseResponse.headers.get("x-resume-target-pages"), "1");
-assert.equal(denseResponse.headers.get("x-resume-density"), "tight-safe");
+assert.equal(
+  denseResponse.headers.get("x-resume-density"),
+  "minimum-safe",
+);
 assert.equal(denseResponse.headers.get("x-resume-overflow"), "true");
 assert.ok(Number(denseResponse.headers.get("x-resume-pages")) > 1);
 
@@ -232,7 +312,7 @@ const personalizedResponse = await fetch(`${baseUrl}/api/export/pdf`, {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     ...personalizedFixture,
-    targetPages: 1,
+    targetPages: 2,
   }),
 });
 if (!personalizedResponse.ok) {
@@ -245,7 +325,8 @@ assert.match(
   personalizedResponse.headers.get("content-type") || "",
   /application\/pdf/,
 );
-assert.equal(personalizedResponse.headers.get("x-resume-target-pages"), "1");
+assert.equal(personalizedResponse.headers.get("x-resume-target-pages"), "2");
+assert.equal(personalizedResponse.headers.get("x-resume-pages"), "2");
 const personalizedBuffer = Buffer.from(
   await personalizedResponse.arrayBuffer(),
 );
@@ -261,3 +342,65 @@ assert.ok(personalizedText.includes("National Competition First Prize"));
 process.stdout.write(
   `personalized: ${personalizedResponse.headers.get("x-resume-pages")} page(s), content preserved\n`,
 );
+
+if (process.env.PDF_TEST_AI_MODEL) {
+  const mediumResume = {
+    ...denseResume,
+    experience: denseResume.experience.slice(0, 5),
+    projects: [],
+  };
+  const mediumOptimization = {
+    ...optimization,
+    roles: mediumResume.experience.map((role) => ({
+      id: role.id,
+      bullets: role.bullets.map((bullet) => ({
+        id: `optimized-${bullet.id}`,
+        text: bullet.text,
+        evidence: [bullet.id],
+        matchedKeywords: [],
+        rationale: "Preserves source evidence.",
+      })),
+    })),
+    projects: [],
+  };
+  const aiFitResponse = await fetch(`${baseUrl}/api/fit-resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resume: mediumResume,
+      optimization: mediumOptimization,
+      job,
+      report,
+      model: process.env.PDF_TEST_AI_MODEL,
+      style: "classic",
+      palette: "classic-ink",
+      targetPages: 1,
+      pageSize: {
+        widthPt: 612,
+        heightPt: 792,
+        orientation: "portrait",
+      },
+      keptContentIds: [],
+      priorityContentIds: [],
+    }),
+  });
+  if (!aiFitResponse.ok) {
+    const detail = await aiFitResponse.text();
+    assert.fail(`AI fit: ${aiFitResponse.status} ${detail}`);
+  }
+  const aiFitData = await aiFitResponse.json();
+  assert.equal(aiFitData.variant.actualPages, 1);
+  assert.equal(
+    aiFitData.variant.fittedResume.experience.length,
+    mediumResume.experience.length,
+  );
+  assert.ok(aiFitData.variant.changes.length > 0);
+  for (const role of aiFitData.variant.fittedOptimization.roles) {
+    for (const bullet of role.bullets) {
+      assert.ok(bullet.evidence.length > 0);
+    }
+  }
+  process.stdout.write(
+    `AI fit: exact 1-page variant with ${aiFitData.variant.changes.length} tracked changes\n`,
+  );
+}

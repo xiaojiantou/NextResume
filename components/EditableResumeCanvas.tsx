@@ -235,7 +235,7 @@ export function EditableResumeCanvas({
           ) : (
             <>
               <Wand2 size={14} />
-              Regenerate
+              Regenerate content
             </>
           )}
         </button>
@@ -483,7 +483,9 @@ export function EditableResumeCanvas({
           disabled={regenerating}
           className="btn btn-primary"
         >
-          {regenerating ? "Regenerating…" : "Regenerate with AI"}
+          {regenerating
+            ? "Regenerating content…"
+            : "Regenerate content with AI"}
         </button>
       </div>
     </div>

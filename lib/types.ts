@@ -120,7 +120,7 @@ export type ResumeLayout =
   | "sidebar-right";
 
 export type ResumeStyleProfile = {
-  version: 1;
+  version: 2;
   layout: ResumeLayout;
   sidebarWidthPercent: number;
   sidebarSections: Array<

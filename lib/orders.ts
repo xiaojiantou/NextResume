@@ -21,6 +21,7 @@ import type {
   ResumeStyleSource,
 } from "./types";
 import type { PdfStyle, TargetPages } from "./pdf/config";
+import type { ResumeFitVariant } from "./resumeFit";
 
 type OrderStatus = "pending" | "paid" | "expired";
 
@@ -46,6 +47,8 @@ export type OrderSnapshot = {
   pdfStyle?: PdfStyle;
   pdfPalette?: string;
   targetPages?: TargetPages;
+  fitVariants?: ResumeFitVariant[];
+  fitKeepIds?: string[];
   updatedAt: string;
 };
 

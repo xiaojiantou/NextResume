@@ -8,7 +8,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
-import type { Optimization, Resume } from "@/lib/types";
+import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { ResumePalette } from "./config";
 import {
   getResumeSectionLabels,
@@ -22,12 +22,14 @@ function createStyles(
   fontScale: number,
   spacingScale: number,
   lineHeightScale: number,
+  minimumBodyPt: number,
+  minimumMarginPt: number,
 ) {
   const px = (v: number) => v * spacingScale;
-  const margin = (v: number) => Math.max(36, v * spacingScale);
-  const fs = (v: number) => v * fontScale;
-  const body = (v = 10) => Math.max(10, fs(v));
-  const lh = (v: number, floor = 1.18) =>
+  const margin = (v: number) => Math.max(minimumMarginPt, v * spacingScale);
+  const fs = (v: number) => Math.max(8, v * fontScale);
+  const body = (v = 10) => Math.max(minimumBodyPt, fs(v));
+  const lh = (v: number, floor = 1.1) =>
     Math.max(floor, v * lineHeightScale);
   return StyleSheet.create({
     page: {
@@ -174,6 +176,9 @@ export function ResumePdf({
   fontScale = 1,
   spacingScale = 1,
   lineHeightScale = 1,
+  minimumBodyPt = 10,
+  minimumMarginPt = 36,
+  pageSize,
 }: {
   palette: ResumePalette;
   resume: Resume;
@@ -182,6 +187,9 @@ export function ResumePdf({
   fontScale?: number;
   spacingScale?: number;
   lineHeightScale?: number;
+  minimumBodyPt?: number;
+  minimumMarginPt?: number;
+  pageSize?: ResumePageSpec;
 }) {
   const {
     summary,
@@ -199,6 +207,8 @@ export function ResumePdf({
     fontScale,
     spacingScale,
     lineHeightScale,
+    minimumBodyPt,
+    minimumMarginPt,
   );
   const labels = getResumeSectionLabels(language);
 
@@ -209,7 +219,14 @@ export function ResumePdf({
       creator="NextResume"
       producer="NextResume"
     >
-      <Page size="LETTER" style={styles.page}>
+      <Page
+        size={
+          pageSize
+            ? { width: pageSize.widthPt, height: pageSize.heightPt }
+            : "LETTER"
+        }
+        style={styles.page}
+      >
         {resume.photo ? (
           <View style={styles.headerWithPhoto}>
             <Image src={resume.photo} style={styles.photo} />

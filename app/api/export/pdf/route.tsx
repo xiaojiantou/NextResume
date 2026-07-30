@@ -1,26 +1,25 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import { NextRequest, NextResponse } from "next/server";
-import { renderToBuffer } from "@react-pdf/renderer";
 import { PDFDocument } from "pdf-lib";
-import { ResumePdf } from "@/lib/pdf/ResumePdf";
-import { ResumePdfSidebar } from "@/lib/pdf/ResumePdfSidebar";
-import { ResumePdfMinimal } from "@/lib/pdf/ResumePdfMinimal";
-import { ResumePdfDistinctive } from "@/lib/pdf/ResumePdfDistinctive";
 import { renderPersonalizedPdf } from "@/lib/personalizedResume";
 import { rateLimitGuard } from "@/lib/ratelimit";
 import {
   getResumePalette,
   isPdfStyle,
   normalizeTargetPages,
-  type FixedPdfStyle,
   type PdfStyle,
-  type ResumePalette,
   type TargetPages,
 } from "@/lib/pdf/config";
+import { renderFixedFitted } from "@/lib/pdf/renderFixed";
+import {
+  defaultResumePage,
+  type ResumeFitVariant,
+} from "@/lib/resumeFit";
 import type {
   Optimization,
   Resume,
+  ResumePageSpec,
   ResumeStyleProfile,
 } from "@/lib/types";
 
@@ -33,6 +32,12 @@ const EXPORT_LIMIT = {
   windowMs: 60_000,
 };
 
+const PREVIEW_LIMIT = {
+  key: "preview-pdf",
+  limit: 30,
+  windowMs: 60_000,
+};
+
 function safeFilename(name: string, target: string): string {
   const base = (name || "resume").trim().replace(/[^\p{L}\p{N}\-_ ]/gu, "");
   const suffix = (target || "").trim().replace(/[^\p{L}\p{N}\-_ ]/gu, "");
@@ -40,193 +45,13 @@ function safeFilename(name: string, target: string): string {
   return `${parts}.pdf`;
 }
 
-// Discrete density presets keep exports visually intentional. Body type never
-// shrinks below the 10pt floor enforced by every template; whitespace and
-// leading absorb page-fit pressure first.
-const FIT_PRESETS = [
-  {
-    id: "relaxed",
-    fontScale: 1.05,
-    spacingScale: 1.18,
-    lineHeightScale: 1.05,
-  },
-  {
-    id: "standard",
-    fontScale: 1,
-    spacingScale: 1,
-    lineHeightScale: 1,
-  },
-  {
-    id: "compact",
-    fontScale: 1,
-    spacingScale: 0.88,
-    lineHeightScale: 0.95,
-  },
-  {
-    id: "tight-safe",
-    fontScale: 1,
-    spacingScale: 0.78,
-    lineHeightScale: 0.9,
-  },
-] as const;
-
-type FitPreset = (typeof FIT_PRESETS)[number];
-
-function fixedTemplate({
-  style,
-  palette,
-  resume,
-  optimization,
-  includeSummary,
-  fit,
-}: {
-  style: FixedPdfStyle;
-  palette: ResumePalette;
-  resume: Resume;
-  optimization: Optimization | null;
-  includeSummary: boolean | undefined;
-  fit: FitPreset;
-}) {
-  if (style === "sidebar") {
-    return (
-      <ResumePdfSidebar
-        resume={resume}
-        optimization={optimization}
-        palette={palette}
-        includeSummary={includeSummary}
-        {...fit}
-      />
-    );
-  }
-  if (style === "minimal") {
-    return (
-      <ResumePdfMinimal
-        resume={resume}
-        optimization={optimization}
-        palette={palette}
-        includeSummary={includeSummary}
-        {...fit}
-      />
-    );
-  }
-  if (
-    style === "academic" ||
-    style === "executive" ||
-    style === "tech" ||
-    style === "elegant"
-  ) {
-    return (
-      <ResumePdfDistinctive
-        variant={style}
-        resume={resume}
-        optimization={optimization}
-        palette={palette}
-        includeSummary={includeSummary}
-        {...fit}
-      />
-    );
-  }
-  return (
-    <ResumePdf
-      resume={resume}
-      optimization={optimization}
-      palette={palette}
-      includeSummary={includeSummary}
-      {...fit}
-    />
-  );
-}
-
-async function renderFixedAtDensity({
-  style,
-  palette,
-  resume,
-  optimization,
-  includeSummary,
-  fit,
-}: {
-  style: FixedPdfStyle;
-  palette: ResumePalette;
-  resume: Resume;
-  optimization: Optimization | null;
-  includeSummary: boolean | undefined;
-  fit: FitPreset;
-}) {
-  const buffer = await renderToBuffer(
-    fixedTemplate({
-      style,
-      palette,
-      resume,
-      optimization,
-      includeSummary,
-      fit,
-    }),
-  );
-  const pageCount = (await PDFDocument.load(buffer)).getPageCount();
-  return { buffer, pageCount, density: fit.id };
-}
-
-async function renderFittedToTarget({
-  style,
-  palette,
-  resume,
-  optimization,
-  includeSummary,
-  targetPages,
-}: {
-  style: FixedPdfStyle;
-  palette: ResumePalette;
-  resume: Resume;
-  optimization: Optimization | null;
-  includeSummary: boolean | undefined;
-  targetPages: TargetPages;
-}) {
-  const cache = new Map<
-    FitPreset["id"],
-    Awaited<ReturnType<typeof renderFixedAtDensity>>
-  >();
-  const render = async (fit: FitPreset) => {
-    const cached = cache.get(fit.id);
-    if (cached) return cached;
-    const result = await renderFixedAtDensity({
-      style,
-      palette,
-      resume,
-      optimization,
-      includeSummary,
-      fit,
-    });
-    cache.set(fit.id, result);
-    return result;
-  };
-
-  const baseline = await render(FIT_PRESETS[1]);
-  const desiredPages =
-    targetPages === "auto"
-      ? Math.min(10, Math.max(1, baseline.pageCount))
-      : targetPages;
-
-  let last = baseline;
-  for (const fit of FIT_PRESETS) {
-    const rendered = await render(fit);
-    last = rendered;
-    if (rendered.pageCount <= desiredPages) {
-      return {
-        ...rendered,
-        desiredPages,
-        overflow: false,
-      };
-    }
-  }
-  return {
-    ...last,
-    desiredPages,
-    overflow: last.pageCount > desiredPages,
-  };
-}
-
 export async function POST(req: NextRequest) {
-  const rl = rateLimitGuard(req, EXPORT_LIMIT);
+  const rl = rateLimitGuard(
+    req,
+    req.headers.get("x-resume-preview") === "1"
+      ? PREVIEW_LIMIT
+      : EXPORT_LIMIT,
+  );
   if (rl) return rl;
 
   try {
@@ -237,19 +62,24 @@ export async function POST(req: NextRequest) {
       style,
       palette,
       targetPages,
+      pageSize,
+      fitVariant,
+      sourceRevision,
       personalizedStyleProfile,
       includeSummary,
-    } =
-      (await req.json()) as {
-        resume: Resume;
-        optimization: Optimization | null;
-        targetTitle?: string;
-        style?: PdfStyle;
-        palette?: string;
-        targetPages?: TargetPages;
-        personalizedStyleProfile?: ResumeStyleProfile | null;
-        includeSummary?: boolean;
-      };
+    } = (await req.json()) as {
+      resume: Resume;
+      optimization: Optimization | null;
+      targetTitle?: string;
+      style?: PdfStyle;
+      palette?: string;
+      targetPages?: TargetPages;
+      pageSize?: ResumePageSpec;
+      fitVariant?: ResumeFitVariant | null;
+      sourceRevision?: string;
+      personalizedStyleProfile?: ResumeStyleProfile | null;
+      includeSummary?: boolean;
+    };
 
     if (!resume?.name || !Array.isArray(resume.experience)) {
       return NextResponse.json(
@@ -260,6 +90,29 @@ export async function POST(req: NextRequest) {
 
     const selectedStyle: PdfStyle = isPdfStyle(style) ? style : "classic";
     const selectedTargetPages = normalizeTargetPages(targetPages);
+    const selectedPage = defaultResumePage(
+      pageSize ?? personalizedStyleProfile?.page,
+    );
+    const usesFitVariant =
+      selectedTargetPages !== "auto" && Boolean(fitVariant);
+    if (usesFitVariant) {
+      if (
+        fitVariant!.sourceRevision !== sourceRevision ||
+        fitVariant!.style !== selectedStyle ||
+        fitVariant!.targetPages !== selectedTargetPages
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "This fitted version is outdated. Fit the latest resume before downloading.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+    const effectiveResume = fitVariant?.fittedResume ?? resume;
+    const effectiveOptimization =
+      fitVariant?.fittedOptimization ?? optimization;
     let buffer: Buffer;
     let density = "source";
     let desiredPages =
@@ -278,21 +131,32 @@ export async function POST(req: NextRequest) {
       }
       buffer = await renderPersonalizedPdf({
         styleProfile: personalizedStyleProfile,
-        resume,
-        optimization,
+        resume: effectiveResume,
+        optimization: effectiveOptimization,
         includeSummary,
         targetPages: selectedTargetPages,
+        allowMinimumTypography: usesFitVariant,
       });
     } else {
       const selectedPalette = getResumePalette(selectedStyle, palette);
-      const fitted = await renderFittedToTarget({
+      const fitted = await renderFixedFitted({
         style: selectedStyle,
         palette: selectedPalette,
-        resume,
-        optimization,
+        resume: effectiveResume,
+        optimization: effectiveOptimization,
         includeSummary,
+        page: selectedPage,
         targetPages: selectedTargetPages,
+        requireExact: usesFitVariant,
       });
+      if (usesFitVariant && !fitted.exact) {
+        return NextResponse.json(
+          {
+            error: `The fitted version rendered as ${fitted.pageCount} pages instead of ${selectedTargetPages}. Refit before downloading.`,
+          },
+          { status: 409 },
+        );
+      }
       buffer = fitted.buffer;
       density = fitted.density;
       desiredPages = String(fitted.desiredPages);
@@ -305,9 +169,16 @@ export async function POST(req: NextRequest) {
     ) {
       overflow = pageCount > selectedTargetPages;
     }
+    if (usesFitVariant && pageCount !== selectedTargetPages) {
+      return NextResponse.json(
+        {
+          error: `The fitted version rendered as ${pageCount} pages instead of ${selectedTargetPages}. Refit before downloading.`,
+        },
+        { status: 409 },
+      );
+    }
 
-    const filename = safeFilename(resume.name, targetTitle || "");
-    // Use ASCII-only fallback for Content-Disposition to avoid header issues.
+    const filename = safeFilename(effectiveResume.name, targetTitle || "");
     const asciiName = filename.replace(/[^\x20-\x7E]/g, "_");
 
     return new NextResponse(buffer as unknown as BodyInit, {

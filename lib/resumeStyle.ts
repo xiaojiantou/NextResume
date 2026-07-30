@@ -19,6 +19,7 @@ const SIDEBAR_SECTIONS = new Set<
 >(["contact", "summary", "skills", "education", "additional"]);
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+export const RESUME_STYLE_PROFILE_VERSION = 2;
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
@@ -62,10 +63,10 @@ export function defaultResumeStyleProfile(
   page: ResumePageSpec,
 ): ResumeStyleProfile {
   return {
-    version: 1,
+    version: RESUME_STYLE_PROFILE_VERSION,
     layout: "single-column",
     sidebarWidthPercent: 32,
-    sidebarSections: ["contact", "skills"],
+    sidebarSections: [],
     fontFamily: "Arial",
     headingFontFamily: "Arial",
     colors: {
@@ -151,21 +152,33 @@ export function sanitizeResumeStyleProfile(
           ),
       )
     : fallback.sidebarSections;
+  const requestedLayout = oneOf(
+    input.layout,
+    ["single-column", "sidebar-left", "sidebar-right"] as const,
+    fallback.layout,
+  );
+  // A portrait/contact rail confined to the page header is not a document
+  // sidebar. Require at least one body section to occupy that column before
+  // narrowing the main resume content.
+  const hasSidebarBodySection = sidebarSections.some(
+    (section) => section !== "contact",
+  );
+  const layout =
+    requestedLayout !== "single-column" && !hasSidebarBodySection
+      ? "single-column"
+      : requestedLayout;
 
   return {
-    version: 1,
-    layout: oneOf(
-      input.layout,
-      ["single-column", "sidebar-left", "sidebar-right"] as const,
-      fallback.layout,
-    ),
+    version: RESUME_STYLE_PROFILE_VERSION,
+    layout,
     sidebarWidthPercent: numberIn(
       input.sidebarWidthPercent,
       fallback.sidebarWidthPercent,
       24,
       40,
     ),
-    sidebarSections: [...new Set(sidebarSections)],
+    sidebarSections:
+      layout === "single-column" ? [] : [...new Set(sidebarSections)],
     fontFamily,
     headingFontFamily,
     colors: {
@@ -291,4 +304,15 @@ export function sanitizeResumeStyleProfile(
     // Page geometry is measured from the uploaded file, never trusted to AI.
     page: measuredPage,
   };
+}
+
+export function isCurrentResumeStyleProfile(
+  value: unknown,
+): value is ResumeStyleProfile {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    (value as { version?: unknown }).version ===
+      RESUME_STYLE_PROFILE_VERSION
+  );
 }

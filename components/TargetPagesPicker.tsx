@@ -15,9 +15,11 @@ function targetLabel(target: TargetPages) {
 
 export function TargetPagesPicker({
   current,
+  recommended,
   onPick,
 }: {
   current: TargetPages;
+  recommended?: number;
   onPick: (target: TargetPages) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -93,6 +95,11 @@ export function TargetPagesPicker({
                   <span className="flex-1 font-medium text-ink-800">
                     {targetLabel(option)}
                   </span>
+                  {option === recommended ? (
+                    <span className="mr-2 rounded bg-accent-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent-700">
+                      Recommended
+                    </span>
+                  ) : null}
                   {selected ? (
                     <Check size={13} className="text-ink-900" strokeWidth={3} />
                   ) : null}
@@ -133,7 +140,8 @@ export function TargetPagesPicker({
             </button>
           </div>
           <p className="px-2 pb-1 text-[11px] leading-4 text-ink-400">
-            A soft target: complete content and readable type come first.
+            Exact after Fit. Auto keeps the complete resume at its natural
+            length.
           </p>
         </div>
       ) : null}

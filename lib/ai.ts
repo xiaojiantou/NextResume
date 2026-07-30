@@ -263,7 +263,15 @@ Return ONLY one JSON object matching this exact shape:
   "bulletMarker": "disc" | "dash" | "square"
 }
 
-Choose the closest supported layout. Estimate sizes in print points. Match the source's visual hierarchy, spacing, colors, divider treatment, bullets, sidebar, and photo placement. Never output HTML, CSS, selectors, content, display rules, fixed heights, or overflow rules.`;
+Choose the closest supported layout. Estimate sizes in print points. Match the source's visual hierarchy, spacing, colors, divider treatment, bullets, sidebar, and photo placement.
+
+Important layout rules:
+- A portrait positioned at the top-left or top-right of the header is a header photo, not a sidebar.
+- Contact details near the name or confined to the header do not form a sidebar.
+- Choose sidebar-left or sidebar-right only when a distinct column extends through a substantial part of the page AND contains at least one body section such as skills, education, summary, or additional content.
+- For a full-width single-column body with a photo in the header, return layout "single-column", sidebarSections [], and the matching header.photoPosition.
+
+Never output HTML, CSS, selectors, content, display rules, fixed heights, or overflow rules.`;
 
 export async function generateResumeStyleProfile({
   source,

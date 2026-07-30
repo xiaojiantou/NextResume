@@ -7,9 +7,11 @@ import { LivePdfPreview } from "./LivePdfPreview";
 import type {
   Resume,
   Optimization,
+  ResumePageSpec,
   ResumeStyleProfile,
 } from "@/lib/types";
 import type { PdfStyle, TargetPages } from "@/lib/pdf/config";
+import type { ResumeFitVariant } from "@/lib/resumeFit";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useState } from "react";
 
@@ -19,7 +21,11 @@ export function EditorWithPreview({
   pdfStyle,
   pdfPalette,
   targetPages,
+  pageSize,
   personalizedStyleProfile,
+  previewTargetPages,
+  previewFitVariant,
+  sourceRevision,
   onResumeChange,
   onRegenerate,
   regenerating,
@@ -29,7 +35,11 @@ export function EditorWithPreview({
   pdfStyle: PdfStyle;
   pdfPalette: string;
   targetPages: TargetPages;
+  pageSize: ResumePageSpec;
   personalizedStyleProfile: ResumeStyleProfile | null;
+  previewTargetPages?: TargetPages;
+  previewFitVariant?: ResumeFitVariant | null;
+  sourceRevision?: string | null;
   onResumeChange: (resume: Resume) => void;
   onRegenerate: () => void;
   regenerating: boolean;
@@ -94,8 +104,11 @@ export function EditorWithPreview({
               optimization={optimization}
               style={pdfStyle}
               palette={pdfPalette}
-              targetPages={targetPages}
+              targetPages={previewTargetPages ?? targetPages}
+              pageSize={pageSize}
               personalizedStyleProfile={personalizedStyleProfile}
+              fitVariant={previewFitVariant}
+              sourceRevision={sourceRevision}
             />
           </div>
         </div>
@@ -115,8 +128,11 @@ export function EditorWithPreview({
             optimization={optimization}
             style={pdfStyle}
             palette={pdfPalette}
-            targetPages={targetPages}
+            targetPages={previewTargetPages ?? targetPages}
+            pageSize={pageSize}
             personalizedStyleProfile={personalizedStyleProfile}
+            fitVariant={previewFitVariant}
+            sourceRevision={sourceRevision}
           />
         </div>
       )}

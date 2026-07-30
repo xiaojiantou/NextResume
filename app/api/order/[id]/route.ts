@@ -20,6 +20,7 @@ import {
   type PdfStyle,
   type TargetPages,
 } from "@/lib/pdf/config";
+import { pruneFitVariants, type ResumeFitVariant } from "@/lib/resumeFit";
 
 export const runtime = "nodejs";
 
@@ -66,6 +67,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     pdfStyle?: PdfStyle;
     pdfPalette?: string;
     targetPages?: TargetPages;
+    fitVariants?: ResumeFitVariant[];
+    fitKeepIds?: string[];
   };
 
   const patch: Record<string, unknown> = {};
@@ -84,6 +87,16 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     patch.pdfPalette = body.pdfPalette.slice(0, 80);
   if (body.targetPages !== undefined)
     patch.targetPages = normalizeTargetPages(body.targetPages);
+  if (Array.isArray(body.fitVariants))
+    patch.fitVariants = pruneFitVariants(body.fitVariants);
+  if (Array.isArray(body.fitKeepIds))
+    patch.fitKeepIds = [
+      ...new Set(
+        body.fitKeepIds
+          .filter((id): id is string => typeof id === "string")
+          .map((id) => id.slice(0, 120)),
+      ),
+    ].slice(0, 200);
 
   const updated = await patchOrderSnapshot(id, patch);
   if (!updated) {

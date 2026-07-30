@@ -71,7 +71,7 @@
   "targetTitle": "Software Engineer",
   "style": "personalized",
   "personalizedStyleProfile": {
-    "version": 1,
+    "version": 2,
     "layout": "single-column",
     "sidebarWidthPercent": 32,
     "sidebarSections": ["contact", "skills"],

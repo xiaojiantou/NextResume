@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
-import type { Optimization, Resume } from "@/lib/types";
+import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { FixedPdfStyle, ResumePalette } from "./config";
 import { getResumeSectionLabels, resolveResumeContent } from "./shared";
 
@@ -21,12 +21,15 @@ function createStyles(
   fontScale: number,
   spacingScale: number,
   lineHeightScale: number,
+  minimumBodyPt: number,
+  minimumMarginPt: number,
 ) {
   const px = (value: number) => value * spacingScale;
-  const margin = (value: number) => Math.max(36, value * spacingScale);
-  const fs = (value: number) => value * fontScale;
-  const body = (value = 10) => Math.max(10, fs(value));
-  const lh = (value: number, floor = 1.18) =>
+  const margin = (value: number) =>
+    Math.max(minimumMarginPt, value * spacingScale);
+  const fs = (value: number) => Math.max(8, value * fontScale);
+  const body = (value = 10) => Math.max(minimumBodyPt, fs(value));
+  const lh = (value: number, floor = 1.1) =>
     Math.max(floor, value * lineHeightScale);
   const isAcademic = variant === "academic";
   const isExecutive = variant === "executive";
@@ -243,6 +246,9 @@ export function ResumePdfDistinctive({
   fontScale = 1,
   spacingScale = 1,
   lineHeightScale = 1,
+  minimumBodyPt = 10,
+  minimumMarginPt = 36,
+  pageSize,
 }: {
   variant: DistinctiveStyle;
   palette: ResumePalette;
@@ -252,6 +258,9 @@ export function ResumePdfDistinctive({
   fontScale?: number;
   spacingScale?: number;
   lineHeightScale?: number;
+  minimumBodyPt?: number;
+  minimumMarginPt?: number;
+  pageSize?: ResumePageSpec;
 }) {
   const styles = createStyles(
     variant,
@@ -259,6 +268,8 @@ export function ResumePdfDistinctive({
     fontScale,
     spacingScale,
     lineHeightScale,
+    minimumBodyPt,
+    minimumMarginPt,
   );
   const {
     summary,
@@ -289,7 +300,14 @@ export function ResumePdfDistinctive({
       creator="NextResume"
       producer="NextResume"
     >
-      <Page size="LETTER" style={styles.page}>
+      <Page
+        size={
+          pageSize
+            ? { width: pageSize.widthPt, height: pageSize.heightPt }
+            : "LETTER"
+        }
+        style={styles.page}
+      >
         <View style={styles.header}>
           {variant === "executive" ? (
             <View style={styles.executiveBar} />
