@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Optimization, Resume } from "@/lib/types";
 import { getResumeSectionLabels, resolveResumeContent } from "./shared";
