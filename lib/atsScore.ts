@@ -43,12 +43,21 @@ export const MAX_KEYWORD_REPEATS = 4;
 /** Share of bullets carrying a metric that counts as full marks. */
 const QUANTIFIED_TARGET_SHARE = 0.6;
 
-const STRONG_VERBS = new Set([
-  "led", "built", "shipped", "owned", "drove", "designed", "migrated",
-  "architected", "mentored", "partnered", "launched", "scaled", "automated",
-  "reduced", "increased", "improved", "delivered", "created", "developed",
-  "engineered", "implemented", "established", "spearheaded", "streamlined",
-  "optimized", "rearchitected", "founded", "negotiated", "recovered",
+/**
+ * Irregular past-tense openers. Regular ones ("Orchestrated", "Instrumented",
+ * "Pioneered") are recognised by their "-ed" ending instead, so this list only
+ * needs to cover verbs that ending-matching misses.
+ *
+ * A closed whitelist would punish vocabulary range: any strong verb missing
+ * from it drags the score down, which is backwards. The weak-opener list is
+ * the one that can be closed — "worked on" / "helped" / "responsible for" are
+ * a small, well-known set of resume anti-patterns.
+ */
+const STRONG_IRREGULAR_VERBS = new Set([
+  "led", "built", "drove", "ran", "wrote", "grew", "won", "sold", "spoke",
+  "taught", "rebuilt", "oversaw", "began", "chose", "cut", "set", "put",
+  "made", "met", "kept", "held", "sent", "brought", "found", "took", "gave",
+  "rewrote", "shrank", "sped",
 ]);
 
 // Mirrors the weak openers pickWeakestBullet() looks for in app/api/optimize.
@@ -95,7 +104,12 @@ function keywordRegex(keyword: string): RegExp | null {
   }
 }
 
-function countOccurrences(haystack: string, keyword: string): number {
+/**
+ * Occurrences of `keyword` in `haystack`, tolerant of separators and plurals
+ * but strict on word boundaries. Exported so the JD keyword sanitizer matches
+ * text exactly the way scoring does.
+ */
+export function countOccurrences(haystack: string, keyword: string): number {
   const re = keywordRegex(keyword);
   if (!re) return 0;
   return (haystack.match(re) ?? []).length;
@@ -260,7 +274,14 @@ function scoreActionVerbs(bullets: ResumeBulletRef[]) {
       continue;
     }
     const first = lower.split(/[\s,]+/)[0]?.replace(/[^a-z]/g, "") ?? "";
-    if (STRONG_VERBS.has(first)) strong += 1;
+    // "-ed" covers regular past tense, which is how most ownership verbs on a
+    // resume are written. The irregular set catches the rest.
+    if (
+      STRONG_IRREGULAR_VERBS.has(first) ||
+      (first.length > 3 && first.endsWith("ed"))
+    ) {
+      strong += 1;
+    }
   }
   const neutral = bullets.length - strong - weak;
   const score = Math.round(((strong + neutral * 0.5) / bullets.length) * 100);
@@ -274,13 +295,18 @@ function scoreActionVerbs(bullets: ResumeBulletRef[]) {
 // --- formatting -----------------------------------------------------------
 
 function scoreFormatting(resume: Resume, bullets: ResumeBulletRef[]) {
+  // Only things that genuinely break ATS parsing or recruiter search. Notably
+  // absent: an education section (senior candidates routinely drop it) and a
+  // hard requirement for paid experience (students lead with projects).
   const checks: { ok: boolean; label: string }[] = [
     { ok: Boolean(resume.name?.trim()), label: "name" },
     { ok: Boolean(resume.email?.trim()), label: "email" },
     { ok: Boolean(resume.phone?.trim() || resume.location?.trim()), label: "phone or location" },
-    { ok: (resume.experience ?? []).length > 0, label: "experience section" },
+    {
+      ok: (resume.experience ?? []).length > 0 || (resume.projects ?? []).length > 0,
+      label: "experience or projects section",
+    },
     { ok: (resume.skills ?? []).length > 0, label: "skills section" },
-    { ok: (resume.education ?? []).length > 0, label: "education section" },
     { ok: bullets.length > 0, label: "bullet points" },
     // Wall-of-text bullets parse badly and read worse.
     { ok: bullets.every((b) => b.text.length <= 400), label: "bullets under 400 characters" },

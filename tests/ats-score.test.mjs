@@ -232,6 +232,67 @@ test("a clean resume triggers no stuffing warning", () => {
   assert.deepEqual(report.warnings, []);
 });
 
+// Resumes vary enormously. These pin the shapes that a whitelist-driven
+// scorer would have penalized unfairly.
+test("strong verbs outside any hardcoded list still count", () => {
+  const exotic = scoreResume(
+    resume({
+      experience: [
+        {
+          ...resume().experience[0],
+          bullets: [
+            { id: "b1", text: "Orchestrated a migration across twelve services." },
+            { id: "b2", text: "Instrumented the request path end to end." },
+            { id: "b3", text: "Pioneered the team's evaluation harness." },
+            { id: "b4", text: "Overhauled the release process." },
+          ],
+        },
+      ],
+    }),
+    job,
+  );
+  const verbs = exotic.categories.find((c) => c.label === "Action verbs").score;
+  assert.equal(verbs, 100, "regular past-tense openers must all count as strong");
+});
+
+test("a senior resume with no education section is not penalized", () => {
+  const senior = resume({ education: [] });
+  const fmt = scoreResume(senior, job).categories.find((c) => c.label === "ATS formatting").score;
+  assert.equal(fmt, 100);
+});
+
+test("a student resume with projects but no jobs is not penalized", () => {
+  const student = resume({
+    experience: [],
+    projects: [
+      {
+        id: "p1", name: "Compiler", role: "Author", location: "", start: "", end: "",
+        bullets: [{ id: "pb1", text: "Built a bytecode VM in Python." }],
+      },
+    ],
+  });
+  const fmt = scoreResume(student, job).categories.find((c) => c.label === "ATS formatting").score;
+  assert.equal(fmt, 100);
+});
+
+test("weak openers are still caught", () => {
+  const weak = scoreResume(
+    resume({
+      experience: [
+        {
+          ...resume().experience[0],
+          bullets: [
+            { id: "b1", text: "Responsible for the billing service." },
+            { id: "b2", text: "Involved in a migration project." },
+          ],
+        },
+      ],
+    }),
+    job,
+  );
+  assert.equal(weak.categories.find((c) => c.label === "Action verbs").score, 0);
+});
+
 test("resumeToText reaches every section an ATS would index", () => {
   const text = resumeToText(
     resume({

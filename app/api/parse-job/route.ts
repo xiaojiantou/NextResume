@@ -71,7 +71,9 @@ export async function POST(req: NextRequest) {
 
     // Belt and braces: scoring matches these strings literally, so a heading or
     // a GPA threshold that slips past the prompt becomes a guaranteed miss.
-    return NextResponse.json({ analysis: sanitizeJobKeywords(analysis) });
+    // Passing the posting text lets the sanitizer identify section headings
+    // from the source rather than guessing from a word list.
+    return NextResponse.json({ analysis: sanitizeJobKeywords(analysis, text) });
   } catch (e) {
     console.error("parse-job failed", e);
     return NextResponse.json(

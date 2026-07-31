@@ -18,6 +18,8 @@
 // model to pad a thin JD with scavenged headings (fixed in the prompt), and
 // nothing validated the output (fixed here).
 
+import { countOccurrences } from "./atsScore.ts";
+
 /**
  * Words that carry no search signal on their own. A phrase built entirely from
  * these is a job-description heading or a soft skill, not something a
@@ -66,28 +68,22 @@ const ELIGIBILITY_PATTERNS = [
 const MAX_WORDS = 4;
 
 /**
- * Nouns a job description bolts onto a real term to form a section heading:
- * "AI Development", "Generative AI Solutions", "AI-powered applications". The
- * heading is not searchable but the term inside it is, so strip the suffix
- * rather than dropping the whole phrase.
+ * Section headings are detected from the posting itself, not from a word list.
  *
- * Deliberately excludes "engineering", "systems", "analysis", and "learning" —
- * "prompt engineering", "distributed systems", "data analysis", and "machine
- * learning" are all terms recruiters really search for.
+ * A heading in a job description is followed by a colon ("AI Development:",
+ * "Testing and Validation:") and the words are not used anywhere else. A real
+ * skill is mentioned in the prose. So: if every occurrence of a keyword in the
+ * posting is a heading, it is a heading.
+ *
+ * This beats guessing from a suffix list, which was tuned to one posting and
+ * would wreck real terms — "Business Development" and "Software Development"
+ * are things recruiters actually search for.
  */
-const TRAILING_ACTIVITY_NOUNS = new Set([
-  "development", "solutions", "solution", "initiatives", "initiative",
-  "activities", "capabilities", "capability", "tools", "applications",
-  "technologies", "efforts", "work", "projects",
-]);
-
-/** Strips heading suffixes: "AI Development" -> "AI". */
-function stripActivitySuffix(keyword: string): string {
-  const words = keyword.trim().split(/\s+/);
-  if (words.length < 2) return keyword;
-  const last = words[words.length - 1].toLowerCase().replace(/[^a-z]/g, "");
-  if (!TRAILING_ACTIVITY_NOUNS.has(last)) return keyword;
-  return words.slice(0, -1).join(" ");
+function isSectionHeadingOf(keyword: string, jobText: string): boolean {
+  if (!jobText) return false;
+  const total = countOccurrences(jobText, keyword);
+  if (total === 0) return false;
+  return countOccurrences(jobText, `${keyword}:`) >= total;
 }
 
 function tokens(phrase: string): string[] {
@@ -120,14 +116,15 @@ export function isNoiseKeyword(keyword: string): boolean {
  * Drops noise and case-insensitive duplicates, preserving the model's ordering
  * (it tends to emit the most important terms first).
  */
-export function sanitizeKeywords(keywords: unknown): string[] {
+export function sanitizeKeywords(keywords: unknown, jobText = ""): string[] {
   if (!Array.isArray(keywords)) return [];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of keywords) {
     if (typeof raw !== "string") continue;
-    const cleaned = stripActivitySuffix(raw.trim().replace(/\s+/g, " "));
+    const cleaned = raw.trim().replace(/\s+/g, " ");
     if (isNoiseKeyword(cleaned)) continue;
+    if (isSectionHeadingOf(cleaned, jobText)) continue;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -145,10 +142,14 @@ export type SanitizableJob = {
  * Sanitizes both keyword lists and removes any nice-to-have that also appears
  * as a hard requirement, so a term is never scored twice.
  */
-export function sanitizeJobKeywords<T extends SanitizableJob>(job: T): T {
-  const required = sanitizeKeywords(job.requiredKeywords);
+export function sanitizeJobKeywords<T extends SanitizableJob>(
+  job: T,
+  /** Raw posting text. Enables heading detection; omit and that check is skipped. */
+  jobText = "",
+): T {
+  const required = sanitizeKeywords(job.requiredKeywords, jobText);
   const requiredKeys = new Set(required.map((k) => k.toLowerCase()));
-  const nice = sanitizeKeywords(job.niceToHaveKeywords).filter(
+  const nice = sanitizeKeywords(job.niceToHaveKeywords, jobText).filter(
     (k) => !requiredKeys.has(k.toLowerCase()),
   );
   return { ...job, requiredKeywords: required, niceToHaveKeywords: nice };

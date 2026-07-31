@@ -72,26 +72,49 @@ test("sentence fragments are rejected on length", () => {
   assert.ok(isNoiseKeyword("ability to translate business needs into technical solutions"));
 });
 
-test("heading suffixes are stripped down to the searchable term", () => {
-  // "AI Development:" and "Generative AI Solutions:" are section labels in the
-  // Volvo posting; the term inside each one is real.
-  assert.deepEqual(
-    sanitizeKeywords(["AI development", "Generative AI Solutions", "AI-powered applications"]),
-    ["AI", "Generative AI", "AI-powered"],
+// Detected from the posting text, so this works on any posting rather than a
+// hand-tuned suffix list.
+test("section headings are identified from the posting itself", () => {
+  const posting = `
+    Data Analysis: Review and analyze large datasets to find patterns.
+    AI Development: Collaborate with engineering teams to train and refine
+    machine learning and Generative AI solutions using Python and PyTorch.
+    Documentation: Maintain clear records of model performance.
+  `;
+  const cleaned = sanitizeKeywords(
+    ["AI Development", "Data Analysis", "Python", "PyTorch", "machine learning", "Generative AI"],
+    posting,
   );
+  // Headings appear only as headings; the real terms appear in the prose.
+  assert.deepEqual(cleaned, ["Python", "PyTorch", "machine learning", "Generative AI"]);
+});
 
-  // Terms that merely end in a similar-looking noun must survive intact.
+test("a term used in prose survives even if it also heads a section", () => {
+  const posting = `
+    Python: You will write Python daily, and our services are built in Python.
+    Kubernetes: Deploy to Kubernetes.
+  `;
   assert.deepEqual(
-    sanitizeKeywords(["prompt engineering", "distributed systems", "data analysis", "machine learning"]),
-    ["prompt engineering", "distributed systems", "data analysis", "machine learning"],
+    sanitizeKeywords(["Python", "Kubernetes"], posting),
+    ["Python", "Kubernetes"],
   );
 });
 
-test("stripping a suffix can collapse into an existing keyword", () => {
+// The suffix-stripping heuristic this replaced was tuned to one posting and
+// would have wrecked these.
+test("real compound terms are never mangled", () => {
+  const posting = "We need Business Development, Software Development, prompt engineering, distributed systems, and data analysis.";
   assert.deepEqual(
-    sanitizeKeywords(["Generative AI", "Generative AI tools"]),
-    ["Generative AI"],
+    sanitizeKeywords(
+      ["Business Development", "Software Development", "prompt engineering", "distributed systems", "data analysis"],
+      posting,
+    ),
+    ["Business Development", "Software Development", "prompt engineering", "distributed systems", "data analysis"],
   );
+});
+
+test("heading detection is skipped when no posting text is supplied", () => {
+  assert.deepEqual(sanitizeKeywords(["AI Development"]), ["AI Development"]);
 });
 
 test("duplicates are collapsed case-insensitively, order preserved", () => {

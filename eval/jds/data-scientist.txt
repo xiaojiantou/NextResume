@@ -1,0 +1,16 @@
+Data Scientist, Marketing Analytics
+
+The Analytics team turns behavioural data into decisions. You will own experimentation end to end.
+
+Day to day
+Experimentation: Design and analyze A/B tests, from power analysis through readout.
+Modeling: Build churn and lifetime value models in Python using scikit-learn and XGBoost.
+Data Analysis: Write SQL against our Snowflake warehouse to answer open-ended questions.
+Communication: Present findings to marketing leadership.
+
+Requirements
+3+ years in an analytics or data science role.
+Fluent in SQL and Python. Familiarity with dbt and Airflow is a plus.
+Experience with causal inference and A/B testing methodology.
+Tableau or Looker for dashboarding.
+Master's degree in Statistics, Economics, or a related quantitative field preferred.
