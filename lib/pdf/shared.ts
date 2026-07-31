@@ -188,7 +188,12 @@ export function resolveResumeContent(
     experience,
     projects,
     education: resume.education ?? [],
-    additionalSections: resume.additionalSections ?? [],
+    // Chunked parsing can leave a section heading whose content landed in a
+    // different chunk. An empty section renders nothing, so it must not
+    // reach the integrity manifest (or any template) as an expectation.
+    additionalSections: (resume.additionalSections ?? []).filter(
+      (section) => section.items.length > 0,
+    ),
   };
 
   return {
