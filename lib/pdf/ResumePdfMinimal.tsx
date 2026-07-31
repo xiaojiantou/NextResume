@@ -67,6 +67,13 @@ function createStyles(
       marginTop: px(8),
     },
     skillWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: px(8) },
+    skillGroupRow: { marginTop: px(4) },
+    skillGroupLabel: {
+      fontSize: fs(8.5),
+      fontFamily: "Helvetica-Bold",
+      color: "#18181b",
+      marginTop: px(4),
+    },
     skillPill: {
       fontSize: fs(8.5),
       color: ACCENT,
@@ -121,12 +128,14 @@ function createStyles(
 export function ResumePdfMinimal({
   resume,
   optimization,
+  includeSummary,
   fontScale = 1,
   spacingScale = 1,
   lineHeightScale = 1,
 }: {
   resume: Resume;
   optimization: Optimization | null;
+  includeSummary?: boolean;
   fontScale?: number;
   spacingScale?: number;
   lineHeightScale?: number;
@@ -136,13 +145,14 @@ export function ResumePdfMinimal({
     summary,
     title,
     skills,
+    skillGroups,
     experience,
     projects,
     education,
     additionalSections,
     language,
   } =
-    resolveResumeContent(resume, optimization);
+    resolveResumeContent(resume, optimization, { includeSummary });
   const labels = getResumeSectionLabels(language);
 
   return (
@@ -173,25 +183,46 @@ export function ResumePdfMinimal({
           </View>
         ) : null}
 
-        {skills.length > 0 ? (
+        {skills.length > 0 || skillGroups.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTag}>{labels.skills}</Text>
-            <View style={styles.skillWrap}>
-              {skills.map((s) => (
-                <Text key={s} style={styles.skillPill}>
-                  {s}
-                </Text>
-              ))}
-            </View>
+            {skillGroups.length > 0 ? (
+              skillGroups.map((group) => (
+                <View key={group.label} style={styles.skillGroupRow}>
+                  <Text style={styles.skillGroupLabel}>{group.label}</Text>
+                  <View style={styles.skillWrap}>
+                    {group.skills.map((s) => (
+                      <Text key={s} style={styles.skillPill}>
+                        {s}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={styles.skillWrap}>
+                {skills.map((s) => (
+                  <Text key={s} style={styles.skillPill}>
+                    {s}
+                  </Text>
+                ))}
+              </View>
+            )}
           </View>
         ) : null}
 
         {experience.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>{labels.experience}</Text>
+            <Text style={styles.sectionTag} minPresenceAhead={48}>
+              {labels.experience}
+            </Text>
             {experience.map((block) => (
               <View key={block.id} style={styles.roleBlock}>
-                <View style={styles.roleHeader} wrap={false}>
+                <View
+                  style={styles.roleHeader}
+                  wrap={false}
+                  minPresenceAhead={36}
+                >
                   <View>
                     <Text style={styles.roleHeading}>{block.heading}</Text>
                     <Text style={styles.roleSub}>{block.subheading}</Text>
@@ -216,10 +247,16 @@ export function ResumePdfMinimal({
 
         {projects.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>{labels.projects}</Text>
+            <Text style={styles.sectionTag} minPresenceAhead={48}>
+              {labels.projects}
+            </Text>
             {projects.map((block) => (
               <View key={block.id} style={styles.roleBlock}>
-                <View style={styles.roleHeader} wrap={false}>
+                <View
+                  style={styles.roleHeader}
+                  wrap={false}
+                  minPresenceAhead={36}
+                >
                   <View>
                     <Text style={styles.roleHeading}>{block.heading}</Text>
                     <Text style={styles.roleSub}>{block.subheading}</Text>
@@ -244,7 +281,9 @@ export function ResumePdfMinimal({
 
         {education.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTag}>{labels.education}</Text>
+            <Text style={styles.sectionTag} minPresenceAhead={48}>
+              {labels.education}
+            </Text>
             {education.map((e, i) => (
               <View key={i} style={styles.eduRow}>
                 <View>
@@ -260,12 +299,16 @@ export function ResumePdfMinimal({
         {additionalSections.map((section) =>
           section.items.length > 0 ? (
             <View key={section.id} style={styles.section}>
-              <Text style={styles.sectionTag}>
+              <Text style={styles.sectionTag} minPresenceAhead={48}>
                 {section.title || labels[section.kind]}
               </Text>
               {section.items.map((item) => (
                 <View key={item.id} style={styles.roleBlock}>
-                  <View style={styles.roleHeader} wrap={false}>
+                  <View
+                    style={styles.roleHeader}
+                    wrap={false}
+                    minPresenceAhead={36}
+                  >
                     <View>
                       <Text style={styles.roleHeading}>{item.heading}</Text>
                       {item.subheading ? (

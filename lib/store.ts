@@ -43,6 +43,11 @@ type State = {
 
   selectedModel: string;
   pdfStyle: PdfStyle;
+  /**
+   * Whether the AI-written summary is part of the deliverable. null = auto:
+   * include it only when the source resume already had a summary section.
+   */
+  includeSummary: boolean | null;
 
   paid: boolean;
   step: Step;
@@ -78,6 +83,7 @@ type Actions = {
 
   setSelectedModel: (m: string) => void;
   setPdfStyle: (s: PdfStyle) => void;
+  setIncludeSummary: (v: boolean) => void;
 
   incrementVoiceCount: () => void;
 
@@ -103,6 +109,7 @@ const initial: State = {
   optimizationModel: null,
   selectedModel: DEFAULT_MODEL_ID,
   pdfStyle: "personalized",
+  includeSummary: null,
   paid: false,
   step: "upload",
   voiceCount: 0,
@@ -140,6 +147,7 @@ export const useFlow = create<State & Actions>()(
           preview: null,
           optimization: null,
           optimizationModel: null,
+          includeSummary: null,
         }),
       setJobDescription: (text) =>
         set({
@@ -210,6 +218,7 @@ export const useFlow = create<State & Actions>()(
         }),
       setSelectedModel: (m) => set({ selectedModel: m }),
       setPdfStyle: (s) => set({ pdfStyle: s }),
+      setIncludeSummary: (v) => set({ includeSummary: v }),
       incrementVoiceCount: () => set((s) => ({ voiceCount: s.voiceCount + 1 })),
       markPaid: () => set({ paid: true }),
       setStep: (s) => set({ step: s }),

@@ -23,6 +23,12 @@ export type ResumeEducation = {
   year: string;
 };
 
+/** A labeled skill category from the source resume, e.g. "Languages: Python, Go". */
+export type ResumeSkillGroup = {
+  label: string;
+  skills: string[];
+};
+
 export type ResumeLanguage = "en";
 
 export type ResumeAdditionalSectionKind =
@@ -77,6 +83,11 @@ export type Resume = {
   location: string;
   summary: string;
   skills: string[];
+  /**
+   * The source resume's skill categories, preserved verbatim. Renderers
+   * prefer this structure; the flat `skills` list feeds keyword analysis.
+   */
+  skillGroups?: ResumeSkillGroup[];
   experience: ResumeRole[];
   projects: ResumeProject[];
   education: ResumeEducation[];

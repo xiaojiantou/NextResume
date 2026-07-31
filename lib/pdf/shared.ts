@@ -9,6 +9,7 @@ import type {
   ResumeAdditionalSection,
   ResumeLanguage,
   ResumeSectionRef,
+  ResumeSkillGroup,
 } from "@/lib/types";
 
 export type ResolvedBlock = {
@@ -32,6 +33,8 @@ export type ResolvedResumeDocument = {
   language: ResumeLanguage;
   summary: string;
   skills: string[];
+  /** Source skill categories; when non-empty, render these instead of `skills`. */
+  skillGroups: ResumeSkillGroup[];
   experience: ResolvedBlock[];
   projects: ResolvedBlock[];
   education: Resume["education"];
@@ -132,11 +135,24 @@ function resolveSectionOrder(
   return [...introduced, ...deduped, ...missing];
 }
 
+export type ResolveResumeOptions = {
+  /**
+   * When false, drop the AI-generated summary. Only affects the optimized
+   * summary — used so users whose source resume had no summary section can
+   * keep it that way.
+   */
+  includeSummary?: boolean;
+};
+
 export function resolveResumeContent(
   resume: Resume,
   optimization: Optimization | null,
+  options?: ResolveResumeOptions,
 ): ResolvedResumeDocument {
-  const summary = optimization?.summary || resume.summary;
+  const summary =
+    options?.includeSummary === false
+      ? resume.summary
+      : optimization?.summary || resume.summary;
   const title = optimization?.title || resume.title;
   const skills =
     optimization?.skills && optimization.skills.length > 0
@@ -185,6 +201,7 @@ export function resolveResumeContent(
   const base = {
     summary,
     skills,
+    skillGroups: resume.skillGroups ?? [],
     experience,
     projects,
     education: resume.education ?? [],

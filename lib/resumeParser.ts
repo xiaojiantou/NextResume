@@ -10,6 +10,7 @@ import type {
   ResumeProject,
   ResumeRole,
   ResumeSectionRef,
+  ResumeSkillGroup,
 } from "./types";
 
 const CORE_REFS = new Set<ResumeSectionRef>([
@@ -75,6 +76,18 @@ function projects(value: unknown): ResumeProject[] {
       bullets: bullets(item.bullets),
     };
   });
+}
+
+function skillGroups(value: unknown): ResumeSkillGroup[] {
+  return array(value)
+    .map((raw) => {
+      const item = record(raw);
+      return {
+        label: text(item.label),
+        skills: array(item.skills).map(text).filter(Boolean),
+      };
+    })
+    .filter((group) => group.label && group.skills.length > 0);
 }
 
 function education(value: unknown): ResumeEducation[] {
@@ -147,6 +160,7 @@ export function normalizeParsedResume(value: unknown): Resume {
     links: array(input.links).map(text).filter(Boolean),
     summary: text(input.summary),
     skills: array(input.skills).map(text).filter(Boolean),
+    skillGroups: skillGroups(input.skillGroups),
     experience: roles(input.experience),
     projects: projects(input.projects),
     education: education(input.education),
@@ -184,6 +198,7 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     links: [],
     summary: "",
     skills: [],
+    skillGroups: [],
     experience: [],
     projects: [],
     education: [],
@@ -228,6 +243,27 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       if (!skillKeys.has(key)) {
         merged.skills.push(skill);
         skillKeys.add(key);
+      }
+    }
+
+    for (const group of part.skillGroups ?? []) {
+      const groupKey = group.label.toLocaleLowerCase();
+      let target = merged.skillGroups!.find(
+        (candidate) => candidate.label.toLocaleLowerCase() === groupKey,
+      );
+      if (!target) {
+        target = { label: group.label, skills: [] };
+        merged.skillGroups!.push(target);
+      }
+      const groupSkillKeys = new Set(
+        target.skills.map((skill) => skill.toLocaleLowerCase()),
+      );
+      for (const skill of group.skills) {
+        const key = skill.toLocaleLowerCase();
+        if (!groupSkillKeys.has(key)) {
+          target.skills.push(skill);
+          groupSkillKeys.add(key);
+        }
       }
     }
 

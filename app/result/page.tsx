@@ -66,6 +66,8 @@ function ResultPageInner() {
     optimizationModel,
     selectedModel,
     pdfStyle,
+    includeSummary,
+    setIncludeSummary,
     resumeStyleSource,
     personalizedStyleProfile,
     personalizedStatus,
@@ -102,6 +104,10 @@ function ResultPageInner() {
   const tokenFromUrl = searchParams?.get("token") || null;
   const hasEmailAccess = !!(orderIdFromUrl && tokenFromUrl);
 
+  // Auto default: keep the AI summary only when the source resume already
+  // had a summary section. Users whose resume had none opt in explicitly.
+  const summaryEnabled = includeSummary ?? Boolean(resume?.summary);
+
   // Re-score the rewritten resume with the same rubric the original was
   // scored with, so the "after" number the user sees is measured, not the
   // pre-purchase projection. Best-effort: a failure just leaves the
@@ -114,11 +120,15 @@ function ResultPageInner() {
   ) => {
     if (!resumeArg || !jobArg) return;
     try {
+      const state = useFlow.getState();
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resume: applyOptimizationToResume(resumeArg, optimized),
+          resume: applyOptimizationToResume(resumeArg, optimized, {
+            includeSummary:
+              state.includeSummary ?? Boolean(resumeArg.summary),
+          }),
           job: jobArg,
           model: modelId,
         }),
@@ -164,6 +174,7 @@ function ResultPageInner() {
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportedPages, setExportedPages] = useState<number | null>(null);
   const [personalizedError, setPersonalizedError] = useState<string | null>(
     null,
   );
@@ -189,6 +200,7 @@ function ResultPageInner() {
           optimization,
           targetTitle: job?.title || "",
           style: pdfStyle,
+          includeSummary: summaryEnabled,
           personalizedStyleProfile:
             pdfStyle === "personalized"
               ? personalizedStyleProfile
@@ -199,6 +211,8 @@ function ResultPageInner() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `PDF export failed (${res.status})`);
       }
+      const pages = Number(res.headers.get("X-Resume-Pages"));
+      setExportedPages(Number.isFinite(pages) && pages > 0 ? pages : null);
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") || "";
       const match = disposition.match(
@@ -574,6 +588,29 @@ function ResultPageInner() {
           </div>
         )}
 
+        {exportedPages !== null && !exportError && (
+          <div
+            className={cn(
+              "mt-3 rounded-lg border px-3 py-2 text-sm",
+              exportedPages > 1
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700",
+            )}
+          >
+            {exportedPages > 1 ? (
+              <>
+                Exported {exportedPages} pages — even at maximum compaction
+                this content doesn't fit one page.{" "}
+                {!resume.summary && optimization?.summary && summaryEnabled
+                  ? "Try turning off the AI summary, or cut the bullets marked low-relevance in the diff below."
+                  : "Try cutting the bullets marked low-relevance in the diff below."}
+              </>
+            ) : (
+              <>Exported as a single page.</>
+            )}
+          </div>
+        )}
+
         {pdfStyle === "personalized" &&
           personalizedStatus === "failed" && (
             <div
@@ -648,6 +685,18 @@ function ResultPageInner() {
                 onChange={() => setEvidenceMode((v) => !v)}
               />
             </label>
+            {!resume.summary && optimization.summary ? (
+              <label
+                className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer"
+                title="Your original resume has no summary section. Include the AI-written one?"
+              >
+                <span>AI summary</span>
+                <Switch
+                  checked={summaryEnabled}
+                  onChange={() => setIncludeSummary(!summaryEnabled)}
+                />
+              </label>
+            ) : null}
             <div className="h-5 w-px bg-ink-100 hidden sm:block" />
             <ModelPicker
               current={selectedModel}
@@ -760,6 +809,7 @@ function ResultPageInner() {
                   hoveredOptimizedId={hoveredOptimizedId}
                   setHoveredOptimizedId={setHoveredOptimizedId}
                   evidenceMode={evidenceMode}
+                  includeSummary={summaryEnabled}
                 />
               </PaneWrapper>
             )}
@@ -834,7 +884,7 @@ function PaneWrapper({
         )}
       >
         <span className="font-medium">{title}</span>
-        <span className="text-ink-400">Letter · 1 page</span>
+        <span className="text-ink-400">US Letter</span>
       </div>
       {children}
     </div>

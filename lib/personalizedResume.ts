@@ -213,11 +213,34 @@ function sectionMarkup(
     body = contentLeaf("p", "summary", content.summary, "summary-text");
   } else if (ref === "skills") {
     label = labels.skills;
-    body = `<div class="skills">${content.skills
-      .map((skill, index) =>
-        contentLeaf("span", `skill:${index}`, skill, "skill"),
-      )
-      .join("")}</div>`;
+    // Grouped and flat markup must mirror createContentManifest exactly —
+    // the integrity check requires every manifest id to render once.
+    body = content.skillGroups.length
+      ? content.skillGroups
+          .map(
+            (group, groupIndex) =>
+              `<div class="skill-group">${contentLeaf(
+                "span",
+                `skillgroup:${groupIndex}:label`,
+                group.label,
+                "skill-group-label",
+              )}${group.skills
+                .map((skill, skillIndex) =>
+                  contentLeaf(
+                    "span",
+                    `skillgroup:${groupIndex}:skill:${skillIndex}`,
+                    skill,
+                    "skill",
+                  ),
+                )
+                .join("")}</div>`,
+          )
+          .join("")
+      : `<div class="skills">${content.skills
+          .map((skill, index) =>
+            contentLeaf("span", `skill:${index}`, skill, "skill"),
+          )
+          .join("")}</div>`;
   } else if (ref === "experience") {
     label = labels.experience;
     body = renderBlocks(content.experience, "role", profile);
@@ -443,6 +466,10 @@ export function buildPersonalizedHtml({
   .sidebar > .photo { display: block; margin: 0 auto ${10 * fit.spacingScale}pt; }
   .resume-section { margin-top: ${profile.spacing.sectionPt * fit.spacingScale}pt; }
   .resume-section h2 {
+    /* Never leave a section heading orphaned at a page bottom while its
+       entries jump to the next page. */
+    break-after: avoid;
+    page-break-after: avoid;
     margin: 0 0 ${Math.max(3, 5 * fit.spacingScale)}pt;
     padding: ${profile.sectionHeading.filled ? `${3 * fit.spacingScale}pt ${6 * fit.spacingScale}pt` : `0 0 ${profile.sectionHeading.divider ? 2.5 * fit.spacingScale : 0}pt`};
     color: ${profile.sectionHeading.filled ? profile.colors.background : profile.colors.accent};
@@ -465,6 +492,11 @@ export function buildPersonalizedHtml({
   .skills { display: flex; flex-wrap: wrap; gap: ${3 * fit.spacingScale}pt ${6 * fit.spacingScale}pt; }
   .skill { display: inline-block; }
   .sidebar .skill { padding: 2pt 5pt; border: .5pt solid currentColor; border-radius: 2pt; }
+  .skill-group { margin-top: ${2 * fit.spacingScale}pt; }
+  .skill-group:first-child { margin-top: 0; }
+  .skill-group-label { font-weight: 700; }
+  .skill-group .skill:not(:last-child)::after { content: ", "; }
+  .skill-group .skill-group-label::after { content: ": "; }
   .entry {
     margin-top: ${profile.spacing.entryPt * fit.spacingScale}pt;
     break-inside: avoid;
@@ -539,9 +571,24 @@ function createContentManifest(
     items.push({ id: "photo", value: "" });
   }
   if (content.summary) items.push({ id: "summary", value: content.summary });
-  content.skills.forEach((skill, index) =>
-    items.push({ id: `skill:${index}`, value: skill }),
-  );
+  if (content.skillGroups.length > 0) {
+    content.skillGroups.forEach((group, groupIndex) => {
+      items.push({
+        id: `skillgroup:${groupIndex}:label`,
+        value: group.label,
+      });
+      group.skills.forEach((skill, skillIndex) =>
+        items.push({
+          id: `skillgroup:${groupIndex}:skill:${skillIndex}`,
+          value: skill,
+        }),
+      );
+    });
+  } else {
+    content.skills.forEach((skill, index) =>
+      items.push({ id: `skill:${index}`, value: skill }),
+    );
+  }
   const addBlocks = (blocks: ResolvedBlock[], owner: "role" | "project") => {
     for (const block of blocks) {
       const prefix = `${owner}:${block.id}`;
@@ -692,10 +739,12 @@ export async function renderPersonalizedPdf({
   styleProfile,
   resume,
   optimization,
+  includeSummary,
 }: {
   styleProfile: ResumeStyleProfile;
   resume: Resume;
   optimization: Optimization | null;
+  includeSummary?: boolean;
 }): Promise<Buffer> {
   const source: ResumeStyleSource = {
     screenshots: [],
@@ -703,7 +752,9 @@ export async function renderPersonalizedPdf({
     pageCount: 1,
   };
   const profile = sanitizeResumeStyleProfile(styleProfile, source);
-  const content = resolveResumeContent(resume, optimization);
+  const content = resolveResumeContent(resume, optimization, {
+    includeSummary,
+  });
   const manifest = createContentManifest(content, profile);
   const browser = await launchBrowser();
   try {

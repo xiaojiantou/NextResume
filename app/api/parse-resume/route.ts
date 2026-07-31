@@ -25,7 +25,13 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
   "location": string,
   "links": string[],          // profile links from the header (LinkedIn, GitHub, portfolio, website) in short display form, e.g. "linkedin.com/in/jane" or "LinkedIn" if the URL is not visible; [] if none
   "summary": string,          // verbatim from resume; "" if absent
-  "skills": string[],         // flat list
+  "skills": string[],         // flat deduplicated list of every individual skill
+  "skillGroups": [
+    // The source resume's skill categories, verbatim. E.g. a line
+    // "Languages: Python, Go, Java" becomes { "label": "Languages", "skills": ["Python", "Go", "Java"] }.
+    // [] if the source lists skills without category labels.
+    { "label": string, "skills": string[] }
+  ],
   "experience": [
     {
       "id": string,           // stable ID like "r1", "r2"...
@@ -95,7 +101,7 @@ Rules:
 - Put awards, certifications, publications, languages, volunteering, and every other non-core section in additionalSections. Never discard an unfamiliar section.
 - sectionOrder must include every non-empty section in its original reading order.
 - If a field is missing, use "" (or [] for arrays).
-- Skills should be a flat deduplicated list.`;
+- Skills: "skills" is always the flat deduplicated list of individual skills (never include category labels as items). When the source groups skills under category labels, ALSO output "skillGroups" preserving those labels and their skills verbatim.`;
 
 export async function POST(req: NextRequest) {
   const rl = rateLimitGuard(req, LIMITS.parseResume);

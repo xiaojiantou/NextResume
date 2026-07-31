@@ -72,6 +72,13 @@ function createStyles(
       marginRight: px(4),
     },
     skillWrap: { flexDirection: "row", flexWrap: "wrap" },
+    skillGroupLabel: {
+      fontSize: fs(8),
+      fontFamily: "Helvetica-Bold",
+      color: "#e0e7ff",
+      marginTop: px(5),
+      marginBottom: px(3),
+    },
     eduBlock: { marginBottom: px(8) },
     eduSchool: {
       fontSize: fs(9),
@@ -124,12 +131,14 @@ function createStyles(
 export function ResumePdfSidebar({
   resume,
   optimization,
+  includeSummary,
   fontScale = 1,
   spacingScale = 1,
   lineHeightScale = 1,
 }: {
   resume: Resume;
   optimization: Optimization | null;
+  includeSummary?: boolean;
   fontScale?: number;
   spacingScale?: number;
   lineHeightScale?: number;
@@ -139,13 +148,14 @@ export function ResumePdfSidebar({
     summary,
     title,
     skills,
+    skillGroups,
     experience,
     projects,
     education,
     additionalSections,
     language,
   } =
-    resolveResumeContent(resume, optimization);
+    resolveResumeContent(resume, optimization, { includeSummary });
   const labels = getResumeSectionLabels(language);
 
   return (
@@ -173,16 +183,31 @@ export function ResumePdfSidebar({
             </>
           ) : null}
 
-          {skills.length > 0 ? (
+          {skills.length > 0 || skillGroups.length > 0 ? (
             <>
               <Text style={styles.sideLabel}>{labels.skills}</Text>
-              <View style={styles.skillWrap}>
-                {skills.map((s) => (
-                  <Text key={s} style={styles.skillPill}>
-                    {s}
-                  </Text>
-                ))}
-              </View>
+              {skillGroups.length > 0 ? (
+                skillGroups.map((group) => (
+                  <View key={group.label}>
+                    <Text style={styles.skillGroupLabel}>{group.label}</Text>
+                    <View style={styles.skillWrap}>
+                      {group.skills.map((s) => (
+                        <Text key={s} style={styles.skillPill}>
+                          {s}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.skillWrap}>
+                  {skills.map((s) => (
+                    <Text key={s} style={styles.skillPill}>
+                      {s}
+                    </Text>
+                  ))}
+                </View>
+              )}
             </>
           ) : null}
 
@@ -213,10 +238,12 @@ export function ResumePdfSidebar({
 
           {experience.length > 0 ? (
             <>
-              <Text style={styles.mainSectionLabel}>{labels.experience}</Text>
+              <Text style={styles.mainSectionLabel} minPresenceAhead={48}>
+                {labels.experience}
+              </Text>
               {experience.map((block) => (
                 <View key={block.id} style={styles.roleBlock}>
-                  <View wrap={false}>
+                  <View wrap={false} minPresenceAhead={36}>
                     <Text style={styles.roleHeading}>{block.heading}</Text>
                     <Text style={styles.roleSub}>
                       {[block.subheading, block.location].filter(Boolean).join(" · ")}
@@ -238,10 +265,12 @@ export function ResumePdfSidebar({
 
           {projects.length > 0 ? (
             <>
-              <Text style={styles.mainSectionLabel}>{labels.projects}</Text>
+              <Text style={styles.mainSectionLabel} minPresenceAhead={48}>
+                {labels.projects}
+              </Text>
               {projects.map((block) => (
                 <View key={block.id} style={styles.roleBlock}>
-                  <View wrap={false}>
+                  <View wrap={false} minPresenceAhead={36}>
                     <Text style={styles.roleHeading}>{block.heading}</Text>
                     <Text style={styles.roleSub}>
                       {[block.subheading, block.location].filter(Boolean).join(" · ")}
@@ -264,12 +293,12 @@ export function ResumePdfSidebar({
           {additionalSections.map((section) =>
             section.items.length > 0 ? (
               <View key={section.id}>
-                <Text style={styles.mainSectionLabel}>
+                <Text style={styles.mainSectionLabel} minPresenceAhead={48}>
                   {section.title || labels[section.kind]}
                 </Text>
                 {section.items.map((item) => (
                   <View key={item.id} style={styles.roleBlock}>
-                    <View wrap={false}>
+                    <View wrap={false} minPresenceAhead={36}>
                       <Text style={styles.roleHeading}>{item.heading}</Text>
                       {item.subheading || item.location ? (
                         <Text style={styles.roleSub}>

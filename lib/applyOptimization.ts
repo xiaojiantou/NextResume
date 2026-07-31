@@ -9,11 +9,15 @@ import type { Optimization, Resume } from "./types";
 export function applyOptimizationToResume(
   resume: Resume,
   optimization: Optimization,
+  options?: { includeSummary?: boolean },
 ): Resume {
   return {
     ...resume,
     title: optimization.title || resume.title,
-    summary: optimization.summary || resume.summary,
+    summary:
+      options?.includeSummary === false
+        ? resume.summary
+        : optimization.summary || resume.summary,
     skills:
       optimization.skills && optimization.skills.length > 0
         ? optimization.skills
