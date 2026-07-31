@@ -72,6 +72,28 @@ test("sentence fragments are rejected on length", () => {
   assert.ok(isNoiseKeyword("ability to translate business needs into technical solutions"));
 });
 
+test("heading suffixes are stripped down to the searchable term", () => {
+  // "AI Development:" and "Generative AI Solutions:" are section labels in the
+  // Volvo posting; the term inside each one is real.
+  assert.deepEqual(
+    sanitizeKeywords(["AI development", "Generative AI Solutions", "AI-powered applications"]),
+    ["AI", "Generative AI", "AI-powered"],
+  );
+
+  // Terms that merely end in a similar-looking noun must survive intact.
+  assert.deepEqual(
+    sanitizeKeywords(["prompt engineering", "distributed systems", "data analysis", "machine learning"]),
+    ["prompt engineering", "distributed systems", "data analysis", "machine learning"],
+  );
+});
+
+test("stripping a suffix can collapse into an existing keyword", () => {
+  assert.deepEqual(
+    sanitizeKeywords(["Generative AI", "Generative AI tools"]),
+    ["Generative AI"],
+  );
+});
+
 test("duplicates are collapsed case-insensitively, order preserved", () => {
   assert.deepEqual(
     sanitizeKeywords(["Python", "python", " PYTHON ", "Docker"]),

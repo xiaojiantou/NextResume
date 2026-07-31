@@ -65,6 +65,31 @@ const ELIGIBILITY_PATTERNS = [
 /** Longer than this and it is a sentence fragment, not a keyword. */
 const MAX_WORDS = 4;
 
+/**
+ * Nouns a job description bolts onto a real term to form a section heading:
+ * "AI Development", "Generative AI Solutions", "AI-powered applications". The
+ * heading is not searchable but the term inside it is, so strip the suffix
+ * rather than dropping the whole phrase.
+ *
+ * Deliberately excludes "engineering", "systems", "analysis", and "learning" —
+ * "prompt engineering", "distributed systems", "data analysis", and "machine
+ * learning" are all terms recruiters really search for.
+ */
+const TRAILING_ACTIVITY_NOUNS = new Set([
+  "development", "solutions", "solution", "initiatives", "initiative",
+  "activities", "capabilities", "capability", "tools", "applications",
+  "technologies", "efforts", "work", "projects",
+]);
+
+/** Strips heading suffixes: "AI Development" -> "AI". */
+function stripActivitySuffix(keyword: string): string {
+  const words = keyword.trim().split(/\s+/);
+  if (words.length < 2) return keyword;
+  const last = words[words.length - 1].toLowerCase().replace(/[^a-z]/g, "");
+  if (!TRAILING_ACTIVITY_NOUNS.has(last)) return keyword;
+  return words.slice(0, -1).join(" ");
+}
+
 function tokens(phrase: string): string[] {
   return phrase
     .toLowerCase()
@@ -101,7 +126,7 @@ export function sanitizeKeywords(keywords: unknown): string[] {
   const out: string[] = [];
   for (const raw of keywords) {
     if (typeof raw !== "string") continue;
-    const cleaned = raw.trim().replace(/\s+/g, " ");
+    const cleaned = stripActivitySuffix(raw.trim().replace(/\s+/g, " "));
     if (isNoiseKeyword(cleaned)) continue;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) continue;
