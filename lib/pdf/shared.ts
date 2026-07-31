@@ -9,6 +9,7 @@ import type {
   ResumeAdditionalSection,
   ResumeLanguage,
   ResumeSectionRef,
+  ResumeSkillGroup,
 } from "@/lib/types";
 
 export type ResolvedBlock = {
@@ -27,10 +28,13 @@ export type ResolvedResumeDocument = {
   email: string;
   phone: string;
   location: string;
+  links: string[];
   photo?: string;
   language: ResumeLanguage;
   summary: string;
   skills: string[];
+  /** Source skill categories; when non-empty, render these instead of `skills`. */
+  skillGroups: ResumeSkillGroup[];
   experience: ResolvedBlock[];
   projects: ResolvedBlock[];
   education: Resume["education"];
@@ -131,11 +135,24 @@ function resolveSectionOrder(
   return [...introduced, ...deduped, ...missing];
 }
 
+export type ResolveResumeOptions = {
+  /**
+   * When false, drop the AI-generated summary. Only affects the optimized
+   * summary — used so users whose source resume had no summary section can
+   * keep it that way.
+   */
+  includeSummary?: boolean;
+};
+
 export function resolveResumeContent(
   resume: Resume,
   optimization: Optimization | null,
+  options?: ResolveResumeOptions,
 ): ResolvedResumeDocument {
-  const summary = optimization?.summary || resume.summary;
+  const summary =
+    options?.includeSummary === false
+      ? resume.summary
+      : optimization?.summary || resume.summary;
   const title = optimization?.title || resume.title;
   const skills =
     optimization?.skills && optimization.skills.length > 0
@@ -147,10 +164,15 @@ export function resolveResumeContent(
     const bullets = opt?.bullets.length
       ? opt.bullets.map((b) => b.text)
       : role.bullets.map((b) => b.text);
+    // The source tech-stack line carries real keyword weight — keep it on the
+    // title line the way the original resume printed it.
+    const subheading = role.techStack
+      ? `${role.title} | ${role.techStack}`
+      : role.title;
     return {
       id: role.id,
       heading: role.company,
-      subheading: role.title,
+      subheading,
       location: role.location,
       start: role.start,
       end: role.end,
@@ -179,10 +201,16 @@ export function resolveResumeContent(
   const base = {
     summary,
     skills,
+    skillGroups: resume.skillGroups ?? [],
     experience,
     projects,
     education: resume.education ?? [],
-    additionalSections: resume.additionalSections ?? [],
+    // Chunked parsing can leave a section heading whose content landed in a
+    // different chunk. An empty section renders nothing, so it must not
+    // reach the integrity manifest (or any template) as an expectation.
+    additionalSections: (resume.additionalSections ?? []).filter(
+      (section) => section.items.length > 0,
+    ),
   };
 
   return {
@@ -191,6 +219,7 @@ export function resolveResumeContent(
     email: resume.email,
     phone: resume.phone,
     location: resume.location,
+    links: resume.links ?? [],
     photo: resume.photo,
     language: detectResumeLanguage(resume),
     ...base,

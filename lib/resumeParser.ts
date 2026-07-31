@@ -10,6 +10,7 @@ import type {
   ResumeProject,
   ResumeRole,
   ResumeSectionRef,
+  ResumeSkillGroup,
 } from "./types";
 
 const CORE_REFS = new Set<ResumeSectionRef>([
@@ -56,6 +57,7 @@ function roles(value: unknown): ResumeRole[] {
       location: text(item.location),
       start: text(item.start),
       end: text(item.end),
+      techStack: text(item.techStack),
       bullets: bullets(item.bullets),
     };
   });
@@ -74,6 +76,18 @@ function projects(value: unknown): ResumeProject[] {
       bullets: bullets(item.bullets),
     };
   });
+}
+
+function skillGroups(value: unknown): ResumeSkillGroup[] {
+  return array(value)
+    .map((raw) => {
+      const item = record(raw);
+      return {
+        label: text(item.label),
+        skills: array(item.skills).map(text).filter(Boolean),
+      };
+    })
+    .filter((group) => group.label && group.skills.length > 0);
 }
 
 function education(value: unknown): ResumeEducation[] {
@@ -143,8 +157,10 @@ export function normalizeParsedResume(value: unknown): Resume {
     email: text(input.email),
     phone: text(input.phone),
     location: text(input.location),
+    links: array(input.links).map(text).filter(Boolean),
     summary: text(input.summary),
     skills: array(input.skills).map(text).filter(Boolean),
+    skillGroups: skillGroups(input.skillGroups),
     experience: roles(input.experience),
     projects: projects(input.projects),
     education: education(input.education),
@@ -179,8 +195,10 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     email: "",
     phone: "",
     location: "",
+    links: [],
     summary: "",
     skills: [],
+    skillGroups: [],
     experience: [],
     projects: [],
     education: [],
@@ -206,6 +224,17 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     }
     if (!merged.language && part.language) merged.language = part.language;
 
+    const linkKeys = new Set(
+      merged.links!.map((link) => link.toLocaleLowerCase()),
+    );
+    for (const link of part.links ?? []) {
+      const key = link.toLocaleLowerCase();
+      if (!linkKeys.has(key)) {
+        merged.links!.push(link);
+        linkKeys.add(key);
+      }
+    }
+
     const skillKeys = new Set(
       merged.skills.map((skill) => skill.toLocaleLowerCase()),
     );
@@ -214,6 +243,27 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       if (!skillKeys.has(key)) {
         merged.skills.push(skill);
         skillKeys.add(key);
+      }
+    }
+
+    for (const group of part.skillGroups ?? []) {
+      const groupKey = group.label.toLocaleLowerCase();
+      let target = merged.skillGroups!.find(
+        (candidate) => candidate.label.toLocaleLowerCase() === groupKey,
+      );
+      if (!target) {
+        target = { label: group.label, skills: [] };
+        merged.skillGroups!.push(target);
+      }
+      const groupSkillKeys = new Set(
+        target.skills.map((skill) => skill.toLocaleLowerCase()),
+      );
+      for (const skill of group.skills) {
+        const key = skill.toLocaleLowerCase();
+        if (!groupSkillKeys.has(key)) {
+          target.skills.push(skill);
+          groupSkillKeys.add(key);
+        }
       }
     }
 
@@ -233,8 +283,14 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
             candidate.end,
           ]) === key,
       );
-      if (existing && key) mergeBullets(existing.bullets, role.bullets);
-      else merged.experience.push({ ...role, bullets: [...role.bullets] });
+      if (existing && key) {
+        mergeBullets(existing.bullets, role.bullets);
+        if (!existing.techStack && role.techStack) {
+          existing.techStack = role.techStack;
+        }
+      } else {
+        merged.experience.push({ ...role, bullets: [...role.bullets] });
+      }
     }
 
     for (const project of part.projects ?? []) {
@@ -331,6 +387,35 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       }
     }
   }
+
+  // Cross-section dedupe: chunked parsing sometimes emits the same employment
+  // roles both as experience entries and inside an additional section (e.g. a
+  // source resume with a separate "Professional Experience" heading). Bullets
+  // are parsed verbatim, so an additional item whose bullets all already
+  // exist in experience/projects is a duplicate — experience wins.
+  const deliveredBullets = new Set<string>();
+  for (const role of merged.experience) {
+    for (const bullet of role.bullets) {
+      deliveredBullets.add(normalizedKey([bullet.text]));
+    }
+  }
+  for (const project of merged.projects) {
+    for (const bullet of project.bullets) {
+      deliveredBullets.add(normalizedKey([bullet.text]));
+    }
+  }
+  merged.additionalSections = merged.additionalSections!
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) =>
+          item.bullets.length === 0 ||
+          !item.bullets.every((bullet) =>
+            deliveredBullets.has(normalizedKey([bullet.text])),
+          ),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
   // Stable IDs are assigned after merging so optimization/evidence references
   // do not depend on how the source text happened to be chunked.

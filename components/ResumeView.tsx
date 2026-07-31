@@ -19,6 +19,7 @@ export function ResumeView({
   setHoveredOptimizedId,
   hoveredOptimizedId,
   evidenceMode,
+  includeSummary = true,
 }: {
   mode: Mode;
   resume: Resume;
@@ -27,11 +28,16 @@ export function ResumeView({
   setHoveredOptimizedId: (id: string | null) => void;
   hoveredOptimizedId: string | null;
   evidenceMode: boolean;
+  includeSummary?: boolean;
 }) {
   const evidenceActive = evidenceMode && hoveredEvidence.length > 0;
 
   const summary =
-    mode === "optimized" ? optimization?.summary ?? resume.summary : resume.summary;
+    mode === "optimized"
+      ? includeSummary
+        ? optimization?.summary ?? resume.summary
+        : resume.summary
+      : resume.summary;
   const title =
     mode === "optimized" ? optimization?.title ?? resume.title : resume.title;
   const skills =
@@ -54,7 +60,7 @@ export function ResumeView({
             </h1>
             <div className="text-sm text-ink-600 mt-0.5">{title}</div>
             <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-              {[resume.email, resume.phone, resume.location]
+              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
                 .filter(Boolean)
                 .join(" · ")}
             </div>
@@ -67,7 +73,7 @@ export function ResumeView({
           </h1>
           <div className="text-sm text-ink-600 mt-0.5">{title}</div>
           <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-            {[resume.email, resume.phone, resume.location]
+            {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
               .filter(Boolean)
               .join(" · ")}
           </div>
@@ -89,12 +95,25 @@ export function ResumeView({
         </section>
       )}
 
-      {skills.length > 0 && (
+      {(skills.length > 0 || (resume.skillGroups?.length ?? 0) > 0) && (
         <section className="mt-5">
           <SectionLabel>{labels.skills}</SectionLabel>
-          <p className="mt-1.5 font-sans text-[11.5px] text-ink-700">
-            {skills.join(" · ")}
-          </p>
+          {resume.skillGroups?.length ? (
+            <div className="mt-1.5 font-sans text-[11.5px] text-ink-700 space-y-0.5">
+              {resume.skillGroups.map((group) => (
+                <p key={group.label}>
+                  <span className="font-semibold text-ink-900">
+                    {group.label}:
+                  </span>{" "}
+                  {group.skills.join(", ")}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1.5 font-sans text-[11.5px] text-ink-700">
+              {skills.join(" · ")}
+            </p>
+          )}
         </section>
       )}
 
@@ -111,7 +130,11 @@ export function ResumeView({
                     <span className="font-semibold text-ink-900">
                       {role.company}
                     </span>
-                    <span className="text-ink-500"> · {role.title}</span>
+                    <span className="text-ink-500">
+                      {" "}
+                      · {role.title}
+                      {role.techStack ? ` | ${role.techStack}` : ""}
+                    </span>
                   </div>
                   <div className="text-[11px] text-ink-500">
                     {role.start} — {role.end}

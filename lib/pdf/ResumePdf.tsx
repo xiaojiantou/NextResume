@@ -103,6 +103,10 @@ function createStyles(
       fontFamily: "Helvetica",
       lineHeight: lh(1.6, 1.22),
     },
+    skillGroupLabel: {
+      fontFamily: "Helvetica-Bold",
+      color: "#18181b",
+    },
     roleHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -157,12 +161,14 @@ function createStyles(
 export function ResumePdf({
   resume,
   optimization,
+  includeSummary,
   fontScale = 1,
   spacingScale = 1,
   lineHeightScale = 1,
 }: {
   resume: Resume;
   optimization: Optimization | null;
+  includeSummary?: boolean;
   fontScale?: number;
   spacingScale?: number;
   lineHeightScale?: number;
@@ -171,12 +177,13 @@ export function ResumePdf({
     summary,
     title,
     skills,
+    skillGroups,
     experience,
     projects,
     education,
     additionalSections,
     language,
-  } = resolveResumeContent(resume, optimization);
+  } = resolveResumeContent(resume, optimization, { includeSummary });
   const styles = createStyles(fontScale, spacingScale, lineHeightScale);
   const labels = getResumeSectionLabels(language);
 
@@ -195,7 +202,7 @@ export function ResumePdf({
               <Text style={styles.name}>{resume.name}</Text>
               {title ? <Text style={styles.title}>{title}</Text> : null}
               <Text style={styles.contact}>
-                {[resume.email, resume.phone, resume.location]
+                {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
                   .filter(Boolean)
                   .join("  ·  ")}
               </Text>
@@ -206,7 +213,7 @@ export function ResumePdf({
             <Text style={styles.name}>{resume.name}</Text>
             {title ? <Text style={styles.title}>{title}</Text> : null}
             <Text style={styles.contact}>
-              {[resume.email, resume.phone, resume.location]
+              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
                 .filter(Boolean)
                 .join("  ·  ")}
             </Text>
@@ -220,20 +227,37 @@ export function ResumePdf({
           </View>
         ) : null}
 
-        {skills.length > 0 ? (
+        {skills.length > 0 || skillGroups.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{labels.skills}</Text>
-            <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+            {skillGroups.length > 0 ? (
+              skillGroups.map((group) => (
+                <Text key={group.label} style={styles.skills}>
+                  <Text style={styles.skillGroupLabel}>
+                    {group.label}:{" "}
+                  </Text>
+                  {group.skills.join(", ")}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+            )}
           </View>
         ) : null}
 
         {experience.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{labels.experience}</Text>
+            <Text style={styles.sectionLabel} minPresenceAhead={48}>
+              {labels.experience}
+            </Text>
             {experience.map((role) => {
               return (
                 <View key={role.id}>
-                  <View style={styles.roleHeader} wrap={false}>
+                  <View
+                    style={styles.roleHeader}
+                    wrap={false}
+                    minPresenceAhead={36}
+                  >
                     <Text>
                       <Text style={styles.roleTitle}>{role.heading}</Text>
                       {role.subheading ? (
@@ -264,11 +288,17 @@ export function ResumePdf({
 
         {projects.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{labels.projects}</Text>
+            <Text style={styles.sectionLabel} minPresenceAhead={48}>
+              {labels.projects}
+            </Text>
             {projects.map((project) => {
               return (
                 <View key={project.id}>
-                  <View style={styles.roleHeader} wrap={false}>
+                  <View
+                    style={styles.roleHeader}
+                    wrap={false}
+                    minPresenceAhead={36}
+                  >
                     <Text>
                       <Text style={styles.roleTitle}>{project.heading}</Text>
                       {project.subheading ? (
@@ -299,7 +329,9 @@ export function ResumePdf({
 
         {education.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{labels.education}</Text>
+            <Text style={styles.sectionLabel} minPresenceAhead={48}>
+              {labels.education}
+            </Text>
             {education.map((e, i) => (
               <View key={i} style={styles.eduRow}>
                 <Text>
@@ -320,12 +352,16 @@ export function ResumePdf({
         {additionalSections.map((section) =>
           section.items.length > 0 ? (
             <View key={section.id} style={styles.section}>
-              <Text style={styles.sectionLabel}>
+              <Text style={styles.sectionLabel} minPresenceAhead={48}>
                 {section.title || labels[section.kind]}
               </Text>
               {section.items.map((item) => (
                 <View key={item.id}>
-                  <View style={styles.roleHeader} wrap={false}>
+                  <View
+                    style={styles.roleHeader}
+                    wrap={false}
+                    minPresenceAhead={36}
+                  >
                     <Text>
                       <Text style={styles.roleTitle}>{item.heading}</Text>
                       {item.subheading ? (

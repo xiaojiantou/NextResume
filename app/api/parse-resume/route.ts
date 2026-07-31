@@ -23,8 +23,15 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
   "email": string,
   "phone": string,
   "location": string,
+  "links": string[],          // profile links from the header (LinkedIn, GitHub, portfolio, website) in short display form, e.g. "linkedin.com/in/jane" or "LinkedIn" if the URL is not visible; [] if none
   "summary": string,          // verbatim from resume; "" if absent
-  "skills": string[],         // flat list
+  "skills": string[],         // flat deduplicated list of every individual skill
+  "skillGroups": [
+    // The source resume's skill categories, verbatim. E.g. a line
+    // "Languages: Python, Go, Java" becomes { "label": "Languages", "skills": ["Python", "Go", "Java"] }.
+    // [] if the source lists skills without category labels.
+    { "label": string, "skills": string[] }
+  ],
   "experience": [
     {
       "id": string,           // stable ID like "r1", "r2"...
@@ -33,6 +40,7 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
       "location": string,
       "start": string,        // e.g. "Jul 2022"
       "end": string,          // "Present" if current
+      "techStack": string,    // verbatim tech/tools line attached to this role (often after a "|"), e.g. "FastAPI, PostgreSQL, Redis"; "" if none
       "bullets": [
         { "id": string, "text": string }  // ID like "b1","b2"... unique across whole resume
       ]
@@ -85,13 +93,17 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
 
 Rules:
 - Preserve ALL source content VERBATIM. Do not rewrite, summarize, or omit.
+- Role/company lines often carry a tech-stack suffix (e.g. "Acme Corp | FastAPI, Redis, GCS"). Put that suffix in the role's "techStack" verbatim — never discard it, and never mix it into company/title.
+- Header links (LinkedIn, GitHub, portfolio) go in "links" — these matter to recruiters; never drop them.
 - This product uses English resume labels. Set language to "en".
 - Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across all roles AND projects.
 - A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".
+- EVERY section containing employment roles — "Experience", "Professional Experience", "Work Experience", "Employment History", internships — goes into "experience". Never put employment roles in additionalSections, and never output the same role in two places.
 - Put awards, certifications, publications, languages, volunteering, and every other non-core section in additionalSections. Never discard an unfamiliar section.
+- "degree" must be verbatim including GPA and honors, e.g. "M.S in Computer Science; GPA: 4.0/4.0".
 - sectionOrder must include every non-empty section in its original reading order.
 - If a field is missing, use "" (or [] for arrays).
-- Skills should be a flat deduplicated list.`;
+- Skills: "skills" is always the flat deduplicated list of individual skills (never include category labels as items). When the source groups skills under category labels, ALSO output "skillGroups" preserving those labels and their skills verbatim.`;
 
 export async function POST(req: NextRequest) {
   const rl = rateLimitGuard(req, LIMITS.parseResume);

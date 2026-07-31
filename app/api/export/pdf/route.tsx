@@ -52,6 +52,7 @@ async function renderFittedToOnePage(
   Template: typeof ResumePdf,
   resume: Resume,
   optimization: Optimization | null,
+  includeSummary: boolean | undefined,
 ): Promise<Buffer> {
   let lastBuffer: Buffer | null = null;
   for (const fit of FIT_PRESETS) {
@@ -59,6 +60,7 @@ async function renderFittedToOnePage(
       <Template
         resume={resume}
         optimization={optimization}
+        includeSummary={includeSummary}
         {...fit}
       />,
     );
@@ -80,6 +82,7 @@ export async function POST(req: NextRequest) {
       targetTitle,
       style,
       personalizedStyleProfile,
+      includeSummary,
     } =
       (await req.json()) as {
         resume: Resume;
@@ -87,6 +90,7 @@ export async function POST(req: NextRequest) {
         targetTitle?: string;
         style?: PdfStyle;
         personalizedStyleProfile?: ResumeStyleProfile | null;
+        includeSummary?: boolean;
       };
 
     if (!resume?.name || !Array.isArray(resume.experience)) {
@@ -111,6 +115,7 @@ export async function POST(req: NextRequest) {
         styleProfile: personalizedStyleProfile,
         resume,
         optimization,
+        includeSummary,
       });
     } else {
       const Template =
@@ -119,7 +124,12 @@ export async function POST(req: NextRequest) {
           : style === "minimal"
             ? ResumePdfMinimal
             : ResumePdf;
-      buffer = await renderFittedToOnePage(Template, resume, optimization);
+      buffer = await renderFittedToOnePage(
+        Template,
+        resume,
+        optimization,
+        includeSummary,
+      );
     }
     const pageCount = (await PDFDocument.load(buffer)).getPageCount();
 

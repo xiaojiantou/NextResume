@@ -6,6 +6,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { DEFAULT_MODEL_ID } from "./models";
 import type {
+  AtsCategory,
   AtsReport,
   JobAnalysis,
   Optimization,
@@ -42,6 +43,11 @@ type State = {
 
   selectedModel: string;
   pdfStyle: PdfStyle;
+  /**
+   * Whether the AI-written summary is part of the deliverable. null = auto:
+   * include it only when the source resume already had a summary section.
+   */
+  includeSummary: boolean | null;
 
   paid: boolean;
   step: Step;
@@ -62,6 +68,10 @@ type Actions = {
   setJob: (j: JobAnalysis) => void;
 
   setReport: (r: AtsReport) => void;
+  setMeasuredScore: (
+    measuredAfter: number,
+    measuredCategories: AtsCategory[],
+  ) => void;
   setPreview: (p: PreviewBullet) => void;
   setOptimization: (o: Optimization, model: string) => void;
   clearOptimization: () => void;
@@ -73,6 +83,7 @@ type Actions = {
 
   setSelectedModel: (m: string) => void;
   setPdfStyle: (s: PdfStyle) => void;
+  setIncludeSummary: (v: boolean) => void;
 
   incrementVoiceCount: () => void;
 
@@ -98,6 +109,7 @@ const initial: State = {
   optimizationModel: null,
   selectedModel: DEFAULT_MODEL_ID,
   pdfStyle: "personalized",
+  includeSummary: null,
   paid: false,
   step: "upload",
   voiceCount: 0,
@@ -135,6 +147,7 @@ export const useFlow = create<State & Actions>()(
           preview: null,
           optimization: null,
           optimizationModel: null,
+          includeSummary: null,
         }),
       setJobDescription: (text) =>
         set({
@@ -148,9 +161,27 @@ export const useFlow = create<State & Actions>()(
       setJobUrl: (url) => set({ jobUrl: url }),
       setJob: (j) => set({ job: j }),
       setReport: (r) => set({ report: r }),
+      setMeasuredScore: (measuredAfter, measuredCategories) =>
+        set((s) =>
+          s.report
+            ? { report: { ...s.report, measuredAfter, measuredCategories } }
+            : {},
+        ),
       setPreview: (p) => set({ preview: p }),
       setOptimization: (o, model) =>
-        set({ optimization: o, optimizationModel: model, voiceCount: 0 }),
+        set((s) => ({
+          optimization: o,
+          optimizationModel: model,
+          voiceCount: 0,
+          // A new rewrite invalidates any score measured on the previous one.
+          report: s.report
+            ? {
+                ...s.report,
+                measuredAfter: undefined,
+                measuredCategories: undefined,
+              }
+            : s.report,
+        })),
       clearOptimization: () =>
         set({ optimization: null, optimizationModel: null }),
       replaceOptimizedBullet: (roleId, bulletId, next) =>
@@ -187,6 +218,7 @@ export const useFlow = create<State & Actions>()(
         }),
       setSelectedModel: (m) => set({ selectedModel: m }),
       setPdfStyle: (s) => set({ pdfStyle: s }),
+      setIncludeSummary: (v) => set({ includeSummary: v }),
       incrementVoiceCount: () => set((s) => ({ voiceCount: s.voiceCount + 1 })),
       markPaid: () => set({ paid: true }),
       setStep: (s) => set({ step: s }),

@@ -9,6 +9,7 @@ import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
 import { findModel } from "@/lib/models";
+import { applyOptimizationToResume } from "@/lib/applyOptimization";
 import { VOICE_QUOTA, useFlow } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import {
@@ -65,6 +66,8 @@ function ResultPageInner() {
     optimizationModel,
     selectedModel,
     pdfStyle,
+    includeSummary,
+    setIncludeSummary,
     resumeStyleSource,
     personalizedStyleProfile,
     personalizedStatus,
@@ -72,6 +75,7 @@ function ResultPageInner() {
     setResume,
     setJob,
     setReport,
+    setMeasuredScore,
     setOptimization,
     setSelectedModel,
     setPdfStyle,
@@ -100,6 +104,47 @@ function ResultPageInner() {
   const tokenFromUrl = searchParams?.get("token") || null;
   const hasEmailAccess = !!(orderIdFromUrl && tokenFromUrl);
 
+  // Auto default: keep the AI summary only when the source resume already
+  // had a summary section. Users whose resume had none opt in explicitly.
+  const summaryEnabled = includeSummary ?? Boolean(resume?.summary);
+
+  // Re-score the rewritten resume with the same rubric the original was
+  // scored with, so the "after" number the user sees is measured, not the
+  // pre-purchase projection. Best-effort: a failure just leaves the
+  // projected score in place.
+  const rescoreOptimized = async (
+    optimized: NonNullable<typeof optimization>,
+    modelId: string,
+    resumeArg = resume,
+    jobArg = job,
+  ) => {
+    if (!resumeArg || !jobArg) return;
+    try {
+      const state = useFlow.getState();
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume: applyOptimizationToResume(resumeArg, optimized, {
+            includeSummary:
+              state.includeSummary ?? Boolean(resumeArg.summary),
+          }),
+          job: jobArg,
+          model: modelId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.report?.overallBefore === "number") {
+        setMeasuredScore(
+          data.report.overallBefore,
+          data.report.categoriesBefore ?? [],
+        );
+      }
+    } catch {
+      /* non-fatal — projected score stays */
+    }
+  };
+
   const runOptimize = async (modelId: string) => {
     if (!resume || !job || !report) return;
     setGenerating(true);
@@ -113,6 +158,7 @@ function ResultPageInner() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Optimization failed");
       setOptimization(data.optimization, modelId);
+      void rescoreOptimized(data.optimization, modelId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Optimization failed.");
     } finally {
@@ -128,6 +174,7 @@ function ResultPageInner() {
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportedPages, setExportedPages] = useState<number | null>(null);
   const [personalizedError, setPersonalizedError] = useState<string | null>(
     null,
   );
@@ -153,6 +200,7 @@ function ResultPageInner() {
           optimization,
           targetTitle: job?.title || "",
           style: pdfStyle,
+          includeSummary: summaryEnabled,
           personalizedStyleProfile:
             pdfStyle === "personalized"
               ? personalizedStyleProfile
@@ -163,6 +211,8 @@ function ResultPageInner() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `PDF export failed (${res.status})`);
       }
+      const pages = Number(res.headers.get("X-Resume-Pages"));
+      setExportedPages(Number.isFinite(pages) && pages > 0 ? pages : null);
       const blob = await res.blob();
       const disposition = res.headers.get("Content-Disposition") || "";
       const match = disposition.match(
@@ -269,23 +319,33 @@ function ResultPageInner() {
           if (snap?.personalizedStyleProfile) {
             setPersonalizedStyleProfile(snap.personalizedStyleProfile);
           }
+          // Snapshots predate the report, so email sessions need a stub for
+          // the page to render; the real "after" number comes from re-scoring.
+          const stubReport = {
+            overallBefore: 0,
+            overallAfter: 0,
+            categoriesBefore: [],
+            categoriesAfter: [],
+            missingKeywords: [],
+            presentKeywords: [],
+          };
           if (snap?.optimization && snap?.optimizationModel) {
             setOptimization(snap.optimization, snap.optimizationModel);
+            if (!useFlow.getState().report) setReport(stubReport);
+            if (snap?.resume && snap?.job) {
+              void rescoreOptimized(
+                snap.optimization,
+                snap.optimizationModel,
+                snap.resume,
+                snap.job,
+              );
+            }
           }
           if (order?.status === "paid") markPaid();
           setHydrating(false);
 
           // If snapshot has no optimization yet, run it now.
           if (!snap?.optimization && snap?.resume && snap?.job) {
-            // Need a report — build a minimal one so /api/optimize accepts input.
-            const stubReport = {
-              overallBefore: 0,
-              overallAfter: 0,
-              categoriesBefore: [],
-              categoriesAfter: [],
-              missingKeywords: [],
-              presentKeywords: [],
-            };
             setReport(stubReport);
             await runOptimize(selectedModel);
           }
@@ -462,8 +522,28 @@ function ResultPageInner() {
                 {job.title}
                 {job.company ? ` @ ${job.company}` : ""}
               </span>
-              . ATS score improved from {report.overallBefore} →{" "}
-              {report.overallAfter}.
+              .{" "}
+              {typeof report.measuredAfter === "number" ? (
+                <>
+                  ATS score:{" "}
+                  {report.overallBefore > 0 && (
+                    <>{report.overallBefore} → </>
+                  )}
+                  <span className="font-medium text-ink-900">
+                    {report.measuredAfter}
+                  </span>{" "}
+                  <span className="text-emerald-700">
+                    (measured on the rewrite)
+                  </span>
+                </>
+              ) : report.overallBefore > 0 ? (
+                <>
+                  ATS score: {report.overallBefore} → {report.overallAfter}{" "}
+                  <span className="text-ink-400">(projected, measuring…)</span>
+                </>
+              ) : (
+                <>Measuring ATS score…</>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -505,6 +585,29 @@ function ResultPageInner() {
             className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
           >
             {exportError}
+          </div>
+        )}
+
+        {exportedPages !== null && !exportError && (
+          <div
+            className={cn(
+              "mt-3 rounded-lg border px-3 py-2 text-sm",
+              exportedPages > 1
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700",
+            )}
+          >
+            {exportedPages > 1 ? (
+              <>
+                Exported {exportedPages} pages — even at maximum compaction
+                this content doesn't fit one page.{" "}
+                {!resume.summary && optimization?.summary && summaryEnabled
+                  ? "Try turning off the AI summary, or cut the bullets marked low-relevance in the diff below."
+                  : "Try cutting the bullets marked low-relevance in the diff below."}
+              </>
+            ) : (
+              <>Exported as a single page.</>
+            )}
           </div>
         )}
 
@@ -582,6 +685,18 @@ function ResultPageInner() {
                 onChange={() => setEvidenceMode((v) => !v)}
               />
             </label>
+            {!resume.summary && optimization.summary ? (
+              <label
+                className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer"
+                title="Your original resume has no summary section. Include the AI-written one?"
+              >
+                <span>AI summary</span>
+                <Switch
+                  checked={summaryEnabled}
+                  onChange={() => setIncludeSummary(!summaryEnabled)}
+                />
+              </label>
+            ) : null}
             <div className="h-5 w-px bg-ink-100 hidden sm:block" />
             <ModelPicker
               current={selectedModel}
@@ -694,6 +809,7 @@ function ResultPageInner() {
                   hoveredOptimizedId={hoveredOptimizedId}
                   setHoveredOptimizedId={setHoveredOptimizedId}
                   evidenceMode={evidenceMode}
+                  includeSummary={summaryEnabled}
                 />
               </PaneWrapper>
             )}
@@ -768,7 +884,7 @@ function PaneWrapper({
         )}
       >
         <span className="font-medium">{title}</span>
-        <span className="text-ink-400">Letter · 1 page</span>
+        <span className="text-ink-400">US Letter</span>
       </div>
       {children}
     </div>
@@ -827,7 +943,7 @@ function Switch({
     >
       <span
         className={cn(
-          "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-soft transition-transform",
+          "absolute left-0 top-0.5 w-4 h-4 rounded-full bg-white shadow-soft transition-transform",
           checked ? "translate-x-[18px]" : "translate-x-0.5",
         )}
       />
@@ -1017,6 +1133,25 @@ function BulletDiff() {
                               🎙 voice-attested
                             </span>
                           )}
+                          {(b.suggestion === "cut" ||
+                            b.suggestion === "trim") && (
+                            <span
+                              className={cn(
+                                "text-[11px] px-2 py-0.5 rounded-md border font-medium",
+                                b.suggestion === "cut"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200",
+                              )}
+                              title={b.rationale || undefined}
+                            >
+                              {b.suggestion === "cut"
+                                ? "Low relevance — consider cutting"
+                                : "Consider trimming"}
+                              {typeof b.relevance === "number"
+                                ? ` · ${b.relevance}/100`
+                                : ""}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1085,6 +1220,25 @@ function BulletDiff() {
                           {b.evidence.includes("voice-transcript") && (
                             <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
                               🎙 voice-attested
+                            </span>
+                          )}
+                          {(b.suggestion === "cut" ||
+                            b.suggestion === "trim") && (
+                            <span
+                              className={cn(
+                                "text-[11px] px-2 py-0.5 rounded-md border font-medium",
+                                b.suggestion === "cut"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200",
+                              )}
+                              title={b.rationale || undefined}
+                            >
+                              {b.suggestion === "cut"
+                                ? "Low relevance — consider cutting"
+                                : "Consider trimming"}
+                              {typeof b.relevance === "number"
+                                ? ` · ${b.relevance}/100`
+                                : ""}
                             </span>
                           )}
                         </div>
