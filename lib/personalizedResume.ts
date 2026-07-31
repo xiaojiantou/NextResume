@@ -495,8 +495,12 @@ export function buildPersonalizedHtml({
   .skill-group { margin-top: ${2 * fit.spacingScale}pt; }
   .skill-group:first-child { margin-top: 0; }
   .skill-group-label { font-weight: 700; }
-  .skill-group .skill:not(:last-child)::after { content: ", "; }
-  .skill-group .skill-group-label::after { content: ": "; }
+  /* Trailing spaces in pseudo-content collapse at inline-block boundaries,
+     so the visual gap after "," and ":" comes from margin instead. */
+  .skill-group .skill:not(:last-child)::after { content: ","; }
+  .skill-group .skill:not(:last-child) { margin-right: ${3 * fit.spacingScale}pt; }
+  .skill-group .skill-group-label::after { content: ":"; }
+  .skill-group .skill-group-label { margin-right: ${3 * fit.spacingScale}pt; }
   .entry {
     margin-top: ${profile.spacing.entryPt * fit.spacingScale}pt;
     break-inside: avoid;

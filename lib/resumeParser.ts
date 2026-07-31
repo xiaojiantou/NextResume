@@ -388,6 +388,35 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     }
   }
 
+  // Cross-section dedupe: chunked parsing sometimes emits the same employment
+  // roles both as experience entries and inside an additional section (e.g. a
+  // source resume with a separate "Professional Experience" heading). Bullets
+  // are parsed verbatim, so an additional item whose bullets all already
+  // exist in experience/projects is a duplicate — experience wins.
+  const deliveredBullets = new Set<string>();
+  for (const role of merged.experience) {
+    for (const bullet of role.bullets) {
+      deliveredBullets.add(normalizedKey([bullet.text]));
+    }
+  }
+  for (const project of merged.projects) {
+    for (const bullet of project.bullets) {
+      deliveredBullets.add(normalizedKey([bullet.text]));
+    }
+  }
+  merged.additionalSections = merged.additionalSections!
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) =>
+          item.bullets.length === 0 ||
+          !item.bullets.every((bullet) =>
+            deliveredBullets.has(normalizedKey([bullet.text])),
+          ),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+
   // Stable IDs are assigned after merging so optimization/evidence references
   // do not depend on how the source text happened to be chunked.
   let bulletIndex = 1;

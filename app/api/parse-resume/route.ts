@@ -98,7 +98,9 @@ Rules:
 - This product uses English resume labels. Set language to "en".
 - Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across all roles AND projects.
 - A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".
+- EVERY section containing employment roles — "Experience", "Professional Experience", "Work Experience", "Employment History", internships — goes into "experience". Never put employment roles in additionalSections, and never output the same role in two places.
 - Put awards, certifications, publications, languages, volunteering, and every other non-core section in additionalSections. Never discard an unfamiliar section.
+- "degree" must be verbatim including GPA and honors, e.g. "M.S in Computer Science; GPA: 4.0/4.0".
 - sectionOrder must include every non-empty section in its original reading order.
 - If a field is missing, use "" (or [] for arrays).
 - Skills: "skills" is always the flat deduplicated list of individual skills (never include category labels as items). When the source groups skills under category labels, ALSO output "skillGroups" preserving those labels and their skills verbatim.`;
