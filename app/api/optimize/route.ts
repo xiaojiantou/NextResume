@@ -2,6 +2,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
+import { MAX_KEYWORD_REPEATS, detectStuffing, resumeToText } from "@/lib/atsScore";
+import { applyOptimizationToResume } from "@/lib/applyOptimization";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type {
   AtsReport,
@@ -89,7 +91,11 @@ Start with a strong ownership verb (Led, Built, Shipped, Owned, Drove, Designed,
 const SLOP_PATTERN =
   /[,;–—]\s*(showcasing|demonstrating|highlighting|proving|underscoring|exemplifying|evidencing)\b|\b(showcasing|demonstrating)\s+(expertise|proficiency|strong|robust|deep)\b/i;
 
-function validateOptimization(resume: Resume, opt: Optimization): string[] {
+function validateOptimization(
+  resume: Resume,
+  opt: Optimization,
+  job?: JobAnalysis,
+): string[] {
   const problems: string[] = [];
 
   const checkSection = (
@@ -150,13 +156,32 @@ function validateOptimization(resume: Resume, opt: Optimization): string[] {
     );
   }
 
+  // Chasing matchedKeywords pushes the model to repeat the same term in every
+  // bullet. Scoring counts each keyword once, so that buys nothing, and
+  // Workday's 2026 filter flags the density as manipulation. Catch it here so
+  // the user never receives a resume that trips it.
+  if (job) {
+    const materialized = applyOptimizationToResume(resume, opt);
+    const { worst } = detectStuffing(resumeToText(materialized), job);
+    for (const { keyword, count } of worst) {
+      problems.push(
+        `keyword "${keyword}": repeated ${count} times — state it once or twice where it is load-bearing and rewrite the rest without it (max ${MAX_KEYWORD_REPEATS})`,
+      );
+    }
+  }
+
   return problems;
 }
 
 // Structural problems (dropped bullets/roles/skills) make the result unusable;
-// style problems (slop tails) are worth one retry but not a hard failure.
+// style problems (slop tails, keyword stuffing) are worth one retry but not a
+// hard failure.
 function isStructural(problem: string): boolean {
-  return !problem.startsWith("bullet ") && !problem.startsWith("summary:");
+  return (
+    !problem.startsWith("bullet ") &&
+    !problem.startsWith("summary:") &&
+    !problem.startsWith("keyword ")
+  );
 }
 
 function pickWeakestBullet(resume: Resume): {
@@ -236,7 +261,7 @@ export async function POST(req: NextRequest) {
       maxTokens: 8000,
     });
 
-    let problems = validateOptimization(resume, opt);
+    let problems = validateOptimization(resume, opt, job);
     if (problems.length > 0) {
       console.warn("optimize validation failed, retrying once", problems);
       opt = await jsonCompletion<Optimization>({
@@ -245,7 +270,7 @@ export async function POST(req: NextRequest) {
         model,
         maxTokens: 8000,
       });
-      problems = validateOptimization(resume, opt);
+      problems = validateOptimization(resume, opt, job);
     }
 
     const structural = problems.filter(isStructural);

@@ -208,6 +208,11 @@ export type AtsReport = {
   /** Real score measured by re-running analysis on the optimized resume. */
   measuredAfter?: number;
   measuredCategories?: AtsCategory[];
+  /**
+   * Keywords repeated often enough to read as manipulation. Surfaced to the
+   * user because Workday's 2026 filter flags unnatural density.
+   */
+  stuffingWarnings?: string[];
 };
 
 export type BulletSuggestion = "keep" | "trim" | "cut";
