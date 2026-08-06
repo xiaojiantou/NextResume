@@ -1,6 +1,11 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import type {
+  ResumeLayoutBlueprint,
+  ResumeLayout,
+  ResumePageLayout,
+  ResumeLayoutRegion,
+  ResumeLayoutSection,
   ResumePageSpec,
   ResumeStyleProfile,
   ResumeStyleSource,
@@ -19,7 +24,25 @@ const SIDEBAR_SECTIONS = new Set<
 >(["contact", "summary", "skills", "education", "additional"]);
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
-export const RESUME_STYLE_PROFILE_VERSION = 2;
+export const RESUME_STYLE_PROFILE_VERSION = 5;
+const LAYOUT_SECTIONS = new Set<ResumeLayoutSection>([
+  "contact",
+  "photo",
+  "summary",
+  "skills",
+  "experience",
+  "projects",
+  "education",
+  "additional",
+]);
+const BODY_LAYOUT_SECTIONS: ResumeLayoutSection[] = [
+  "summary",
+  "skills",
+  "experience",
+  "projects",
+  "education",
+  "additional",
+];
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
@@ -59,12 +82,279 @@ function oneOf<T extends string>(
     : fallback;
 }
 
+function regionId(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+  return normalized || fallback;
+}
+
+function legacyBlueprint({
+  layout,
+  sidebarWidthPercent,
+  sidebarSections,
+}: {
+  layout: "single-column" | "sidebar-left" | "sidebar-right";
+  sidebarWidthPercent: number;
+  sidebarSections: ResumeStyleProfile["sidebarSections"];
+}): ResumeLayoutBlueprint {
+  if (layout === "single-column") {
+    return {
+      headerPlacement: "full",
+      primaryRegionId: "main",
+      gutterPt: 0,
+      regions: [
+        {
+          id: "main",
+          role: "main",
+          widthPercent: 100,
+          surface: "page",
+          sections: [...BODY_LAYOUT_SECTIONS],
+        },
+      ],
+    };
+  }
+  const railSections: ResumeLayoutSection[] = sidebarSections.filter(
+    (section) => LAYOUT_SECTIONS.has(section),
+  );
+  const mainSections = BODY_LAYOUT_SECTIONS.filter(
+    (section) => !railSections.includes(section),
+  );
+  const rail: ResumeLayoutRegion = {
+    id: "sidebar",
+    role: "sidebar",
+    widthPercent: sidebarWidthPercent,
+    surface: "sidebar",
+    sections: railSections,
+  };
+  const main: ResumeLayoutRegion = {
+    id: "main",
+    role: "main",
+    widthPercent: 100 - sidebarWidthPercent,
+    surface: "page",
+    sections: mainSections,
+  };
+  return {
+    headerPlacement: "primary",
+    primaryRegionId: "main",
+    gutterPt: 0,
+    regions: layout === "sidebar-left" ? [rail, main] : [main, rail],
+  };
+}
+
+function normalizeRegionWidths(
+  regions: ResumeLayoutRegion[],
+  primaryRegionId: string,
+): ResumeLayoutRegion[] {
+  if (regions.length === 1) return [{ ...regions[0], widthPercent: 100 }];
+  const weights = regions.map((region) => Math.max(12, region.widthPercent));
+  let percentages = weights.map(
+    (weight) => (weight / weights.reduce((sum, item) => sum + item, 0)) * 100,
+  );
+  const primaryIndex = regions.findIndex(
+    (region) => region.id === primaryRegionId,
+  );
+  if (primaryIndex >= 0 && percentages[primaryIndex] < 42) {
+    const remaining = 58;
+    const otherTotal = percentages.reduce(
+      (sum, value, index) => sum + (index === primaryIndex ? 0 : value),
+      0,
+    );
+    percentages = percentages.map((value, index) =>
+      index === primaryIndex
+        ? 42
+        : otherTotal
+          ? (value / otherTotal) * remaining
+          : remaining / (regions.length - 1),
+    );
+  }
+  const rounded = percentages.map((value) => Math.round(value * 10) / 10);
+  rounded[rounded.length - 1] =
+    Math.round((100 - rounded.slice(0, -1).reduce((sum, value) => sum + value, 0)) * 10) / 10;
+  return regions.map((region, index) => ({
+    ...region,
+    widthPercent: rounded[index],
+  }));
+}
+
+function sanitizeLayoutBlueprint(
+  value: unknown,
+  fallback: ResumeLayoutBlueprint,
+): ResumeLayoutBlueprint {
+  const input = object(value);
+  const sourceRegions = Array.isArray(input.regions)
+    ? input.regions.slice(0, 3)
+    : [];
+  const usedIds = new Set<string>();
+  const claimedSections = new Set<ResumeLayoutSection>();
+  const regions: ResumeLayoutRegion[] = sourceRegions.flatMap(
+    (rawRegion, index) => {
+      const region = object(rawRegion);
+      let id = regionId(region.id, `region-${index + 1}`);
+      if (usedIds.has(id)) id = `${id}-${index + 1}`;
+      usedIds.add(id);
+      const sections: ResumeLayoutSection[] = [];
+      if (Array.isArray(region.sections)) {
+        for (const section of region.sections) {
+          if (
+            typeof section === "string" &&
+            LAYOUT_SECTIONS.has(section as ResumeLayoutSection) &&
+            !claimedSections.has(section as ResumeLayoutSection)
+          ) {
+            const safe = section as ResumeLayoutSection;
+            sections.push(safe);
+            claimedSections.add(safe);
+          }
+        }
+      }
+      return [
+        {
+          id,
+          role: oneOf(
+            region.role,
+            ["main", "sidebar", "supporting"] as const,
+            index === 0 ? "main" : "supporting",
+          ),
+          widthPercent: numberIn(region.widthPercent, index === 0 ? 64 : 36, 12, 88),
+          surface: oneOf(
+            region.surface,
+            ["page", "sidebar", "subtle"] as const,
+            index === 0 ? "page" : "subtle",
+          ),
+          sections,
+        } satisfies ResumeLayoutRegion,
+      ];
+    },
+  );
+  if (!regions.length) return fallback;
+
+  let primary = regions.find((region) => region.role === "main");
+  const requestedPrimary = regionId(input.primaryRegionId, "");
+  if (requestedPrimary) {
+    primary = regions.find((region) => region.id === requestedPrimary) ?? primary;
+  }
+  primary ??= regions[0];
+  const primaryRegionId = primary.id;
+  const normalizedRoles = regions.map((region) => ({
+    ...region,
+    role:
+      region.id === primaryRegionId
+        ? ("main" as const)
+        : region.role === "main"
+          ? ("supporting" as const)
+          : region.role,
+    surface:
+      region.id === primaryRegionId && region.surface === "sidebar"
+        ? ("page" as const)
+        : region.surface,
+  }));
+  const unclaimed = BODY_LAYOUT_SECTIONS.filter(
+    (section) => !claimedSections.has(section),
+  );
+  const withFallbackSections = normalizedRoles.map((region) =>
+    region.id === primaryRegionId
+      ? { ...region, sections: [...region.sections, ...unclaimed] }
+      : region,
+  );
+  return {
+    headerPlacement: oneOf(
+      input.headerPlacement,
+      ["full", "primary", "none"] as const,
+      fallback.headerPlacement,
+    ),
+    primaryRegionId,
+    gutterPt: numberIn(input.gutterPt, fallback.gutterPt, 0, 24),
+    regions: normalizeRegionWidths(withFallbackSections, primaryRegionId),
+  };
+}
+
+function layoutForBlueprint(
+  blueprint: ResumeLayoutBlueprint,
+): ResumeLayout {
+  const primaryIndex = blueprint.regions.findIndex(
+    (region) => region.id === blueprint.primaryRegionId,
+  );
+  return blueprint.regions.length === 1
+    ? "single-column"
+    : blueprint.regions.length === 2 && primaryIndex === 0
+      ? "sidebar-right"
+      : blueprint.regions.length === 2 && primaryIndex === 1
+        ? "sidebar-left"
+        : "regional";
+}
+
+function sanitizePageLayouts({
+  value,
+  pageCount,
+  fallback,
+}: {
+  value: unknown;
+  pageCount: number;
+  fallback: ResumeLayoutBlueprint;
+}): ResumePageLayout[] {
+  const source = Array.isArray(value) ? value.slice(0, 10) : [];
+  const parsed = source.map((raw, index) => {
+    const page = object(raw);
+    const layoutBlueprint = sanitizeLayoutBlueprint(
+      page.layoutBlueprint ?? page,
+      fallback,
+    );
+    return {
+      page: index + 1,
+      layout: layoutForBlueprint(layoutBlueprint),
+      layoutBlueprint,
+    } satisfies ResumePageLayout;
+  });
+  const targetCount = Math.max(1, Math.min(10, pageCount || parsed.length || 1));
+  if (!parsed.length) {
+    parsed.push({
+      page: 1,
+      layout: layoutForBlueprint(fallback),
+      layoutBlueprint: fallback,
+    });
+  }
+  while (parsed.length < targetCount) {
+    const previous = parsed[parsed.length - 1];
+    parsed.push({
+      ...previous,
+      page: parsed.length + 1,
+      layoutBlueprint: {
+        ...previous.layoutBlueprint,
+        regions: previous.layoutBlueprint.regions.map((region) => ({
+          ...region,
+          sections: [...region.sections],
+        })),
+      },
+    });
+  }
+  return parsed;
+}
+
 export function defaultResumeStyleProfile(
   page: ResumePageSpec,
 ): ResumeStyleProfile {
   return {
     version: RESUME_STYLE_PROFILE_VERSION,
+    pageLayouts: [
+      {
+        page: 1,
+        layout: "single-column",
+        layoutBlueprint: legacyBlueprint({
+          layout: "single-column",
+          sidebarWidthPercent: 32,
+          sidebarSections: [],
+        }),
+      },
+    ],
     layout: "single-column",
+    layoutBlueprint: legacyBlueprint({
+      layout: "single-column",
+      sidebarWidthPercent: 32,
+      sidebarSections: [],
+    }),
     sidebarWidthPercent: 32,
     sidebarSections: [],
     fontFamily: "Arial",
@@ -103,6 +393,91 @@ export function defaultResumeStyleProfile(
     bulletMarker: "disc",
     page,
   };
+}
+
+/**
+ * When the visual model is temporarily unavailable, keep geometry inferred
+ * from the uploaded document instead of silently degrading to one column.
+ */
+export function approximateResumeStyleProfile(
+  source: ResumeStyleSource,
+): ResumeStyleProfile {
+  const fallback = defaultResumeStyleProfile(source.page);
+  const visualPages = source.visualLayoutGuide?.pages ?? [];
+  const visuallyDetectedSidebar = visualPages.find((page) =>
+    ["sidebar-left", "sidebar-right", "mixed"].includes(page.layout),
+  )?.layout;
+  const documentLayout: "single-column" | "sidebar-left" | "sidebar-right" =
+    visuallyDetectedSidebar === "sidebar-right"
+      ? "sidebar-right"
+      : visuallyDetectedSidebar || source.sourceLayout?.maxColumns === 2
+        ? "sidebar-left"
+        : "single-column";
+  const pageLayouts = Array.from(
+    { length: Math.max(1, Math.min(10, source.pageCount)) },
+    (_, index) => {
+      const visual = visualPages.find(
+        (page) => page.page === index + 1,
+      )?.layout;
+      const pageLayout: typeof documentLayout =
+        visual === "sidebar-right"
+          ? "sidebar-right"
+          : visual === "sidebar-left" || visual === "mixed"
+            ? "sidebar-left"
+            : documentLayout;
+      let layoutBlueprint: ResumeLayoutBlueprint;
+      if (pageLayout === "single-column") {
+        layoutBlueprint = {
+          headerPlacement: index === 0 ? "full" : "none",
+          primaryRegionId: "main",
+          gutterPt: 0,
+          regions: [
+            {
+              id: "main",
+              role: "main",
+              widthPercent: 100,
+              surface: "page",
+              sections: [...BODY_LAYOUT_SECTIONS],
+            },
+          ],
+        };
+      } else {
+        const rail: ResumeLayoutRegion = {
+          id: "sidebar",
+          role: "sidebar",
+          widthPercent: 28,
+          surface: "subtle",
+          sections: ["skills", "additional"],
+        };
+        const main: ResumeLayoutRegion = {
+          id: "main",
+          role: "main",
+          widthPercent: 72,
+          surface: "page",
+          sections: ["summary", "experience", "projects", "education"],
+        };
+        layoutBlueprint = {
+          headerPlacement: index === 0 ? "full" : "none",
+          primaryRegionId: "main",
+          gutterPt: 0,
+          regions:
+            pageLayout === "sidebar-right" ? [main, rail] : [rail, main],
+        };
+      }
+      return { page: index + 1, layoutBlueprint };
+    },
+  );
+
+  return sanitizeResumeStyleProfile(
+    {
+      ...fallback,
+      approximate: true,
+      pageLayouts,
+      layoutBlueprint: pageLayouts[0].layoutBlueprint,
+      header: { ...fallback.header, alignment: "left" },
+    },
+    source,
+  );
 }
 
 /**
@@ -155,7 +530,7 @@ export function sanitizeResumeStyleProfile(
   const requestedLayout = oneOf(
     input.layout,
     ["single-column", "sidebar-left", "sidebar-right"] as const,
-    fallback.layout,
+    "single-column",
   );
   // A portrait/contact rail confined to the page header is not a document
   // sidebar. Require at least one body section to occupy that column before
@@ -163,22 +538,55 @@ export function sanitizeResumeStyleProfile(
   const hasSidebarBodySection = sidebarSections.some(
     (section) => section !== "contact",
   );
-  const layout =
+  const legacyLayout =
     requestedLayout !== "single-column" && !hasSidebarBodySection
       ? "single-column"
       : requestedLayout;
+  const requestedSidebarWidth = numberIn(
+    input.sidebarWidthPercent,
+    fallback.sidebarWidthPercent,
+    20,
+    44,
+  );
+  const legacy = legacyBlueprint({
+    layout: legacyLayout,
+    sidebarWidthPercent: requestedSidebarWidth,
+    sidebarSections:
+      legacyLayout === "single-column" ? [] : [...new Set(sidebarSections)],
+  });
+  const layoutBlueprint = sanitizeLayoutBlueprint(
+    input.layoutBlueprint,
+    legacy,
+  );
+  const pageLayouts = sanitizePageLayouts({
+    value: input.pageLayouts,
+    pageCount: source.pageCount,
+    fallback: layoutBlueprint,
+  });
+  const firstPageBlueprint = pageLayouts[0]?.layoutBlueprint ?? layoutBlueprint;
+  const layout = layoutForBlueprint(firstPageBlueprint);
+  const derivedRail = firstPageBlueprint.regions.find(
+    (region) => region.id !== firstPageBlueprint.primaryRegionId,
+  );
+  const derivedSidebarSections = (derivedRail?.sections ?? []).filter(
+    (
+      section,
+    ): section is ResumeStyleProfile["sidebarSections"][number] =>
+      SIDEBAR_SECTIONS.has(
+        section as ResumeStyleProfile["sidebarSections"][number],
+      ),
+  );
 
   return {
     version: RESUME_STYLE_PROFILE_VERSION,
+    pageLayouts,
+    approximate: bool(input.approximate, false),
     layout,
-    sidebarWidthPercent: numberIn(
-      input.sidebarWidthPercent,
-      fallback.sidebarWidthPercent,
-      24,
-      40,
-    ),
+    layoutBlueprint: firstPageBlueprint,
+    sidebarWidthPercent:
+      derivedRail?.widthPercent ?? fallback.sidebarWidthPercent,
     sidebarSections:
-      layout === "single-column" ? [] : [...new Set(sidebarSections)],
+      layout === "single-column" ? [] : [...new Set(derivedSidebarSections)],
     fontFamily,
     headingFontFamily,
     colors: {

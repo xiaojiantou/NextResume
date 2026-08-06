@@ -42,12 +42,25 @@ export function ResumeView({
     mode === "optimized" ? optimization?.title ?? resume.title : resume.title;
   const skills =
     mode === "optimized" ? optimization?.skills ?? resume.skills : resume.skills;
-  const labels = getResumeSectionLabels(detectResumeLanguage(resume));
+  const labels = getResumeSectionLabels(
+    detectResumeLanguage(resume),
+    mode === "optimized"
+      ? optimization?.sectionLabels ?? resume.sectionLabels
+      : resume.sectionLabels,
+  );
+  const activeSectionOrder =
+    mode === "optimized"
+      ? optimization?.sectionOrder ?? resume.sectionOrder
+      : resume.sectionOrder;
+  const sectionRank = (ref: string, fallback: number) => {
+    const index = activeSectionOrder?.indexOf(ref as never) ?? -1;
+    return index >= 0 ? index + 1 : fallback;
+  };
 
   return (
-    <div className="paper p-10 text-[12.5px] leading-relaxed text-ink-800 font-serif">
+    <div className="paper flex flex-col p-10 text-[12.5px] leading-relaxed text-ink-800 font-serif">
       {resume.photo ? (
-        <header className="flex items-center gap-4 border-b border-ink-100 pb-4">
+        <header className="order-0 flex items-center gap-4 border-b border-ink-100 pb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={resume.photo}
@@ -67,7 +80,7 @@ export function ResumeView({
           </div>
         </header>
       ) : (
-        <header className="text-center border-b border-ink-100 pb-4">
+        <header className="order-0 text-center border-b border-ink-100 pb-4">
           <h1 className="text-2xl font-semibold tracking-tight text-ink-900">
             {resume.name}
           </h1>
@@ -81,7 +94,7 @@ export function ResumeView({
       )}
 
       {summary && (
-        <section className="mt-5">
+        <section className="mt-5" style={{ order: sectionRank("summary", 10) }}>
           <SectionLabel>{labels.summary}</SectionLabel>
           <p
             className={cn(
@@ -96,7 +109,7 @@ export function ResumeView({
       )}
 
       {(skills.length > 0 || (resume.skillGroups?.length ?? 0) > 0) && (
-        <section className="mt-5">
+        <section className="mt-5" style={{ order: sectionRank("skills", 20) }}>
           <SectionLabel>{labels.skills}</SectionLabel>
           {resume.skillGroups?.length ? (
             <div className="mt-1.5 font-sans text-[11.5px] text-ink-700 space-y-0.5">
@@ -118,7 +131,7 @@ export function ResumeView({
       )}
 
       {resume.experience.length > 0 && (
-      <section className="mt-5">
+      <section className="mt-5" style={{ order: sectionRank("experience", 30) }}>
         <SectionLabel>{labels.experience}</SectionLabel>
         <div className="space-y-5 mt-2">
           {resume.experience.map((role) => {
@@ -147,11 +160,11 @@ export function ResumeView({
                 )}
                 <ul className="mt-2 space-y-1.5 list-disc pl-5">
                   {mode === "original"
-                    ? role.bullets.map((b) => {
+                    ? role.bullets.map((b, index) => {
                         const isActive = hoveredEvidence.includes(b.id);
                         return (
                           <li
-                            key={b.id}
+                            key={`${role.id}:${b.id}:${index}`}
                             className={cn(
                               "transition-all rounded-md px-1 -mx-1",
                               evidenceActive && !isActive && "evidence-dim",
@@ -162,11 +175,11 @@ export function ResumeView({
                           </li>
                         );
                       })
-                    : (optRole?.bullets ?? []).map((b) => {
+                    : (optRole?.bullets ?? []).map((b, index) => {
                         const isActive = hoveredOptimizedId === b.id;
                         return (
                           <li
-                            key={b.id}
+                            key={`${role.id}:${b.id}:${index}`}
                             onMouseEnter={() => setHoveredOptimizedId(b.id)}
                             onMouseLeave={() => setHoveredOptimizedId(null)}
                             className={cn(
@@ -187,7 +200,7 @@ export function ResumeView({
       )}
 
       {resume.projects && resume.projects.length > 0 && (
-        <section className="mt-5">
+        <section className="mt-5" style={{ order: sectionRank("projects", 40) }}>
           <SectionLabel>{labels.projects}</SectionLabel>
           <div className="space-y-5 mt-2">
             {resume.projects.map((project) => {
@@ -216,11 +229,11 @@ export function ResumeView({
                   )}
                   <ul className="mt-2 space-y-1.5 list-disc pl-5">
                     {mode === "original"
-                      ? project.bullets.map((b) => {
+                      ? project.bullets.map((b, index) => {
                           const isActive = hoveredEvidence.includes(b.id);
                           return (
                             <li
-                              key={b.id}
+                              key={`${project.id}:${b.id}:${index}`}
                               className={cn(
                                 "transition-all rounded-md px-1 -mx-1",
                                 evidenceActive && !isActive && "evidence-dim",
@@ -231,11 +244,11 @@ export function ResumeView({
                             </li>
                           );
                         })
-                      : (optProject?.bullets ?? []).map((b) => {
+                      : (optProject?.bullets ?? []).map((b, index) => {
                           const isActive = hoveredOptimizedId === b.id;
                           return (
                             <li
-                              key={b.id}
+                              key={`${project.id}:${b.id}:${index}`}
                               onMouseEnter={() => setHoveredOptimizedId(b.id)}
                               onMouseLeave={() => setHoveredOptimizedId(null)}
                               className={cn(
@@ -256,7 +269,7 @@ export function ResumeView({
       )}
 
       {resume.education.length > 0 && (
-        <section className="mt-5">
+        <section className="mt-5" style={{ order: sectionRank("education", 50) }}>
           <SectionLabel>{labels.education}</SectionLabel>
           <div className="mt-2 space-y-1">
             {resume.education.map((e, i) => (
@@ -279,7 +292,13 @@ export function ResumeView({
 
       {(resume.additionalSections ?? []).map((section) =>
         section.items.length > 0 ? (
-          <section key={section.id} className="mt-5">
+          <section
+            key={section.id}
+            className="mt-5"
+            style={{
+              order: sectionRank(`additional:${section.id}`, 60),
+            }}
+          >
             <SectionLabel>
               {section.title || labels[section.kind]}
             </SectionLabel>
@@ -309,8 +328,17 @@ export function ResumeView({
                   ) : null}
                   {item.bullets.length > 0 ? (
                     <ul className="mt-2 space-y-1.5 list-disc pl-5">
-                      {item.bullets.map((bullet) => (
-                        <li key={bullet.id}>{bullet.text}</li>
+                      {(mode === "optimized"
+                        ? optimization?.additionalSections
+                            ?.find((candidate) => candidate.id === section.id)
+                            ?.items.find(
+                              (candidate) => candidate.id === item.id,
+                            )?.bullets ?? item.bullets
+                        : item.bullets
+                      ).map((bullet, index) => (
+                        <li key={`${item.id}:${bullet.id}:${index}`}>
+                          {bullet.text}
+                        </li>
                       ))}
                     </ul>
                   ) : null}

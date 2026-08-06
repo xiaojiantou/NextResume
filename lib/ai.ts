@@ -1,7 +1,10 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import OpenAI from "openai";
-import type { ResumeStyleSource } from "./types";
+import type {
+  ResumeStyleSource,
+  ResumeVisualLayoutGuide,
+} from "./types";
 import {
   DEFAULT_MODEL_ID,
   findModel,
@@ -81,12 +84,14 @@ async function openaiCompatJson({
   system,
   user,
   maxTokens,
+  signal,
 }: {
   provider: Exclude<ModelProvider, "anthropic">;
   model: string;
   system: string;
   user: string;
   maxTokens: number;
+  signal?: AbortSignal;
 }): Promise<string> {
   const client = openaiCompatClient(provider);
   const messages = [
@@ -95,15 +100,18 @@ async function openaiCompatJson({
   ];
 
   const call = async (useJsonMode: boolean) => {
-    const res = await client.chat.completions.create({
-      model,
-      messages,
-      ...(useJsonMode
-        ? { response_format: { type: "json_object" as const } }
-        : {}),
-      temperature: 0.4,
-      max_tokens: maxTokens,
-    });
+    const res = await client.chat.completions.create(
+      {
+        model,
+        messages,
+        ...(useJsonMode
+          ? { response_format: { type: "json_object" as const } }
+          : {}),
+        temperature: 0.4,
+        max_tokens: maxTokens,
+      },
+      signal ? { signal } : undefined,
+    );
     return res.choices[0]?.message?.content?.trim() || "";
   };
 
@@ -132,11 +140,13 @@ async function anthropicJson({
   system,
   user,
   maxTokens,
+  signal,
 }: {
   model: string;
   system: string;
   user: string;
   maxTokens: number;
+  signal?: AbortSignal;
 }): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -164,6 +174,7 @@ async function anthropicJson({
       system: jsonSystem,
       messages: [{ role: "user", content: user }],
     }),
+    signal,
   });
 
   const data = (await res.json()) as AnthropicResponse;
@@ -217,6 +228,92 @@ export async function transcribeImage({
   return res.choices[0]?.message?.content?.trim() || "";
 }
 
+const STRUCTURE_LAYOUT_PROMPT = `Analyze only the layout and reading order of these resume page screenshots. Do not rewrite, summarize, or omit content. Return JSON:
+{
+  "pages": [{
+    "page": number,
+    "layout": "single-column" | "sidebar-left" | "sidebar-right" | "mixed",
+    "regions": [{ "name": string, "headings": string[] }]
+  }],
+  "readingOrder": string[],
+  "issues": string[]
+}
+
+Rules:
+- headings must be copied verbatim from the screenshots.
+- readingOrder lists section headings in the semantic order a recruiter should read them, including headings that continue on later pages.
+- identify sidebars, headers, main columns, repeated headings, and cross-page continuations.
+- classify a page as single-column when its sections follow one vertical stream, even if dates, scores, contact details, tables, or individual rows use left/right alignment.
+- use sidebar-left or sidebar-right only when independent content regions persist vertically and contain different section groups; a right-aligned date is not a second column.
+- use mixed only when a page genuinely changes between full-width and independent multi-column section regions.
+- issues must describe real ambiguity only. Do not comment on visual style.`;
+
+export async function analyzeResumeVisualLayout(
+  source: ResumeStyleSource,
+): Promise<ResumeVisualLayoutGuide> {
+  const client = openaiCompatClient("novita");
+  const res = await client.chat.completions.create({
+    model: VISION_MODEL,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: STRUCTURE_LAYOUT_PROMPT },
+          ...source.screenshots.slice(0, 4).map((url) => ({
+            type: "image_url" as const,
+            image_url: { url, detail: "high" as const },
+          })),
+        ],
+      },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0,
+    max_tokens: 3000,
+  });
+  const parsed = tryParse<ResumeVisualLayoutGuide>(
+    res.choices[0]?.message?.content?.trim() || "{}",
+  );
+  const layouts = new Set([
+    "single-column",
+    "sidebar-left",
+    "sidebar-right",
+    "mixed",
+  ]);
+  return {
+    pages: (Array.isArray(parsed.pages) ? parsed.pages : []).flatMap(
+      (page, index) => {
+        if (!page || typeof page !== "object") return [];
+        const layout = layouts.has(page.layout) ? page.layout : "mixed";
+        return [
+          {
+            page: Number.isFinite(page.page) ? page.page : index + 1,
+            layout,
+            regions: (Array.isArray(page.regions) ? page.regions : []).map(
+              (region) => ({
+                name:
+                  typeof region?.name === "string" ? region.name.trim() : "",
+                headings: (Array.isArray(region?.headings)
+                  ? region.headings
+                  : []
+                ).filter(
+                  (heading): heading is string => typeof heading === "string",
+                ),
+              }),
+            ),
+          },
+        ];
+      },
+    ),
+    readingOrder: (Array.isArray(parsed.readingOrder)
+      ? parsed.readingOrder
+      : []
+    ).filter((heading): heading is string => typeof heading === "string"),
+    issues: (Array.isArray(parsed.issues) ? parsed.issues : []).filter(
+      (issue): issue is string => typeof issue === "string",
+    ),
+  };
+}
+
 // The model describes appearance only. It never receives or creates resume
 // content and cannot emit HTML/CSS, which prevents a visual decision from
 // deleting a section or bullet.
@@ -224,9 +321,33 @@ const STYLE_PROFILE_PROMPT = `Study the attached resume page screenshots and des
 
 Return ONLY one JSON object matching this exact shape:
 {
-  "layout": "single-column" | "sidebar-left" | "sidebar-right",
-  "sidebarWidthPercent": number,
-  "sidebarSections": ("contact" | "summary" | "skills" | "education" | "additional")[],
+  "pageLayouts": [{
+    "page": number,
+    "layoutBlueprint": {
+      "headerPlacement": "full" | "primary" | "none",
+      "primaryRegionId": string,
+      "gutterPt": number,
+      "regions": [{
+        "id": string,
+        "role": "main" | "sidebar" | "supporting",
+        "widthPercent": number,
+        "surface": "page" | "sidebar" | "subtle",
+        "sections": ("contact" | "photo" | "summary" | "skills" | "experience" | "projects" | "education" | "additional")[]
+      }]
+    }
+  }],
+  "layoutBlueprint": {
+    "headerPlacement": "full" | "primary" | "none",
+    "primaryRegionId": string,
+    "gutterPt": number,
+    "regions": [{
+      "id": string,
+      "role": "main" | "sidebar" | "supporting",
+      "widthPercent": number,
+      "surface": "page" | "sidebar" | "subtle",
+      "sections": ("contact" | "photo" | "summary" | "skills" | "experience" | "projects" | "education" | "additional")[]
+    }]
+  },
   "fontFamily": "Arial" | "Helvetica" | "Verdana" | "Georgia" | "Times New Roman",
   "headingFontFamily": "Arial" | "Helvetica" | "Verdana" | "Georgia" | "Times New Roman",
   "colors": {
@@ -263,13 +384,23 @@ Return ONLY one JSON object matching this exact shape:
   "bulletMarker": "disc" | "dash" | "square"
 }
 
-Choose the closest supported layout. Estimate sizes in print points. Match the source's visual hierarchy, spacing, colors, divider treatment, bullets, sidebar, and photo placement.
+Create a safe flow-based approximation of the source, not a pixel-perfect copy. Estimate sizes in print points. Match the source's page architecture, visual hierarchy, spacing, colors, divider treatment, bullets, and photo placement.
 
 Important layout rules:
-- A portrait positioned at the top-left or top-right of the header is a header photo, not a sidebar.
-- Contact details near the name or confined to the header do not form a sidebar.
-- Choose sidebar-left or sidebar-right only when a distinct column extends through a substantial part of the page AND contains at least one body section such as skills, education, summary, or additional content.
-- For a full-width single-column body with a photo in the header, return layout "single-column", sidebarSections [], and the matching header.photoPosition.
+- Return one pageLayouts item for every supplied source screenshot. Analyze each page independently; do not assume later pages share page 1's structure.
+- layoutBlueprint at the root must duplicate pageLayouts[0].layoutBlueprint for backwards compatibility.
+- Return 1 to 3 regions in left-to-right order. Regions are document flows, never fixed-position boxes.
+- Exactly one region has role "main" and its id equals primaryRegionId.
+- Region widths total approximately 100. The main region should normally be at least 42% wide.
+- Put a page-wide name/title header in headerPlacement "full". Use "primary" when the header belongs only to the main column.
+- Each section category may appear in at most one region. Omitted categories are safely returned to the main region by the renderer.
+- Use "additional" for awards, certifications, publications, languages, volunteering, coursework, community, and unknown supplemental sections.
+- A photo positioned inside a rail belongs to that region's "photo" section. Otherwise express it through header.photoPosition.
+- Contact details near the name belong to the header and should be omitted from region sections. Contact details in a persistent rail use "contact".
+- Use surface "sidebar" only for a visibly colored/inverted rail; use "subtle" for a lightly differentiated supporting column.
+- Prefer one region when the screenshot is effectively a single reading flow. Do not create a column only because a photo or date is aligned to one side.
+- Preserve the source's high-level geometry. A sidebar-left source remains sidebar-left on every page where that rail is visible; mixed source pages may return different page layouts.
+- Use headerPlacement "none" on continuation pages that do not repeat the candidate name/title header.
 
 Never output HTML, CSS, selectors, content, display rules, fixed heights, or overflow rules.`;
 
@@ -297,7 +428,7 @@ export async function generateResumeStyleProfile({
       },
     ],
     temperature: 0.2,
-    max_tokens: 2200,
+    max_tokens: 3200,
   });
 
   const raw = res.choices[0]?.message?.content?.trim() || "";
@@ -310,24 +441,33 @@ export async function jsonCompletion<T>({
   user,
   model,
   maxTokens = 4000,
+  signal,
 }: {
   system: string;
   user: string;
   model?: string;
   maxTokens?: number;
+  signal?: AbortSignal;
 }): Promise<T> {
   const chosen = model || ENV_MODEL;
   const info = findModel(chosen);
 
   const raw =
     info.provider === "anthropic"
-      ? await anthropicJson({ model: chosen, system, user, maxTokens })
+      ? await anthropicJson({
+          model: chosen,
+          system,
+          user,
+          maxTokens,
+          signal,
+        })
       : await openaiCompatJson({
           provider: info.provider,
           model: chosen,
           system,
           user,
           maxTokens,
+          signal,
         });
 
   if (!raw) throw new Error("Empty completion from model");

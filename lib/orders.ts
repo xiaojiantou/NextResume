@@ -15,7 +15,10 @@ import path from "path";
 import { Redis } from "@upstash/redis";
 import type {
   JobAnalysis,
+  AtsReport,
+  ContentStructureMode,
   Optimization,
+  OptimizationVariant,
   Resume,
   ResumeStyleProfile,
   ResumeStyleSource,
@@ -40,8 +43,13 @@ export type Order = {
 export type OrderSnapshot = {
   resume: Resume;
   job: JobAnalysis | null;
+  report?: AtsReport | null;
   optimization: Optimization | null;
   optimizationModel: string | null;
+  optimizationStructureMode?: ContentStructureMode | null;
+  optimizationVariants?: OptimizationVariant[];
+  contentStructure?: ContentStructureMode;
+  lockedContentIds?: string[];
   resumeStyleSource?: ResumeStyleSource | null;
   personalizedStyleProfile?: ResumeStyleProfile | null;
   pdfStyle?: PdfStyle;

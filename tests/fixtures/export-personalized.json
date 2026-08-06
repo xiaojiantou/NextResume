@@ -71,8 +71,36 @@
   "targetTitle": "Software Engineer",
   "style": "personalized",
   "personalizedStyleProfile": {
-    "version": 2,
-    "layout": "single-column",
+    "version": 5,
+    "layout": "regional",
+    "layoutBlueprint": {
+      "headerPlacement": "primary",
+      "primaryRegionId": "main",
+      "gutterPt": 0,
+      "regions": [
+        {
+          "id": "left-rail",
+          "role": "sidebar",
+          "widthPercent": 22,
+          "surface": "sidebar",
+          "sections": ["contact", "skills"]
+        },
+        {
+          "id": "main",
+          "role": "main",
+          "widthPercent": 56,
+          "surface": "page",
+          "sections": ["summary", "experience", "projects"]
+        },
+        {
+          "id": "right-support",
+          "role": "supporting",
+          "widthPercent": 22,
+          "surface": "subtle",
+          "sections": ["education", "additional"]
+        }
+      ]
+    },
     "sidebarWidthPercent": 32,
     "sidebarSections": ["contact", "skills"],
     "fontFamily": "Arial",

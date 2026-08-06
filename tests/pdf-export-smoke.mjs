@@ -64,6 +64,16 @@ const resume = {
           end: "2024",
           bullets: [],
         },
+        {
+          id: "award-2",
+          heading:
+            "First Prize and Best Creativity Award — National College Students' E-Commerce \"Innovation, Creativity, and Entrepreneurship\" Challenge",
+          subheading: "",
+          location: "",
+          start: "",
+          end: "2024",
+          bullets: [],
+        },
       ],
     },
   ],
@@ -117,6 +127,21 @@ const optimization = {
       ],
     },
   ],
+  sectionOrder: [
+    "projects",
+    "skills",
+    "experience",
+    "summary",
+    "education",
+    "additional:awards",
+  ],
+  sectionLabels: {
+    summary: "Professional Summary",
+    skills: "Technical Skills",
+    experience: "Professional Experience",
+    projects: "Research Projects",
+    education: "Academic Background",
+  },
 };
 
 const job = {
@@ -145,6 +170,14 @@ const expectedText = [
   "Created a cited workflow for research synthesis.",
   "State University",
   "Research Excellence Award",
+  "First Prize and Best Creativity Award",
+];
+const expectedHeadings = [
+  "Professional Summary",
+  "Technical Skills",
+  "Professional Experience",
+  "Research Projects",
+  "Academic Background",
 ];
 
 for (const definition of PDF_STYLE_DEFINITIONS) {
@@ -176,10 +209,17 @@ for (const definition of PDF_STYLE_DEFINITIONS) {
   }
   const parsed = await pdfParse(buffer);
   const normalized = parsed.text.replace(/\s+/g, " ");
+  const compactText = parsed.text.toLowerCase().replace(/[^a-z0-9]/g, "");
   for (const value of expectedText) {
     assert.ok(
       normalized.includes(value),
       `${definition.id}: missing "${value}"`,
+    );
+  }
+  for (const heading of expectedHeadings) {
+    assert.ok(
+      compactText.includes(heading.toLowerCase().replace(/[^a-z0-9]/g, "")),
+      `${definition.id}: missing optimized heading "${heading}"`,
     );
   }
   process.stdout.write(
@@ -312,7 +352,7 @@ const personalizedResponse = await fetch(`${baseUrl}/api/export/pdf`, {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     ...personalizedFixture,
-    targetPages: 2,
+    targetPages: 3,
   }),
 });
 if (!personalizedResponse.ok) {
@@ -325,8 +365,8 @@ assert.match(
   personalizedResponse.headers.get("content-type") || "",
   /application\/pdf/,
 );
-assert.equal(personalizedResponse.headers.get("x-resume-target-pages"), "2");
-assert.equal(personalizedResponse.headers.get("x-resume-pages"), "2");
+assert.equal(personalizedResponse.headers.get("x-resume-target-pages"), "3");
+assert.equal(personalizedResponse.headers.get("x-resume-pages"), "3");
 const personalizedBuffer = Buffer.from(
   await personalizedResponse.arrayBuffer(),
 );

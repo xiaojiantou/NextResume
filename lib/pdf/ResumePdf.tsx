@@ -11,7 +11,9 @@ import {
 import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { ResumePalette } from "./config";
 import {
+  compactAdditionalItemLabel,
   getResumeSectionLabels,
+  isCompactAdditionalSection,
   resolveResumeContent,
 } from "./shared";
 
@@ -106,7 +108,13 @@ function createStyles(
     },
     skillGroupLabel: {
       fontFamily: "Helvetica-Bold",
-      color: "#18181b",
+      color: palette.text,
+    },
+    compactAdditional: {
+      fontSize: body(),
+      color: palette.text,
+      fontFamily: "Helvetica",
+      lineHeight: lh(1.6, 1.22),
     },
     roleHeader: {
       flexDirection: "row",
@@ -201,6 +209,8 @@ export function ResumePdf({
     education,
     additionalSections,
     language,
+    sectionLabels,
+    sectionOrder,
   } = resolveResumeContent(resume, optimization, { includeSummary });
   const styles = createStyles(
     palette,
@@ -210,7 +220,181 @@ export function ResumePdf({
     minimumBodyPt,
     minimumMarginPt,
   );
-  const labels = getResumeSectionLabels(language);
+  const labels = getResumeSectionLabels(language, sectionLabels);
+  const renderSection = (ref: (typeof sectionOrder)[number]) => {
+    if (ref === "summary") {
+      return summary ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel} minPresenceAhead={48}>{labels.summary}</Text>
+          <Text style={styles.summary}>{summary}</Text>
+        </View>
+      ) : null;
+    }
+    if (ref === "skills") {
+      return skills.length > 0 || skillGroups.length > 0 ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel} minPresenceAhead={48}>
+            {labels.skills}
+          </Text>
+          {skillGroups.length > 0 ? (
+            skillGroups.map((group) => (
+              <Text key={group.label} style={styles.skills}>
+                <Text style={styles.skillGroupLabel}>{group.label}: </Text>
+                {group.skills.join(", ")}
+              </Text>
+            ))
+          ) : (
+            <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+          )}
+        </View>
+      ) : null;
+    }
+    if (ref === "experience") {
+      return experience.length > 0 ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel} minPresenceAhead={48}>{labels.experience}</Text>
+          {experience.map((role) => (
+            <View key={role.id}>
+              <View wrap={false} minPresenceAhead={36}>
+                <View style={styles.roleHeader}>
+                  <Text style={styles.roleTitleGroup}>
+                    <Text style={styles.roleTitle}>{role.heading}</Text>
+                    {role.subheading ? (
+                      <Text style={styles.roleTitleMuted}>
+                        {"  ·  "}
+                        {role.subheading}
+                      </Text>
+                    ) : null}
+                  </Text>
+                  <Text style={styles.roleDates}>
+                    {role.start} — {role.end}
+                  </Text>
+                </View>
+                {role.location ? (
+                  <Text style={styles.roleLocation}>{role.location}</Text>
+                ) : null}
+                {role.bullets[0] ? (
+                  <View style={styles.bulletRow}>
+                    <Text style={styles.bulletDot}>•</Text>
+                    <Text style={styles.bulletText}>{role.bullets[0]}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {role.bullets.slice(1).map((text, index) => (
+                <View key={index} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      ) : null;
+    }
+    if (ref === "projects") {
+      return projects.length > 0 ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel} minPresenceAhead={48}>{labels.projects}</Text>
+          {projects.map((project) => (
+            <View key={project.id}>
+              <View wrap={false} minPresenceAhead={36}>
+                <View style={styles.roleHeader}>
+                  <Text style={styles.roleTitleGroup}>
+                    <Text style={styles.roleTitle}>{project.heading}</Text>
+                    {project.subheading ? (
+                      <Text style={styles.roleTitleMuted}>
+                        {"  ·  "}
+                        {project.subheading}
+                      </Text>
+                    ) : null}
+                  </Text>
+                  <Text style={styles.roleDates}>
+                    {project.start} — {project.end}
+                  </Text>
+                </View>
+                {project.location ? (
+                  <Text style={styles.roleLocation}>{project.location}</Text>
+                ) : null}
+                {project.bullets[0] ? (
+                  <View style={styles.bulletRow}>
+                    <Text style={styles.bulletDot}>•</Text>
+                    <Text style={styles.bulletText}>{project.bullets[0]}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {project.bullets.slice(1).map((text, index) => (
+                <View key={index} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      ) : null;
+    }
+    if (ref === "education") {
+      return education.length > 0 ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel} minPresenceAhead={48}>{labels.education}</Text>
+          {education.map((entry, index) => (
+            <View key={index} style={styles.eduRow}>
+              <Text>
+                <Text style={styles.eduSchool}>{entry.school}</Text>
+                {entry.degree ? (
+                  <Text style={{ color: palette.muted }}>
+                    {"  ·  "}
+                    {entry.degree}
+                  </Text>
+                ) : null}
+              </Text>
+              <Text style={{ color: palette.muted }}>{entry.year}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null;
+    }
+    const id = ref.slice("additional:".length);
+    const section = additionalSections.find((candidate) => candidate.id === id);
+    return section?.items.length ? (
+      <View key={ref} style={styles.section}>
+        <Text style={styles.sectionLabel} minPresenceAhead={48}>
+          {section.title || labels[section.kind]}
+        </Text>
+        {isCompactAdditionalSection(section) ? (
+          <Text style={styles.compactAdditional}>
+            {section.items.map(compactAdditionalItemLabel).join("  ·  ")}
+          </Text>
+        ) : section.items.map((item) => (
+          <View key={item.id}>
+            <View style={styles.roleHeader} wrap={false} minPresenceAhead={36}>
+              <Text style={styles.roleTitleGroup}>
+                <Text style={styles.roleTitle}>{item.heading}</Text>
+                {item.subheading ? (
+                  <Text style={styles.roleTitleMuted}>
+                    {"  ·  "}
+                    {item.subheading}
+                  </Text>
+                ) : null}
+              </Text>
+              <Text style={styles.roleDates}>
+                {[item.start, item.end].filter(Boolean).join(" — ")}
+              </Text>
+            </View>
+            {item.location ? (
+              <Text style={styles.roleLocation}>{item.location}</Text>
+            ) : null}
+            {item.bullets.map((bullet, index) => (
+              <View key={bullet.id || index} style={styles.bulletRow}>
+                <Text style={styles.bulletDot}>•</Text>
+                <Text style={styles.bulletText}>{bullet.text}</Text>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+    ) : null;
+  };
 
   return (
     <Document
@@ -252,185 +436,7 @@ export function ResumePdf({
           </View>
         )}
 
-        {summary ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{labels.summary}</Text>
-            <Text style={styles.summary}>{summary}</Text>
-          </View>
-        ) : null}
-
-        {skills.length > 0 || skillGroups.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{labels.skills}</Text>
-            {skillGroups.length > 0 ? (
-              skillGroups.map((group) => (
-                <Text key={group.label} style={styles.skills}>
-                  <Text style={styles.skillGroupLabel}>
-                    {group.label}:{" "}
-                  </Text>
-                  {group.skills.join(", ")}
-                </Text>
-              ))
-            ) : (
-              <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
-            )}
-          </View>
-        ) : null}
-
-        {experience.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel} minPresenceAhead={48}>
-              {labels.experience}
-            </Text>
-            {experience.map((role) => {
-              return (
-                <View key={role.id}>
-                  <View wrap={false} minPresenceAhead={36}>
-                    <View style={styles.roleHeader}>
-                      <Text style={styles.roleTitleGroup}>
-                        <Text style={styles.roleTitle}>{role.heading}</Text>
-                        {role.subheading ? (
-                          <Text style={styles.roleTitleMuted}>
-                            {"  ·  "}
-                            {role.subheading}
-                          </Text>
-                        ) : null}
-                      </Text>
-                      <Text style={styles.roleDates}>
-                        {role.start} — {role.end}
-                      </Text>
-                    </View>
-                    {role.location ? (
-                      <Text style={styles.roleLocation}>{role.location}</Text>
-                    ) : null}
-                    {role.bullets[0] ? (
-                      <View style={styles.bulletRow}>
-                        <Text style={styles.bulletDot}>•</Text>
-                        <Text style={styles.bulletText}>{role.bullets[0]}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {role.bullets.slice(1).map((text, i) => (
-                    <View key={i} style={styles.bulletRow}>
-                      <Text style={styles.bulletDot}>•</Text>
-                      <Text style={styles.bulletText}>{text}</Text>
-                    </View>
-                  ))}
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {projects.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel} minPresenceAhead={48}>
-              {labels.projects}
-            </Text>
-            {projects.map((project) => {
-              return (
-                <View key={project.id}>
-                  <View wrap={false} minPresenceAhead={36}>
-                    <View style={styles.roleHeader}>
-                      <Text style={styles.roleTitleGroup}>
-                        <Text style={styles.roleTitle}>{project.heading}</Text>
-                        {project.subheading ? (
-                          <Text style={styles.roleTitleMuted}>
-                            {"  ·  "}
-                            {project.subheading}
-                          </Text>
-                        ) : null}
-                      </Text>
-                      <Text style={styles.roleDates}>
-                        {project.start} — {project.end}
-                      </Text>
-                    </View>
-                    {project.location ? (
-                      <Text style={styles.roleLocation}>{project.location}</Text>
-                    ) : null}
-                    {project.bullets[0] ? (
-                      <View style={styles.bulletRow}>
-                        <Text style={styles.bulletDot}>•</Text>
-                        <Text style={styles.bulletText}>
-                          {project.bullets[0]}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {project.bullets.slice(1).map((text, i) => (
-                    <View key={i} style={styles.bulletRow}>
-                      <Text style={styles.bulletDot}>•</Text>
-                      <Text style={styles.bulletText}>{text}</Text>
-                    </View>
-                  ))}
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {education.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel} minPresenceAhead={48}>
-              {labels.education}
-            </Text>
-            {education.map((e, i) => (
-              <View key={i} style={styles.eduRow}>
-                <Text>
-                  <Text style={styles.eduSchool}>{e.school}</Text>
-                  {e.degree ? (
-                    <Text style={{ color: palette.muted }}>
-                      {"  ·  "}
-                      {e.degree}
-                    </Text>
-                  ) : null}
-                </Text>
-                <Text style={{ color: palette.muted }}>{e.year}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {additionalSections.map((section) =>
-          section.items.length > 0 ? (
-            <View key={section.id} style={styles.section}>
-              <Text style={styles.sectionLabel} minPresenceAhead={48}>
-                {section.title || labels[section.kind]}
-              </Text>
-              {section.items.map((item) => (
-                <View key={item.id}>
-                  <View
-                    style={styles.roleHeader}
-                    wrap={false}
-                    minPresenceAhead={36}
-                  >
-                    <Text style={styles.roleTitleGroup}>
-                      <Text style={styles.roleTitle}>{item.heading}</Text>
-                      {item.subheading ? (
-                        <Text style={styles.roleTitleMuted}>
-                          {"  ·  "}
-                          {item.subheading}
-                        </Text>
-                      ) : null}
-                    </Text>
-                    <Text style={styles.roleDates}>
-                      {[item.start, item.end].filter(Boolean).join(" — ")}
-                    </Text>
-                  </View>
-                  {item.location ? (
-                    <Text style={styles.roleLocation}>{item.location}</Text>
-                  ) : null}
-                  {item.bullets.map((bullet, i) => (
-                    <View key={bullet.id || i} style={styles.bulletRow}>
-                      <Text style={styles.bulletDot}>•</Text>
-                      <Text style={styles.bulletText}>{bullet.text}</Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-            </View>
-          ) : null,
-        )}
+        {sectionOrder.map(renderSection)}
       </Page>
     </Document>
   );

@@ -4,7 +4,10 @@ import type {
   Optimization,
   Resume,
   ResumePageSpec,
+  ResumeStyleProfile,
 } from "./types";
+
+const FIT_CACHE_VERSION = 3;
 
 export type FitChangeKind =
   | "shortened"
@@ -121,6 +124,7 @@ export function createFitCacheKey({
   page,
   modelId,
   keptContentIds,
+  layoutRevision,
 }: {
   sourceRevision: string;
   targetPages: number;
@@ -128,15 +132,26 @@ export function createFitCacheKey({
   page: ResumePageSpec;
   modelId: string;
   keptContentIds: string[];
+  layoutRevision?: string;
 }): string {
   return [
+    `fit-v${FIT_CACHE_VERSION}`,
     sourceRevision,
     style,
     targetPages,
     `${Math.round(page.widthPt)}x${Math.round(page.heightPt)}`,
     modelId,
+    layoutRevision ?? "fixed-layout",
     [...keptContentIds].sort().join(","),
   ].join(":");
+}
+
+export function createFitLayoutRevision(
+  profile?: ResumeStyleProfile | null,
+): string {
+  return profile
+    ? `profile-${smallHash(JSON.stringify(stableValue(profile)))}`
+    : "fixed-layout";
 }
 
 export function defaultResumePage(

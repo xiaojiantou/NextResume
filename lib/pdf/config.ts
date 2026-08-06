@@ -53,8 +53,8 @@ const COMMON = {
 export const PDF_STYLE_DEFINITIONS: readonly PdfStyleDefinition[] = [
   {
     id: "personalized",
-    label: "Personalized",
-    blurb: "Matches the visual language of your uploaded resume",
+    label: "Original-inspired",
+    blurb: "Rebuilds the uploaded resume's regions, hierarchy, and visual language",
     ats: "source-dependent",
     palettes: [],
   },

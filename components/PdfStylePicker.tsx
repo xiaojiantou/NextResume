@@ -196,9 +196,9 @@ export function PdfStylePicker({
                   </div>
                   <div className="text-xs text-ink-500 mt-0.5">
                     {isPersonalized && personalizedStatus === "generating"
-                      ? "Generating your layout — this can take a minute…"
+                      ? "Rebuilding the uploaded resume's regions and visual hierarchy…"
                       : isPersonalized && personalizedStatus === "failed"
-                        ? "Couldn't generate this time — try again, or pick another style"
+                        ? "Couldn't rebuild this time — try again, or pick another style"
                         : s.blurb}
                   </div>
                 </div>

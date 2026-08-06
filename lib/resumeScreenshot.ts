@@ -72,19 +72,19 @@ async function screenshotPdf(buffer: Buffer): Promise<ResumeStyleSource> {
   try {
     const page = await browser.newPage();
     await page.setViewport(VIEWPORT);
-    const dataUrl = `data:application/pdf;base64,${buffer.toString("base64")}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`;
-    await page.goto(dataUrl, { waitUntil: "networkidle0", timeout: 15_000 });
-    // Chromium's PDF viewer paints after the page load event.
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    await page.mouse.click(VIEWPORT.width / 2, VIEWPORT.height / 2);
-    await page.keyboard.press("Home");
-
     const screenshots: string[] = [];
     for (let index = 0; index < captureCount; index++) {
-      if (index > 0) {
-        await page.keyboard.press("PageDown");
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      }
+      // Capture an isolated one-page PDF. Scrolling the multi-page Chromium
+      // viewer produces viewport slices that can cross page boundaries, which
+      // is useful neither as a source preview nor as input to visual analysis.
+      const isolated = await PDFDocument.create();
+      const [copiedPage] = await isolated.copyPages(pdf, [index]);
+      isolated.addPage(copiedPage);
+      const isolatedBytes = Buffer.from(await isolated.save());
+      const dataUrl = `data:application/pdf;base64,${isolatedBytes.toString("base64")}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`;
+      await page.goto(dataUrl, { waitUntil: "networkidle0", timeout: 15_000 });
+      // Chromium's PDF viewer paints after the page load event.
+      await new Promise((resolve) => setTimeout(resolve, 800));
       const shot = await page.screenshot({
         type: "jpeg",
         quality: 78,

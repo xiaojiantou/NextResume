@@ -3,13 +3,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
+import {
+  calculateOptimizationAtsScore,
+  constrainPreservedOptimization,
+  constrainRoleOptimizedStructure,
+  createStructureIntegrity,
+  enforceLockedOptimization,
+  reconcileGroundedSkills,
+  validateGroundedOptimization,
+  validateLockedOptimization,
+  validatePreservedOptimization,
+} from "@/lib/resumeStructure";
 import type {
   AtsReport,
+  ContentStructureMode,
+  CoreResumeSection,
   JobAnalysis,
   Optimization,
   OptimizedBullet,
   Resume,
+  ResumeSectionRef,
+  SkillEvidence,
 } from "@/lib/types";
+import { reviewSemanticGrounding } from "@/lib/semanticResumeValidation";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -24,6 +40,13 @@ Output ONLY valid JSON matching this schema:
   "summary": string,
   "title": string,
   "skills": string[],
+  "skillEvidence": [{
+    "skill": string,
+    "grounding": "direct" | "indirect",
+    "skillType": "tool" | "capability" | "domain" | "soft" | "credential" | "language",
+    "evidence": string[],
+    "rationale": string
+  }],
   "roles": [
     {
       "id": string,
@@ -47,7 +70,15 @@ Output ONLY valid JSON matching this schema:
         // same bullet shape as roles
       ]
     }
-  ]
+  ],
+  "sectionOrder": ["summary", "skills", "experience", "projects", "education", "additional:<source-section-id>"],
+  "sectionLabels": {
+    "summary": "Summary" | "Professional Summary" | "Research Profile",
+    "skills": "Skills" | "Core Skills" | "Technical Skills" | "Core Competencies",
+    "experience": "Experience" | "Professional Experience" | "Work Experience" | "Research Experience",
+    "projects": "Projects" | "Selected Projects" | "Technical Projects" | "Research Projects",
+    "education": "Education" | "Academic Background"
+  }
 }
 
 Hard rules — content preservation:
@@ -65,11 +96,68 @@ Hard rules — writing style:
 
 Hard rules — skills and summary:
 - "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
-- "summary": if the input resume has a summary, tailor it; if it has none, write a tight 2-3 line one grounded only in real experience.`;
+- Return exactly one skillEvidence entry for every proposed skill. Use grounding "direct" when the skill or a standard alias appears explicitly in the source. Use grounding "indirect" only for a capability, domain, or soft skill strongly demonstrated by 1-3 cited source bullet IDs; explain the support in rationale. Tools, frameworks, platforms, credentials, and languages must be direct.
+- "summary": if the input resume has a summary, tailor it; if it has none, write a tight 2-3 line one grounded only in real experience.
+
+Hard rules — organization:
+- sectionOrder must contain every non-empty source section exactly once. Reorder sections to lead with the strongest evidence for the target role. Use additional:<id> for every source additional section. The renderer maps supported source extras only into canonical Awards, Certifications, Publications, Languages, or Leadership & Volunteering sections; it never creates an ambiguous Additional Information section.
+- Choose sectionLabels only from the exact allowed values in the schema. Use role-relevant conventional headings; do not invent headings.
+- Reordering and relabeling never changes the factual owner of an entry or bullet.`;
+
+const PRESERVE_SYSTEM = `You rewrite resume language for a target job while preserving the source content structure exactly.
+
+Output ONLY valid JSON matching:
+{
+  "summary": string,
+  "title": string,
+  "skills": string[],
+  "roles": [{
+    "id": string,
+    "bullets": [{
+      "id": string,
+      "text": string,
+      "evidence": string[],
+      "matchedKeywords": string[],
+      "rationale": string
+    }]
+  }],
+  "projects": [{
+    "id": string,
+    "bullets": [{
+      "id": string,
+      "text": string,
+      "evidence": string[],
+      "matchedKeywords": string[],
+      "rationale": string
+    }]
+  }],
+  "additionalSections": [{
+    "id": string,
+    "items": [{
+      "id": string,
+      "bullets": [{
+        "id": string,
+        "text": string,
+        "evidence": string[],
+        "matchedKeywords": string[],
+        "rationale": string
+      }]
+    }]
+  }]
+}
+
+Non-negotiable rules:
+- Return every role, project, additional section, item, and bullet exactly once, in source order.
+- Every output bullet id MUST equal its one source bullet id. Its evidence MUST be exactly [that same id]. Never merge, split, add, delete, or move bullets.
+- Keep every source skill. You may reorder skills and normalize capitalization only. Never add or remove one.
+- If the source summary or professional title is empty, keep it empty. If present, rewrite it without adding unsupported facts.
+- Never alter or infer companies, schools, historical job titles, degrees, project names, dates, locations, awards, certificates, publications, organizations, metrics, tools, or results.
+- Every number in a rewrite must already appear in that same source bullet.
+- Use concise, natural English. Keep each bullet non-empty and improve relevance only within its own evidence.`;
 
 const PREVIEW_SYSTEM = `You rewrite a SINGLE resume bullet to be tailored to a specific job description. The bullet you are rewriting is the candidate's weakest one for this role — show them how a strong rewrite would look.
 
-You are forbidden from inventing skills, companies, technologies, metrics, or responsibilities the candidate did not demonstrate. You may use quantified estimates ONLY if the original bullet suggested impact.
+You are forbidden from inventing skills, companies, technologies, metrics, or responsibilities the candidate did not demonstrate. Never introduce an estimate or number absent from the original bullet.
 
 Output ONLY valid JSON:
 
@@ -153,10 +241,24 @@ function validateOptimization(resume: Resume, opt: Optimization): string[] {
   return problems;
 }
 
-// Structural problems (dropped bullets/roles/skills) make the result unusable;
-// style problems (slop tails) are worth one retry but not a hard failure.
-function isStructural(problem: string): boolean {
-  return !problem.startsWith("bullet ") && !problem.startsWith("summary:");
+function publicOptimizationIssue(issue: string): string {
+  const skill = issue.match(/^Skill "([^"]+)"/i)?.[1];
+  if (skill) {
+    return `The proposed skill “${skill}” was not sufficiently supported by the uploaded resume.`;
+  }
+  if (/unsupported number/i.test(issue)) {
+    return "A rewrite introduced a number that was not supported by its source evidence.";
+  }
+  if (/locked/i.test(issue)) {
+    return "A manually edited field changed, so the rewrite was rejected.";
+  }
+  if (/role|project|bullet|evidence/i.test(issue)) {
+    return "A rewritten achievement could not be matched safely to its original entry.";
+  }
+  if (/structure|section|entry|skills must/i.test(issue)) {
+    return "The rewrite changed a protected part of the resume structure.";
+  }
+  return "Part of the rewrite did not pass the factual safety checks.";
 }
 
 function pickWeakestBullet(resume: Resume): {
@@ -190,6 +292,149 @@ function pickWeakestBullet(resume: Resume): {
   return { bulletId: shortest.id, bulletText: shortest.text };
 }
 
+function normalizeOptimization(value: unknown): Optimization {
+  const object =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
+  const stringValue = (candidate: unknown) =>
+    typeof candidate === "string" ? candidate.trim() : "";
+  const sectionRefs = new Set<ResumeSectionRef>([
+    "summary",
+    "skills",
+    "experience",
+    "projects",
+    "education",
+  ]);
+  const sectionOrder = (Array.isArray(object.sectionOrder)
+    ? object.sectionOrder
+    : []
+  ).flatMap((candidate) => {
+    const ref = stringValue(candidate);
+    return sectionRefs.has(ref as ResumeSectionRef) ||
+      /^additional:[^\s:][^\s]*$/.test(ref)
+      ? [ref as ResumeSectionRef]
+      : [];
+  });
+  const rawSectionLabels =
+    object.sectionLabels && typeof object.sectionLabels === "object"
+      ? (object.sectionLabels as Record<string, unknown>)
+      : {};
+  const sectionLabels = Object.fromEntries(
+    (["summary", "skills", "experience", "projects", "education"] as CoreResumeSection[])
+      .map((section) => [section, stringValue(rawSectionLabels[section])] as const)
+      .filter(([, label]) => Boolean(label)),
+  ) as Partial<Record<CoreResumeSection, string>>;
+  const bullet = (candidate: unknown): OptimizedBullet => {
+    const item =
+      candidate && typeof candidate === "object"
+        ? (candidate as Record<string, unknown>)
+        : {};
+    return {
+      id: stringValue(item.id),
+      text: stringValue(item.text),
+      evidence: Array.isArray(item.evidence)
+        ? item.evidence.map(stringValue).filter(Boolean)
+        : [],
+      matchedKeywords: Array.isArray(item.matchedKeywords)
+        ? item.matchedKeywords.map(stringValue).filter(Boolean)
+        : [],
+      rationale: stringValue(item.rationale),
+    };
+  };
+  const owners = (candidate: unknown) =>
+    (Array.isArray(candidate) ? candidate : []).map((raw) => {
+      const item =
+        raw && typeof raw === "object"
+          ? (raw as Record<string, unknown>)
+          : {};
+      return {
+        id: stringValue(item.id),
+        bullets: (Array.isArray(item.bullets) ? item.bullets : []).map(bullet),
+      };
+    });
+  const skillEvidenceValues = new Set<SkillEvidence["grounding"]>([
+    "direct",
+    "indirect",
+  ]);
+  const skillTypes = new Set<SkillEvidence["skillType"]>([
+    "tool",
+    "capability",
+    "domain",
+    "soft",
+    "credential",
+    "language",
+  ]);
+  const skillEvidence: SkillEvidence[] = (
+    Array.isArray(object.skillEvidence) ? object.skillEvidence : []
+  ).flatMap((raw) => {
+    const item =
+      raw && typeof raw === "object"
+        ? (raw as Record<string, unknown>)
+        : {};
+    const skill = stringValue(item.skill);
+    const grounding = stringValue(item.grounding) as SkillEvidence["grounding"];
+    const skillType = stringValue(item.skillType) as SkillEvidence["skillType"];
+    if (
+      !skill ||
+      !skillEvidenceValues.has(grounding) ||
+      !skillTypes.has(skillType)
+    ) {
+      return [];
+    }
+    return [
+      {
+        skill,
+        grounding,
+        skillType,
+        evidence: Array.isArray(item.evidence)
+          ? item.evidence.map(stringValue).filter(Boolean)
+          : [],
+        rationale: stringValue(item.rationale),
+      },
+    ];
+  });
+  return {
+    summary: stringValue(object.summary),
+    title: stringValue(object.title),
+    skills: Array.isArray(object.skills)
+      ? object.skills.map(stringValue).filter(Boolean)
+      : [],
+    skillEvidence,
+    roles: owners(object.roles),
+    projects: owners(object.projects),
+    additionalSections: (Array.isArray(object.additionalSections)
+      ? object.additionalSections
+      : []
+    ).map((raw) => {
+      const section =
+        raw && typeof raw === "object"
+          ? (raw as Record<string, unknown>)
+          : {};
+      return {
+        id: stringValue(section.id),
+        items: (Array.isArray(section.items) ? section.items : []).map(
+          (itemRaw) => {
+            const item =
+              itemRaw && typeof itemRaw === "object"
+                ? (itemRaw as Record<string, unknown>)
+                : {};
+            return {
+              id: stringValue(item.id),
+              bullets: (Array.isArray(item.bullets)
+                ? item.bullets
+                : []
+              ).map(bullet),
+            };
+          },
+        ),
+      };
+    }),
+    sectionOrder,
+    sectionLabels,
+  };
+}
+
 export async function POST(req: NextRequest) {
   const rl = rateLimitGuard(req, LIMITS.optimize);
   if (rl) return rl;
@@ -200,10 +445,34 @@ export async function POST(req: NextRequest) {
       report: AtsReport;
       mode?: "full" | "preview";
       model?: string;
+      structureMode?: ContentStructureMode;
+      lockedContentIds?: string[];
+      baselineOptimization?: Optimization | null;
     };
 
-    const { resume, job, report, mode = "full", model } = body;
+    const {
+      resume,
+      job,
+      report,
+      mode = "full",
+      model,
+      structureMode = "optimize",
+      lockedContentIds = [],
+      baselineOptimization = null,
+    } = body;
 
+    if (!resume || !job || !report) {
+      return NextResponse.json(
+        { error: "Resume, job analysis, and ATS report are required." },
+        { status: 400 },
+      );
+    }
+    if (structureMode !== "optimize" && structureMode !== "preserve") {
+      return NextResponse.json(
+        { error: "Unknown content structure mode." },
+        { status: 400 },
+      );
+    }
     if (mode === "preview") {
       const target = pickWeakestBullet(resume);
       if (!target) {
@@ -227,44 +496,96 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const basePrompt = `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}`;
-
-    let opt = await jsonCompletion<Optimization>({
-      system: FULL_SYSTEM,
-      user: basePrompt,
-      model,
-      maxTokens: 8000,
-    });
-
-    let problems = validateOptimization(resume, opt);
-    if (problems.length > 0) {
-      console.warn("optimize validation failed, retrying once", problems);
-      opt = await jsonCompletion<Optimization>({
-        system: FULL_SYSTEM,
-        user: `${basePrompt}\n\nYour previous attempt violated these hard rules — fix ALL of them this time:\n- ${problems.join("\n- ")}`,
+    let feedback = "";
+    let lastIssues: string[] = [];
+    const attempts = 3;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const raw = await jsonCompletion<unknown>({
+        system:
+          structureMode === "preserve" ? PRESERVE_SYSTEM : FULL_SYSTEM,
+        user: `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}\n\nUser-locked content ids (return their text verbatim):\n${JSON.stringify(lockedContentIds)}\n\nLocked wording baseline:\n${JSON.stringify(baselineOptimization)}${
+          feedback
+            ? `\n\nYour previous response violated these constraints. Correct every issue without inventing or dropping source content:\n${feedback}`
+            : ""
+        }`,
         model,
-        maxTokens: 8000,
+        maxTokens: 7000,
       });
-      problems = validateOptimization(resume, opt);
-    }
-
-    const structural = problems.filter(isStructural);
-    if (structural.length > 0) {
-      console.error("optimize failed validation after retry", structural);
-      return NextResponse.json(
-        {
-          error:
-            "The model kept dropping content from your resume. Try again or pick a different model.",
-        },
-        { status: 502 },
+      const normalized = normalizeOptimization(raw);
+      if (structureMode === "optimize") {
+        const grounded = reconcileGroundedSkills(
+          resume,
+          normalized.skills,
+          normalized.skillEvidence,
+        );
+        normalized.skills = grounded.skills;
+        normalized.skillEvidence = grounded.skillEvidence;
+      }
+      const structured =
+        structureMode === "preserve"
+          ? constrainPreservedOptimization({
+              resume,
+              candidate: normalized,
+              baseline: baselineOptimization,
+              lockedContentIds,
+            })
+          : constrainRoleOptimizedStructure({ resume, candidate: normalized });
+      const opt = enforceLockedOptimization({
+        resume,
+        candidate: structured,
+        baseline: baselineOptimization,
+        lockedContentIds,
+      });
+      const issues = [
+        ...validateOptimization(resume, opt),
+        ...validateGroundedOptimization(resume, opt),
+        ...(structureMode === "preserve"
+          ? validatePreservedOptimization(resume, opt)
+          : []),
+        ...validateLockedOptimization({
+          resume,
+          candidate: opt,
+          baseline: baselineOptimization,
+          lockedContentIds,
+        }),
+      ];
+      if (issues.length === 0) {
+        issues.push(
+          ...(await reviewSemanticGrounding({
+            resume,
+            candidate: opt,
+            model,
+          })),
+        );
+      }
+      if (issues.length > 0) {
+        lastIssues = issues;
+        feedback = issues.slice(0, 20).map((issue) => `- ${issue}`).join("\n");
+        continue;
+      }
+      opt.structureMode = structureMode;
+      opt.structureIntegrity = createStructureIntegrity(
+        resume,
+        opt,
+        structureMode,
       );
-    }
-    if (problems.length > 0) {
-      // Style-only leftovers: deliver, but keep a trace for prompt tuning.
-      console.warn("optimize style issues remain after retry", problems);
+      opt.atsScore = calculateOptimizationAtsScore({ resume, optimization: opt, job });
+      return NextResponse.json({ optimization: opt });
     }
 
-    return NextResponse.json({ optimization: opt });
+    return NextResponse.json(
+      {
+        error:
+          structureMode === "preserve"
+            ? "The rewrite could not pass the factual safety checks while keeping the original structure."
+            : "The rewrite could not pass the factual safety checks after 3 attempts.",
+        issues: [...new Set(lastIssues.map(publicOptimizationIssue))].slice(
+          0,
+          12,
+        ),
+      },
+      { status: 422 },
+    );
   } catch (e) {
     console.error("optimize failed", e);
     return NextResponse.json(

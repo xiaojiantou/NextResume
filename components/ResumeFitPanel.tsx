@@ -39,6 +39,7 @@ export function ResumeFitPanel({
   onFit,
   onCancel,
   onKeep,
+  onRestore,
 }: {
   fitting: boolean;
   stage: FitProgressStage | null;
@@ -49,6 +50,7 @@ export function ResumeFitPanel({
   onFit: () => void;
   onCancel: () => void;
   onKeep: (contentId: string) => void;
+  onRestore: (contentId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const groups = useMemo(() => {
@@ -296,12 +298,22 @@ export function ResumeFitPanel({
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-500">
                           {change.reason}
                         </p>
+                        {change.kind === "shortened" ||
+                        change.kind === "expanded" ? (
+                          <button
+                            type="button"
+                            onClick={() => onRestore(change.targetId)}
+                            className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 text-xs font-medium text-ink-700 transition hover:border-ink-300 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+                          >
+                            <RotateCcw size={12} /> Restore &amp; lock wording
+                          </button>
+                        ) : null}
                         {(change.kind === "hidden" ||
                           change.kind === "collapsed") && (
                           <button
                             type="button"
                             onClick={() => onKeep(change.targetId)}
-                            className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 text-xs font-medium text-ink-700 transition hover:border-ink-300 hover:text-ink-900"
+                            className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 text-xs font-medium text-ink-700 transition hover:border-ink-300 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                           >
                             <Lock size={12} /> Keep on next fit
                           </button>

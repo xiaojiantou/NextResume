@@ -7,6 +7,8 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { PdfStylePicker } from "@/components/PdfStylePicker";
 import { PdfPalettePicker } from "@/components/PdfPalettePicker";
 import { TargetPagesPicker } from "@/components/TargetPagesPicker";
+import { ContentStructurePicker } from "@/components/ContentStructurePicker";
+import { OriginalDocumentPreview } from "@/components/OriginalDocumentPreview";
 import {
   FIT_PROGRESS_STAGES,
   ResumeFitPanel,
@@ -20,17 +22,33 @@ import { applyOptimizationToResume } from "@/lib/applyOptimization";
 import { VOICE_QUOTA, useFlow } from "@/lib/store";
 import { cn } from "@/lib/cn";
 import {
+  PDF_STYLE_DEFINITIONS,
   getDefaultPaletteId,
   type FixedPdfStyle,
+  type PdfStyle,
 } from "@/lib/pdf/config";
 import {
   createFitCacheKey,
+  createFitLayoutRevision,
   createResumeRevision,
   defaultResumePage,
   findFitVariant,
   type FitConflict,
 } from "@/lib/resumeFit";
 import { isCurrentResumeStyleProfile } from "@/lib/resumeStyle";
+import {
+  createOptimizationCacheKey,
+  findOptimizationVariant,
+} from "@/lib/resumeStructure";
+import type {
+  ContentStructureMode,
+  AtsReport,
+  JobAnalysis,
+  OptimizedBullet,
+  Resume,
+  ResumeBullet,
+  StructureIntegrity,
+} from "@/lib/types";
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -42,6 +60,11 @@ import {
   FileDown,
   Info,
   Layers,
+  Lock,
+  Mic,
+  RotateCcw,
+  ShieldCheck,
+  Unlock,
   Sparkles,
   Pencil,
   RefreshCw,
@@ -85,6 +108,9 @@ function ResultPageInner() {
     report,
     optimization,
     optimizationModel,
+    optimizationStructureMode,
+    optimizationVariants,
+    contentStructure,
     selectedModel,
     pdfStyle,
     includeSummary,
@@ -94,6 +120,7 @@ function ResultPageInner() {
     fitVariants,
     fitKeepIds,
     fitPriorityIds,
+    lockedContentIds,
     resumeStyleSource,
     personalizedStyleProfile,
     personalizedStatus,
@@ -103,12 +130,16 @@ function ResultPageInner() {
     setReport,
     setMeasuredScore,
     setOptimization,
+    setOptimizationVariants,
+    setContentStructure,
     setSelectedModel,
     setPdfStyle,
     setPdfPalette,
     setTargetPages,
     setFitVariants,
     setFitKeepIds,
+    setLockedContentIds,
+    toggleLockedContentId,
     upsertFitVariant,
     toggleFitKeepId,
     clearFitVariantsForStyle,
@@ -127,11 +158,15 @@ function ResultPageInner() {
   );
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [hydrating, setHydrating] = useState(false);
   const ran = useRef(false);
   const personalizeRan = useRef(false);
   const fitAbortRef = useRef<AbortController | null>(null);
   const fitCancelledRef = useRef(false);
+  const fitRequestKeyRef = useRef<string | null>(null);
+  const latestFitKeyRef = useRef<string | null>(null);
+  const runFitRef = useRef<() => Promise<void>>(async () => undefined);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -182,20 +217,55 @@ function ResultPageInner() {
     }
   };
 
-  const runOptimize = async (modelId: string) => {
-    if (!resume || !job || !report) return;
+  const runOptimize = async (
+    modelId: string,
+    structureMode: ContentStructureMode = contentStructure,
+    source?: {
+      resume: Resume;
+      job: JobAnalysis;
+      report: AtsReport;
+    },
+  ) => {
+    const sourceResume = source?.resume ?? resume;
+    const sourceJob = source?.job ?? job;
+    const sourceReport = source?.report ?? report;
+    if (!sourceResume || !sourceJob || !sourceReport) return;
     setGenerating(true);
     setError(null);
+    setErrorDetails([]);
     try {
       const res = await fetch("/api/optimize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, job, report, model: modelId }),
+        body: JSON.stringify({
+          resume: sourceResume,
+          job: sourceJob,
+          report: sourceReport,
+          model: modelId,
+          structureMode,
+          lockedContentIds,
+          baselineOptimization: optimization,
+        }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Optimization failed");
-      setOptimization(data.optimization, modelId);
-      void rescoreOptimized(data.optimization, modelId);
+      if (!res.ok) {
+        setErrorDetails(
+          Array.isArray(data.issues)
+            ? data.issues.filter(
+                (issue: unknown): issue is string =>
+                  typeof issue === "string",
+              )
+            : [],
+        );
+        throw new Error(data.error || "Optimization failed");
+      }
+      setOptimization(data.optimization, modelId, structureMode);
+      void rescoreOptimized(
+        data.optimization,
+        modelId,
+        sourceResume,
+        sourceJob,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Optimization failed.");
     } finally {
@@ -203,10 +273,58 @@ function ResultPageInner() {
     }
   };
 
-  const regenerate = async (modelId: string) => {
+  const regenerate = async (
+    modelId: string,
+    structureMode: ContentStructureMode = contentStructure,
+  ) => {
     clearOptimization();
     setHoveredOptimizedId(null);
-    await runOptimize(modelId);
+    await runOptimize(modelId, structureMode);
+  };
+
+  const switchStructureMode = (mode: ContentStructureMode) => {
+    setContentStructure(mode);
+    setContentVersion("full");
+    setFitConflict(null);
+    setFitError(null);
+    setExportError(null);
+    if (!resume || !job) return;
+    const modelId = optimizationModel ?? selectedModel;
+    const cacheKey = createOptimizationCacheKey({
+      resume,
+      job,
+      modelId,
+      structureMode: mode,
+    });
+    const cached = findOptimizationVariant(optimizationVariants, cacheKey);
+    if (cached) {
+      setOptimization(cached.optimization, modelId, mode);
+      return;
+    }
+    void regenerate(modelId, mode);
+  };
+
+  const switchOptimizationModel = (modelId: string) => {
+    setSelectedModel(modelId);
+    if (!resume || !job) {
+      void regenerate(modelId, contentStructure);
+      return;
+    }
+    const cacheKey = createOptimizationCacheKey({
+      resume,
+      job,
+      modelId,
+      structureMode: contentStructure,
+    });
+    const cached = findOptimizationVariant(optimizationVariants, cacheKey);
+    if (cached) {
+      setOptimization(cached.optimization, modelId, contentStructure);
+      setContentVersion("full");
+      setFitConflict(null);
+      setFitError(null);
+      return;
+    }
+    void regenerate(modelId, contentStructure);
   };
 
   const [exporting, setExporting] = useState(false);
@@ -261,11 +379,16 @@ function ResultPageInner() {
       ),
     [personalizedStyleProfile?.page, resumeStyleSource?.page],
   );
+  const protectedContentIds = useMemo(
+    () => [...new Set([...fitKeepIds, ...lockedContentIds])],
+    [fitKeepIds, lockedContentIds],
+  );
   const activeFitKey = useMemo(() => {
     if (
       targetPages === "auto" ||
       !sourceRevision ||
-      !optimizationModel
+      !optimizationModel ||
+      optimizationStructureMode !== contentStructure
     ) {
       return null;
     }
@@ -275,13 +398,19 @@ function ResultPageInner() {
       style: pdfStyle,
       page: outputPage,
       modelId: optimizationModel,
-      keptContentIds: fitKeepIds,
+      layoutRevision: createFitLayoutRevision(
+        pdfStyle === "personalized" ? personalizedStyleProfile : null,
+      ),
+      keptContentIds: protectedContentIds,
     });
   }, [
-    fitKeepIds,
+    protectedContentIds,
     optimizationModel,
+    optimizationStructureMode,
+    contentStructure,
     outputPage,
     pdfStyle,
+    personalizedStyleProfile,
     sourceRevision,
     targetPages,
   ]);
@@ -291,6 +420,16 @@ function ResultPageInner() {
     [activeFitKey, fitVariants],
   );
   const activeFitVariantId = activeFitVariant?.id ?? null;
+  useEffect(() => {
+    latestFitKeyRef.current = activeFitKey;
+    if (
+      fitRequestKeyRef.current &&
+      fitRequestKeyRef.current !== activeFitKey
+    ) {
+      fitCancelledRef.current = true;
+      fitAbortRef.current?.abort();
+    }
+  }, [activeFitKey]);
   useEffect(() => {
     if (targetPages === "auto") {
       setContentVersion("full");
@@ -319,6 +458,15 @@ function ResultPageInner() {
     fittedViewActive && activeFitVariant
       ? activeFitVariant.fittedOptimization
       : optimization;
+  const optimizationNeedsStructureUpgrade =
+    contentStructure === "optimize" &&
+    optimizationStructureMode === "optimize" &&
+    Boolean(optimization) &&
+    (!optimization?.sectionOrder?.length || !optimization.sectionLabels);
+  const structureStale =
+    Boolean(optimization) &&
+    (optimizationStructureMode !== contentStructure ||
+      optimizationNeedsStructureUpgrade);
 
   const runFit = async () => {
     if (
@@ -327,10 +475,15 @@ function ResultPageInner() {
       !job ||
       !report ||
       !optimizationModel ||
-      targetPages === "auto"
+      structureStale ||
+      targetPages === "auto" ||
+      !activeFitKey
     ) {
       return;
     }
+    fitAbortRef.current?.abort();
+    const requestKey = activeFitKey;
+    fitRequestKeyRef.current = requestKey;
     setFitting(true);
     setFitError(null);
     setFitConflict(null);
@@ -347,7 +500,7 @@ function ResultPageInner() {
     }, 6_500);
     const controller = new AbortController();
     fitAbortRef.current = controller;
-    const timeout = window.setTimeout(() => controller.abort(), 45_000);
+    const timeout = window.setTimeout(() => controller.abort(), 85_000);
     try {
       const response = await fetch("/api/fit-resume", {
         method: "POST",
@@ -368,8 +521,10 @@ function ResultPageInner() {
             pdfStyle === "personalized"
               ? personalizedStyleProfile
               : undefined,
-          keptContentIds: fitKeepIds,
+          keptContentIds: protectedContentIds,
           priorityContentIds: fitPriorityIds,
+          lockedContentIds,
+          structureMode: contentStructure,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -380,13 +535,14 @@ function ResultPageInner() {
       if (!response.ok || !data.variant) {
         throw new Error(data.error || "Could not fit the resume.");
       }
+      if (latestFitKeyRef.current !== requestKey) return;
       upsertFitVariant(data.variant);
       setContentVersion("fitted");
     } catch (fitFailure) {
       if (fitCancelledRef.current) return;
       setFitError(
         fitFailure instanceof DOMException && fitFailure.name === "AbortError"
-          ? "Page fitting exceeded 45 seconds. Try again or choose a nearby page count."
+          ? "Page fitting exceeded 85 seconds. Try again or choose a nearby page count."
           : fitFailure instanceof Error
             ? fitFailure.message
             : "Could not fit the resume.",
@@ -394,12 +550,49 @@ function ResultPageInner() {
     } finally {
       window.clearInterval(progressTimer);
       window.clearTimeout(timeout);
-      fitAbortRef.current = null;
+      if (fitRequestKeyRef.current === requestKey) {
+        fitAbortRef.current = null;
+        fitRequestKeyRef.current = null;
+      }
       fitCancelledRef.current = false;
       setFitStage(null);
       setFitting(false);
     }
   };
+  runFitRef.current = runFit;
+
+  useEffect(() => {
+    if (
+      !activeFitKey ||
+      activeFitVariantId ||
+      targetPages === "auto" ||
+      structureStale ||
+      fitting ||
+      generating ||
+      fitError ||
+      fitConflict ||
+      (pdfStyle === "personalized" &&
+        (!personalizedStyleProfile || personalizedStatus === "generating"))
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void runFitRef.current();
+    }, 1_500);
+    return () => window.clearTimeout(timer);
+  }, [
+    activeFitKey,
+    activeFitVariantId,
+    fitConflict,
+    fitError,
+    fitting,
+    generating,
+    pdfStyle,
+    personalizedStatus,
+    personalizedStyleProfile,
+    structureStale,
+    targetPages,
+  ]);
 
   const downloadPdf = async () => {
     if (!resume || !optimization) return;
@@ -407,6 +600,19 @@ function ResultPageInner() {
     setExportError(null);
     setExportNotice(null);
     try {
+      if (structureStale) {
+        throw new Error(
+          `Regenerate with ${contentStructure === "preserve" ? "the original structure" : "role-optimized structure"} before downloading.`,
+        );
+      }
+      if (
+        contentStructure === "preserve" &&
+        optimization.structureIntegrity?.valid === false
+      ) {
+        throw new Error(
+          "Structure integrity checks failed. Regenerate before downloading.",
+        );
+      }
       if (targetPages !== "auto" && !activeFitVariant) {
         throw new Error(
           `Fit the latest resume to exactly ${targetPages} ${
@@ -418,8 +624,8 @@ function ResultPageInner() {
         throw new Error(
           personalizedStatus === "failed"
             ? personalizedError ||
-                "Personalized layout failed. Retry or choose Classic."
-            : "Personalized layout is still generating.",
+                "Original-inspired layout failed. Retry or choose Classic."
+            : "Original-inspired layout is still generating.",
         );
       }
       const res = await fetch("/api/export/pdf", {
@@ -437,6 +643,7 @@ function ResultPageInner() {
           fitVariant:
             targetPages === "auto" ? undefined : activeFitVariant,
           sourceRevision: sourceRevision ?? undefined,
+          lockedContentIds,
           personalizedStyleProfile:
             pdfStyle === "personalized"
               ? personalizedStyleProfile
@@ -499,11 +706,14 @@ function ResultPageInner() {
       const res = await fetch("/api/personalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ styleSource: resumeStyleSource }),
+        body: JSON.stringify({
+          styleSource: resumeStyleSource,
+          sourceLayout: resume?.sourceLayout ?? null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.styleProfile) {
-        throw new Error(data.error || "Personalized layout generation failed.");
+        throw new Error(data.error || "Original-inspired layout generation failed.");
       }
       clearFitVariantsForStyle("personalized");
       setPersonalizedStyleProfile(data.styleProfile);
@@ -512,11 +722,12 @@ function ResultPageInner() {
       setPersonalizedError(
         personalizeFailure instanceof Error
           ? personalizeFailure.message
-          : "Personalized layout generation failed.",
+          : "Original-inspired layout generation failed.",
       );
     }
   }, [
     resumeStyleSource,
+    resume?.sourceLayout,
     clearFitVariantsForStyle,
     setPersonalizedStatus,
     setPersonalizedStyleProfile,
@@ -572,9 +783,18 @@ function ResultPageInner() {
           if (!res.ok) throw new Error(data.error || "Could not open resume.");
           const snap = data.snapshot;
           const order = data.order;
+          const restoredReport: AtsReport = snap?.report ?? {
+            overallBefore: 0,
+            overallAfter: snap?.optimization?.atsScore ?? 0,
+            categoriesBefore: [],
+            categoriesAfter: [],
+            missingKeywords: [],
+            presentKeywords: [],
+          };
 
           if (snap?.resume) setResume(snap.resume);
           if (snap?.job) setJob(snap.job);
+          setReport(restoredReport);
           if (snap?.resumeStyleSource) {
             setResumeStyleSource(snap.resumeStyleSource);
           }
@@ -602,8 +822,27 @@ function ResultPageInner() {
           if (Array.isArray(snap?.fitKeepIds)) {
             setFitKeepIds(snap.fitKeepIds);
           }
+          if (Array.isArray(snap?.lockedContentIds)) {
+            setLockedContentIds(snap.lockedContentIds);
+          }
+          if (Array.isArray(snap?.optimizationVariants)) {
+            setOptimizationVariants(snap.optimizationVariants);
+          }
+          if (
+            snap?.contentStructure === "optimize" ||
+            snap?.contentStructure === "preserve"
+          ) {
+            setContentStructure(snap.contentStructure);
+          }
           if (snap?.optimization && snap?.optimizationModel) {
-            setOptimization(snap.optimization, snap.optimizationModel);
+            setOptimization(
+              snap.optimization,
+              snap.optimizationModel,
+              snap.optimizationStructureMode ??
+                snap.optimization.structureMode ??
+                snap.contentStructure ??
+                "optimize",
+            );
             if (!useFlow.getState().report) setReport(stubReport);
             if (snap?.resume && snap?.job) {
               void rescoreOptimized(
@@ -619,8 +858,15 @@ function ResultPageInner() {
 
           // If snapshot has no optimization yet, run it now.
           if (!snap?.optimization && snap?.resume && snap?.job) {
-            setReport(stubReport);
-            await runOptimize(selectedModel);
+            await runOptimize(
+              selectedModel,
+              snap?.contentStructure ?? "optimize",
+              {
+                resume: snap.resume,
+                job: snap.job,
+                report: restoredReport,
+              },
+            );
           }
         } catch (e) {
           setError(e instanceof Error ? e.message : "Could not open resume.");
@@ -655,6 +901,7 @@ function ResultPageInner() {
         body: JSON.stringify({
           optimization,
           optimizationModel,
+          report,
           resume,
           personalizedStyleProfile,
           pdfStyle,
@@ -662,6 +909,10 @@ function ResultPageInner() {
           targetPages,
           fitVariants,
           fitKeepIds,
+          optimizationStructureMode,
+          optimizationVariants,
+          contentStructure,
+          lockedContentIds,
         }),
       },
     ).catch(() => {
@@ -670,6 +921,7 @@ function ResultPageInner() {
   }, [
     optimization,
     optimizationModel,
+    report,
     resume,
     personalizedStyleProfile,
     pdfStyle,
@@ -677,6 +929,10 @@ function ResultPageInner() {
     targetPages,
     fitVariants,
     fitKeepIds,
+    optimizationStructureMode,
+    optimizationVariants,
+    contentStructure,
+    lockedContentIds,
     hasEmailAccess,
     orderIdFromUrl,
     tokenFromUrl,
@@ -686,6 +942,9 @@ function ResultPageInner() {
     () => [
       ...(optimization?.roles.flatMap((r) => r.bullets) ?? []),
       ...(optimization?.projects?.flatMap((p) => p.bullets) ?? []),
+      ...(optimization?.additionalSections?.flatMap((section) =>
+        section.items.flatMap((item) => item.bullets),
+      ) ?? []),
     ],
     [optimization],
   );
@@ -723,16 +982,27 @@ function ResultPageInner() {
     return (
       <AppShell step="result">
         <div className="container-x py-10 max-w-2xl">
-          <div className="card p-8 text-center">
+          <div className="card p-8 text-center" role="alert" aria-live="assertive">
             <div className="w-12 h-12 rounded-xl bg-rose-100 text-rose-700 mx-auto inline-flex items-center justify-center">
               <AlertCircle size={20} />
             </div>
             <h2 className="text-xl font-semibold mt-4 text-ink-900">
               Optimization failed
             </h2>
+            <div className="mt-2 inline-flex rounded-full border border-ink-100 bg-ink-50 px-2.5 py-1 text-xs font-medium text-ink-600">
+              Mode: {contentStructure === "preserve" ? "Keep original" : "Optimize for role"}
+            </div>
             <p className="text-ink-500 text-sm mt-2">{error}</p>
+            {errorDetails.length > 0 ? (
+              <ul className="mx-auto mt-3 max-w-lg list-disc space-y-1 rounded-lg border border-rose-100 bg-rose-50/60 px-5 py-3 text-left text-xs leading-5 text-rose-800">
+                {errorDetails.slice(0, 5).map((detail) => (
+                  <li key={detail}>{detail}</li>
+                ))}
+              </ul>
+            ) : null}
             <p className="text-ink-400 text-xs mt-3">
-              If this model isn't available, try a different one.
+              Nothing unsafe was applied. Review the exact source/output
+              mismatch above, then retry or switch structure mode.
             </p>
             <div className="mt-3 flex justify-center">
               <ModelPicker
@@ -740,6 +1010,7 @@ function ResultPageInner() {
                 onPick={(id) => {
                   setSelectedModel(id);
                   setError(null);
+                  setErrorDetails([]);
                   regenerate(id);
                 }}
               />
@@ -747,13 +1018,40 @@ function ResultPageInner() {
             <button
               onClick={() => {
                 setError(null);
-                ran.current = false;
-                location.reload();
+                setErrorDetails([]);
+                void regenerate(selectedModel, contentStructure);
               }}
-              className="btn btn-primary mt-5"
+              className="btn btn-primary mt-5 min-h-11"
             >
               Retry
             </button>
+            {contentStructure === "preserve" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setErrorDetails([]);
+                  setContentStructure("optimize");
+                  void regenerate(selectedModel, "optimize");
+                }}
+                className="btn btn-outline mt-3 ml-2 min-h-11"
+              >
+                Use Optimize for role
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setErrorDetails([]);
+                  setContentStructure("preserve");
+                  void regenerate(selectedModel, "preserve");
+                }}
+                className="btn btn-outline mt-3 ml-2 min-h-11"
+              >
+                Use Keep original
+              </button>
+            )}
           </div>
         </div>
       </AppShell>
@@ -795,14 +1093,23 @@ function ResultPageInner() {
           Math.abs(outputPage.heightPt - 792) < 8
         ? "Letter"
         : `${Math.round(outputPage.widthPt)}×${Math.round(outputPage.heightPt)}pt`;
-  const needsFit = targetPages !== "auto" && !activeFitVariant;
-  const primaryAction = needsFit ? runFit : downloadPdf;
+  const needsFit =
+    !structureStale && targetPages !== "auto" && !activeFitVariant;
+  const primaryAction = structureStale
+    ? () => regenerate(selectedModel, contentStructure)
+    : needsFit
+      ? runFit
+      : downloadPdf;
   const primaryDisabled =
     fitting ||
     exporting ||
     generating ||
     !optimization ||
-    (pdfStyle === "personalized" && personalizedStatus !== "ready");
+    (contentStructure === "preserve" &&
+      optimization.structureIntegrity?.valid === false) ||
+    (!structureStale &&
+      pdfStyle === "personalized" &&
+      personalizedStatus !== "ready");
 
   return (
     <AppShell step="result">
@@ -824,7 +1131,12 @@ function ResultPageInner() {
                 {job.company ? ` @ ${job.company}` : ""}
               </span>
               .{" "}
-              {typeof report.measuredAfter === "number" ? (
+              {typeof activeFitVariant?.atsScore === "number" ? (
+                <>
+                  ATS score: {report.overallBefore} →{" "}
+                  {activeFitVariant.atsScore}
+                </>
+              ) : typeof report.measuredAfter === "number" ? (
                 <>
                   ATS score:{" "}
                   {report.overallBefore > 0 && (
@@ -870,6 +1182,13 @@ function ResultPageInner() {
                   <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Preparing…
                 </>
+              ) : structureStale ? (
+                <>
+                  <RefreshCw size={14} /> Regenerate with{" "}
+                  {contentStructure === "preserve"
+                    ? "original structure"
+                    : "role optimization"}
+                </>
               ) : needsFit ? (
                 <>
                   <Sparkles size={14} /> Fit to {targetPages}{" "}
@@ -883,6 +1202,20 @@ function ResultPageInner() {
             </button>
           </div>
         </div>
+
+        {resume.structureConfidence?.level === "low" ? (
+          <div
+            role="status"
+            className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            <Info size={15} className="mt-0.5 shrink-0" />
+            <span>
+              Some source page regions were detected approximately.
+              Original-inspired will preserve the closest safe layout without
+              blocking your workflow; all parsed content remains editable.
+            </span>
+          </div>
+        ) : null}
 
         {exportError && (
           <div
@@ -932,7 +1265,7 @@ function ResultPageInner() {
             >
               <span>
                 {personalizedError ||
-                  "Personalized layout failed. Retry or choose Classic."}
+                  "Original-inspired layout failed. Retry or choose Classic."}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1013,13 +1346,19 @@ function ResultPageInner() {
             <div className="h-5 w-px bg-ink-100 hidden sm:block" />
             <ModelPicker
               current={selectedModel}
-              onPick={(id) => {
-                setSelectedModel(id);
-                if (id !== optimizationModel) regenerate(id);
-              }}
+              onPick={switchOptimizationModel}
               onRegenerate={() => regenerate(selectedModel)}
               regenerating={generating}
               compact
+            />
+            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
+            <span className="text-xs text-ink-500 hidden md:inline">
+              Content structure
+            </span>
+            <ContentStructurePicker
+              current={contentStructure}
+              onPick={switchStructureMode}
+              disabled={generating}
             />
             <div className="h-5 w-px bg-ink-100 hidden sm:block" />
             <span className="text-xs text-ink-500 hidden md:inline">
@@ -1056,7 +1395,7 @@ function ResultPageInner() {
                   void generatePersonalized();
                 }}
                 className="btn btn-outline min-h-11 !px-2.5 text-xs"
-                title="Analyze the uploaded resume again and replace the cached visual style"
+                title="Rebuild the uploaded resume's page regions and visual style"
               >
                 <RefreshCw
                   size={13}
@@ -1067,15 +1406,20 @@ function ResultPageInner() {
                   }
                 />
                 {personalizedStatus === "generating"
-                  ? "Detecting style…"
-                  : "Re-detect style"}
+                  ? "Rebuilding layout…"
+                  : "Rebuild layout"}
               </button>
             ) : null}
             {pdfStyle !== "personalized" ? (
               <PdfPalettePicker
                 style={pdfStyle as FixedPdfStyle}
                 current={pdfPalette}
-                onPick={setPdfPalette}
+                onPick={(palette) => {
+                  setPdfPalette(palette);
+                  setContentVersion("full");
+                  setFitConflict(null);
+                  setFitError(null);
+                }}
               />
             ) : null}
             <div className="h-5 w-px bg-ink-100 hidden sm:block" />
@@ -1095,6 +1439,52 @@ function ResultPageInner() {
           </div>
         </div>
 
+        {structureStale ? (
+          <div
+            role="status"
+            className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <div>
+              <div className="font-medium">
+                {optimizationNeedsStructureUpgrade
+                  ? "Regenerate to apply optimized headings and order"
+                  : `This result uses ${
+                      optimizationStructureMode === "preserve"
+                        ? "Keep original sections"
+                        : "Optimize for role"
+                    }`}
+              </div>
+              <p className="mt-0.5 text-xs text-amber-800">
+                Generate a new version before fitting or downloading. Your
+                current result remains visible and is saved in its own cache.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary min-h-11"
+              disabled={generating}
+              onClick={() =>
+                void regenerate(selectedModel, contentStructure)
+              }
+            >
+              <RefreshCw size={14} /> Regenerate with{" "}
+              {contentStructure === "preserve"
+                ? "original structure"
+                : "role optimization"}
+            </button>
+          </div>
+        ) : null}
+
+        {!structureStale &&
+        contentStructure === "preserve" &&
+        optimization.structureIntegrity ? (
+          <StructureIntegrityPanel
+            integrity={optimization.structureIntegrity}
+            sourceLayout={resume.sourceLayout}
+            pdfStyle={pdfStyle}
+          />
+        ) : null}
+
         {optimizationModel && (
           <div className="mt-2 text-xs text-ink-400 flex items-center gap-1.5">
             <Cpu size={11} />
@@ -1106,7 +1496,7 @@ function ResultPageInner() {
           </div>
         )}
 
-        {targetPages !== "auto" ? (
+        {targetPages !== "auto" && !structureStale ? (
           <ResumeFitPanel
             fitting={fitting}
             stage={fitStage}
@@ -1117,12 +1507,19 @@ function ResultPageInner() {
             onFit={() => void runFit()}
             onCancel={() => {
               fitCancelledRef.current = true;
+              setFitError("Page fitting was cancelled. Retry when you are ready.");
               fitAbortRef.current?.abort();
             }}
             onKeep={(contentId) => {
               toggleFitKeepId(contentId);
               setContentVersion("full");
               setFitConflict(null);
+            }}
+            onRestore={(contentId) => {
+              toggleLockedContentId(contentId);
+              setContentVersion("full");
+              setFitConflict(null);
+              setFitError(null);
             }}
           />
         ) : null}
@@ -1219,9 +1616,28 @@ function ResultPageInner() {
                 sourceRevision={sourceRevision}
                 pageSize={outputPage}
                 personalizedStyleProfile={personalizedStyleProfile}
-                onResumeChange={setResume}
+                personalizedStatus={personalizedStatus}
+                personalizedError={personalizedError}
+                onRetryPersonalized={() => {
+                  personalizeRan.current = true;
+                  void generatePersonalized();
+                }}
+                onResumeChange={(nextResume) => {
+                  setContentVersion("full");
+                  setFitConflict(null);
+                  setFitError(null);
+                  setResume(nextResume);
+                }}
                 onRegenerate={() => regenerate(selectedModel)}
                 regenerating={generating}
+                keptContentIds={protectedContentIds}
+                lockedContentIds={lockedContentIds}
+                onToggleKeep={(contentId) => {
+                  toggleFitKeepId(contentId);
+                  setContentVersion("full");
+                  setFitConflict(null);
+                  setFitError(null);
+                }}
               />
             )}
           </div>
@@ -1229,19 +1645,37 @@ function ResultPageInner() {
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             {(view === "split" || view === "original") && (
               <PaneWrapper
-                title="Your original"
+                title={
+                  resumeStyleSource?.screenshots.length
+                    ? "Original PDF"
+                    : "Original content (reconstructed)"
+                }
                 tone="muted"
-                meta={`${pageLabel} · Source content`}
+                meta={
+                  resume.sourceLayout
+                    ? `${resume.sourceLayout.pageCount} ${
+                        resume.sourceLayout.pageCount === 1 ? "page" : "pages"
+                      } · ${
+                        resume.sourceLayout.maxColumns === 2
+                          ? "Multi-column"
+                          : "Single-column"
+                      }`
+                    : `${pageLabel} · Source content`
+                }
               >
-                <ResumeView
-                  mode="original"
-                  resume={resume}
-                  optimization={optimization}
-                  hoveredEvidence={hoveredEvidence}
-                  hoveredOptimizedId={hoveredOptimizedId}
-                  setHoveredOptimizedId={setHoveredOptimizedId}
-                  evidenceMode={evidenceMode}
-                />
+                {resumeStyleSource?.screenshots.length ? (
+                  <OriginalDocumentPreview source={resumeStyleSource} />
+                ) : (
+                  <ResumeView
+                    mode="original"
+                    resume={resume}
+                    optimization={optimization}
+                    hoveredEvidence={hoveredEvidence}
+                    hoveredOptimizedId={hoveredOptimizedId}
+                    setHoveredOptimizedId={setHoveredOptimizedId}
+                    evidenceMode={evidenceMode}
+                  />
+                )}
               </PaneWrapper>
             )}
             {(view === "split" || view === "optimized") && (
@@ -1356,6 +1790,72 @@ function PaneWrapper({
         <span className="text-ink-400">{meta}</span>
       </div>
       {children}
+    </div>
+  );
+}
+
+function StructureIntegrityPanel({
+  integrity,
+  sourceLayout,
+  pdfStyle,
+}: {
+  integrity: StructureIntegrity;
+  sourceLayout?: Resume["sourceLayout"];
+  pdfStyle: PdfStyle;
+}) {
+  const checks = [
+    `${integrity.sectionsPreserved}/${integrity.totalSections} sections`,
+    `${integrity.entriesPreserved}/${integrity.totalEntries} entries`,
+    `${integrity.bulletsPreserved}/${integrity.totalBullets} bullets`,
+    `${integrity.factualFieldsChanged} factual fields changed`,
+  ];
+  return (
+    <div
+      role={integrity.valid ? "status" : "alert"}
+      className={cn(
+        "mt-3 rounded-xl border px-4 py-3",
+        integrity.valid
+          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-rose-200 bg-rose-50 text-rose-900",
+      )}
+    >
+      <div className="flex items-center gap-2 text-sm font-medium">
+        {integrity.valid ? (
+          <ShieldCheck size={16} />
+        ) : (
+          <AlertCircle size={16} />
+        )}
+        {integrity.valid
+          ? "Full resume structure verified"
+          : "Structure integrity failed"}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        {checks.map((check) => (
+          <span key={check}>{check}</span>
+        ))}
+      </div>
+      {!integrity.valid && integrity.issues.length > 0 ? (
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
+          {integrity.issues.slice(0, 6).map((issue) => (
+            <li key={issue}>{issue}</li>
+          ))}
+        </ul>
+      ) : null}
+      {integrity.valid ? (
+        <p className="mt-2 text-xs leading-5 text-emerald-800">
+          The full optimized master preserves headings, section order, entries,
+          and bullets. Exact page-fit versions keep every source heading and its
+          order, but may shorten or omit lower-priority entries, bullets, and
+          skills while leaving content under every heading. The
+          source was detected as {sourceLayout?.maxColumns === 2 ? "multi-column" : "single-column"};{" "}
+          {pdfStyle === "personalized"
+            ? "Original-inspired controls the recreated visual layout."
+            : `the output still uses the selected ${
+                PDF_STYLE_DEFINITIONS.find((style) => style.id === pdfStyle)
+                  ?.label ?? pdfStyle
+              } visual layout.`}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1510,11 +2010,65 @@ function BulletDiff() {
     job,
     selectedModel,
     voiceCount,
+    lockedContentIds,
     replaceOptimizedBullet,
+    toggleLockedContentId,
     incrementVoiceCount,
   } = useFlow();
   if (!resume || !optimization) return null;
   const quotaRemaining = Math.max(0, VOICE_QUOTA - voiceCount);
+  const renderActions = (
+    ownerId: string,
+    bullet: OptimizedBullet,
+    source: ResumeBullet | null,
+  ) => {
+    const locked = lockedContentIds.includes(bullet.id);
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <button
+          type="button"
+          onClick={() => toggleLockedContentId(bullet.id)}
+          className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10"
+          aria-label={`${locked ? "Unlock" : "Lock"} rewritten bullet`}
+          title={
+            locked
+              ? "Allow future regeneration and Fit to change this bullet"
+              : "Keep this wording during future regeneration and Fit"
+          }
+        >
+          {locked ? <Lock size={13} /> : <Unlock size={13} />}
+          {locked ? "Locked" : "Lock"}
+        </button>
+        <button
+          type="button"
+          disabled={!source || bullet.text === source.text}
+          onClick={() => {
+            if (!source) return;
+            replaceOptimizedBullet(ownerId, bullet.id, {
+              ...bullet,
+              text: source.text,
+              evidence: [source.id],
+              matchedKeywords: [],
+              rationale: "Restored from the original resume by the user.",
+            });
+          }}
+          className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10 disabled:cursor-not-allowed disabled:opacity-40"
+          title="Restore the source wording and lock it"
+        >
+          <RotateCcw size={13} /> Restore original
+        </button>
+        <VoiceRefine
+          roleId={ownerId}
+          bullet={bullet}
+          job={job}
+          model={selectedModel}
+          quotaRemaining={quotaRemaining}
+          onAccept={replaceOptimizedBullet}
+          onQuotaConsume={incrementVoiceCount}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="mt-10">
@@ -1525,7 +2079,10 @@ function BulletDiff() {
         <div className="text-xs text-ink-400 flex items-center gap-3">
           <span>
             {optimization.roles.flatMap((r) => r.bullets).length +
-              (optimization.projects?.flatMap((p) => p.bullets).length ?? 0)}{" "}
+              (optimization.projects?.flatMap((p) => p.bullets).length ?? 0) +
+              (optimization.additionalSections?.flatMap((section) =>
+                section.items.flatMap((item) => item.bullets),
+              ).length ?? 0)}{" "}
             bullets rewritten
           </span>
           <span className="hidden sm:inline">·</span>
@@ -1535,7 +2092,7 @@ function BulletDiff() {
               quotaRemaining === 0 && "text-rose-500",
             )}
           >
-            🎙 {quotaRemaining}/{VOICE_QUOTA} voice refinements
+            <Mic size={12} /> {quotaRemaining}/{VOICE_QUOTA} voice refinements
           </span>
         </div>
       </div>
@@ -1553,13 +2110,13 @@ function BulletDiff() {
                 </span>
               </div>
               <div className="divide-y divide-ink-100">
-                {role.bullets.map((b) => {
+                {role.bullets.map((b, bulletIndex) => {
                   const orig = original.bullets.filter((o) =>
                     b.evidence.includes(o.id),
                   );
                   return (
                     <div
-                      key={b.id}
+                      key={`${role.id}:${b.id}:${bulletIndex}`}
                       className="grid md:grid-cols-2 gap-0 md:gap-4 p-5 text-sm"
                     >
                       <div>
@@ -1577,15 +2134,13 @@ function BulletDiff() {
                           <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium">
                             After
                           </div>
-                          <VoiceRefine
-                            roleId={role.id}
-                            bullet={b}
-                            job={job}
-                            model={selectedModel}
-                            quotaRemaining={quotaRemaining}
-                            onAccept={replaceOptimizedBullet}
-                            onQuotaConsume={incrementVoiceCount}
-                          />
+                          {renderActions(
+                            role.id,
+                            b,
+                            original.bullets.find(
+                              (source) => source.id === b.id,
+                            ) ?? orig[0] ?? null,
+                          )}
                         </div>
                         <div className="text-ink-900">{b.text}</div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1598,8 +2153,8 @@ function BulletDiff() {
                             </span>
                           ))}
                           {b.evidence.includes("voice-transcript") && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
-                              🎙 voice-attested
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                              <Mic size={11} /> voice-attested
                             </span>
                           )}
                           {(b.suggestion === "cut" ||
@@ -1642,13 +2197,13 @@ function BulletDiff() {
                 </span>
               </div>
               <div className="divide-y divide-ink-100">
-                {project.bullets.map((b) => {
+                {project.bullets.map((b, bulletIndex) => {
                   const orig = original.bullets.filter((o) =>
                     b.evidence.includes(o.id),
                   );
                   return (
                     <div
-                      key={b.id}
+                      key={`${project.id}:${b.id}:${bulletIndex}`}
                       className="grid md:grid-cols-2 gap-0 md:gap-4 p-5 text-sm"
                     >
                       <div>
@@ -1666,15 +2221,13 @@ function BulletDiff() {
                           <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium">
                             After
                           </div>
-                          <VoiceRefine
-                            roleId={project.id}
-                            bullet={b}
-                            job={job}
-                            model={selectedModel}
-                            quotaRemaining={quotaRemaining}
-                            onAccept={replaceOptimizedBullet}
-                            onQuotaConsume={incrementVoiceCount}
-                          />
+                          {renderActions(
+                            project.id,
+                            b,
+                            original.bullets.find(
+                              (source) => source.id === b.id,
+                            ) ?? orig[0] ?? null,
+                          )}
                         </div>
                         <div className="text-ink-900">{b.text}</div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1687,8 +2240,8 @@ function BulletDiff() {
                             </span>
                           ))}
                           {b.evidence.includes("voice-transcript") && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
-                              🎙 voice-attested
+                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
+                              <Mic size={11} /> voice-attested
                             </span>
                           )}
                           {(b.suggestion === "cut" ||
@@ -1718,6 +2271,67 @@ function BulletDiff() {
               </div>
             </div>
           );
+        })}
+        {optimization.additionalSections?.flatMap((section) => {
+          const originalSection = resume.additionalSections?.find(
+            (candidate) => candidate.id === section.id,
+          );
+          if (!originalSection) return [];
+          return section.items.map((item) => {
+            const originalItem = originalSection.items.find(
+              (candidate) => candidate.id === item.id,
+            );
+            if (!originalItem) return null;
+            return (
+              <div key={`${section.id}:${item.id}`}>
+                <div className="border-b border-ink-100 bg-ink-50/60 px-5 py-3 text-sm font-medium text-ink-900">
+                  {originalSection.title}
+                  {originalItem.heading ? (
+                    <span className="font-normal text-ink-500">
+                      {" "}· {originalItem.heading}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="divide-y divide-ink-100">
+                  {item.bullets.map((bullet, bulletIndex) => {
+                    const evidence = originalItem.bullets.filter((source) =>
+                      bullet.evidence.includes(source.id),
+                    );
+                    const source =
+                      originalItem.bullets.find(
+                        (candidate) => candidate.id === bullet.id,
+                      ) ?? evidence[0] ?? null;
+                    return (
+                      <div
+                        key={`${section.id}:${item.id}:${bullet.id}:${bulletIndex}`}
+                        className="grid gap-4 p-5 text-sm md:grid-cols-2"
+                      >
+                        <div>
+                          <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-ink-400">
+                            Before
+                          </div>
+                          <div className="text-ink-500">
+                            {evidence.length
+                              ? evidence.map((candidate) => candidate.text).join(" / ")
+                              : "Inferred from context"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <div className="text-[10px] font-medium uppercase tracking-widest text-accent-600">
+                              After
+                            </div>
+                            {renderActions(item.id, bullet, source)}
+                          </div>
+                          <div className="text-ink-900">{bullet.text}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          });
         })}
       </div>
     </div>

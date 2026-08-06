@@ -11,22 +11,79 @@ import {
   Check,
   X,
   Wand2,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { useState } from "react";
 
 export function EditableResumeCanvas({
   resume,
+  optimizedPreview = false,
   onResumeChange,
   onRegenerate,
   regenerating,
+  keptContentIds = [],
+  lockedContentIds = [],
+  onToggleKeep,
 }: {
   resume: Resume;
+  optimizedPreview?: boolean;
   onResumeChange: (resume: Resume) => void;
   onRegenerate: () => void;
   regenerating: boolean;
+  keptContentIds?: string[];
+  lockedContentIds?: string[];
+  onToggleKeep?: (contentId: string) => void;
 }) {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const keptIds = new Set(keptContentIds);
+  const lockedIds = new Set(lockedContentIds);
+
+  const skillContentId = (skill: string) =>
+    `skill:${skill.trim().toLocaleLowerCase().replace(/\s+/g, " ")}`;
+
+  const KeepButton = ({
+    contentId,
+    compact = false,
+  }: {
+    contentId: string;
+    compact?: boolean;
+  }) => {
+    const locked = lockedIds.has(contentId);
+    const kept = locked || keptIds.has(contentId);
+    const label = locked ? "Edited" : kept ? "Kept" : "Keep";
+    return (
+      <button
+        type="button"
+        disabled={locked || !onToggleKeep}
+        aria-pressed={kept}
+        aria-label={
+          locked
+            ? "This manually edited content is locked"
+            : `${kept ? "Stop keeping" : "Keep"} this content during page fitting`
+        }
+        title={
+          locked
+            ? "Manual edits are locked and will not be rewritten by Fit"
+            : kept
+              ? "Allow Fit to shorten or remove this content"
+              : "Prevent Fit from removing this content"
+        }
+        onClick={() => onToggleKeep?.(contentId)}
+        className={cn(
+          "inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 disabled:cursor-default",
+          kept
+            ? "border-accent-200 bg-accent-50 text-accent-800"
+            : "border-ink-200 bg-white text-ink-500 hover:border-accent-300 hover:text-accent-700",
+          compact && "min-w-11 px-2",
+        )}
+      >
+        {kept ? <Lock size={13} /> : <Unlock size={13} />}
+        <span className={compact ? "sr-only" : undefined}>{label}</span>
+      </button>
+    );
+  };
 
   const startEdit = (field: string, value: string) => {
     setEditingField(field);
@@ -219,8 +276,14 @@ export function EditableResumeCanvas({
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-6 pb-6 border-b border-ink-100">
         <div>
-          <h2 className="text-lg font-semibold text-ink-900">Edit Resume</h2>
-          <p className="text-sm text-ink-500 mt-1">Click any field to edit. Changes update in real-time.</p>
+          <h2 className="text-lg font-semibold text-ink-900">
+            {optimizedPreview ? "Edit verified source fields" : "Edit Resume"}
+          </h2>
+          <p className="text-sm text-ink-500 mt-1">
+            {optimizedPreview
+              ? "The preview uses role-optimized wording and system section headings. Source-backed edits update it in real time."
+              : "Click any field to edit. Changes update in real-time."}
+          </p>
         </div>
         <button
           onClick={onRegenerate}
@@ -284,25 +347,29 @@ export function EditableResumeCanvas({
       {/* Skills */}
       <div className="card p-6">
         <h3 className="text-sm font-semibold text-ink-900 mb-4">Skills</h3>
-        <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
           {resume.skills.map((skill, idx) => (
             <div
-              key={idx}
-              className="flex items-center justify-between px-3 py-2 rounded-md border border-ink-100 bg-white hover:bg-ink-50"
+              key={`${skill}-${idx}`}
+              className="inline-flex min-h-11 items-center rounded-full border border-ink-200 bg-ink-50 pl-3 text-sm font-sans text-ink-900 transition hover:border-ink-300 hover:bg-white"
             >
-              <span className="text-sm font-sans">{skill}</span>
+              <span className="py-2">{skill}</span>
+              <KeepButton contentId={skillContentId(skill)} compact />
               <button
+                type="button"
+                aria-label={`Remove ${skill}`}
                 onClick={() => {
                   const updated = resume.skills.filter((_, i) => i !== idx);
                   onResumeChange({ ...resume, skills: updated });
                 }}
-                className="p-1 hover:bg-rose-100 rounded text-rose-500"
+                className="grid min-h-11 min-w-11 place-items-center rounded-full text-ink-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
               >
-                <Trash2 size={14} />
+                <X size={14} />
               </button>
             </div>
           ))}
           <button
+            type="button"
             onClick={() => {
               const newSkill = prompt("Add new skill:");
               if (newSkill) {
@@ -312,9 +379,9 @@ export function EditableResumeCanvas({
                 });
               }
             }}
-            className="w-full px-3 py-2 rounded-md border-2 border-dashed border-ink-200 text-ink-500 hover:border-ink-300 hover:text-ink-600 text-sm font-medium transition"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-dashed border-ink-300 px-4 text-sm font-medium text-ink-600 transition hover:border-accent-400 hover:bg-accent-50 hover:text-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
           >
-            <Plus size={14} className="inline mr-1" /> Add Skill
+            <Plus size={14} /> Add Skill
           </button>
         </div>
       </div>
@@ -326,6 +393,9 @@ export function EditableResumeCanvas({
         </div>
         {resume.experience.map((role) => (
           <div key={role.id} className="card p-6 border-l-4 border-l-accent-500">
+            <div className="mb-3 flex justify-end">
+              <KeepButton contentId={role.id} />
+            </div>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
@@ -366,8 +436,11 @@ export function EditableResumeCanvas({
               <div className="text-xs font-medium text-ink-600 uppercase tracking-widest">
                 Achievements
               </div>
-              {role.bullets.map((bullet) => (
-                <div key={bullet.id} className="flex gap-2 items-start">
+              {role.bullets.map((bullet, bulletIndex) => (
+                <div
+                  key={`${role.id}:${bullet.id}:${bulletIndex}`}
+                  className="flex gap-2 items-start"
+                >
                   <span className="mt-2 text-ink-400">•</span>
                   <input
                     type="text"
@@ -375,7 +448,10 @@ export function EditableResumeCanvas({
                     onChange={(e) => updateBullet(role.id, bullet.id, e.target.value)}
                     className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans resize-none"
                   />
+                  <KeepButton contentId={bullet.id} compact />
                   <button
+                    type="button"
+                    aria-label="Delete achievement"
                     onClick={() => deleteBullet(role.id, bullet.id)}
                     className="p-2 hover:bg-rose-100 rounded text-rose-500 shrink-0"
                   >
@@ -405,6 +481,9 @@ export function EditableResumeCanvas({
               key={project.id}
               className="card p-6 border-l-4 border-l-accent-500"
             >
+              <div className="mb-3 flex justify-end">
+                <KeepButton contentId={project.id} />
+              </div>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
@@ -445,8 +524,11 @@ export function EditableResumeCanvas({
                 <div className="text-xs font-medium text-ink-600 uppercase tracking-widest">
                   Achievements
                 </div>
-                {project.bullets.map((bullet) => (
-                  <div key={bullet.id} className="flex gap-2 items-start">
+                {project.bullets.map((bullet, bulletIndex) => (
+                  <div
+                    key={`${project.id}:${bullet.id}:${bulletIndex}`}
+                    className="flex gap-2 items-start"
+                  >
                     <span className="mt-2 text-ink-400">•</span>
                     <input
                       type="text"
@@ -456,7 +538,10 @@ export function EditableResumeCanvas({
                       }
                       className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans resize-none"
                     />
+                    <KeepButton contentId={bullet.id} compact />
                     <button
+                      type="button"
+                      aria-label="Delete achievement"
                       onClick={() => deleteProjectBullet(project.id, bullet.id)}
                       className="p-2 hover:bg-rose-100 rounded text-rose-500 shrink-0"
                     >

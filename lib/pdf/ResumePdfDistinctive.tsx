@@ -8,7 +8,12 @@ import {
 } from "@react-pdf/renderer";
 import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { FixedPdfStyle, ResumePalette } from "./config";
-import { getResumeSectionLabels, resolveResumeContent } from "./shared";
+import {
+  compactAdditionalItemLabel,
+  getResumeSectionLabels,
+  isCompactAdditionalSection,
+  resolveResumeContent,
+} from "./shared";
 
 type DistinctiveStyle = Extract<
   FixedPdfStyle,
@@ -154,6 +159,13 @@ function createStyles(
       fontSize: body(),
       lineHeight: lh(1.45),
     },
+    compactAdditional: {
+      marginTop: px(7),
+      color: palette.text,
+      fontFamily: isTech ? "Courier" : metaFont,
+      fontSize: body(),
+      lineHeight: lh(1.45),
+    },
     entry: {
       marginTop: px(isAcademic ? 9 : 10),
     },
@@ -280,8 +292,10 @@ export function ResumePdfDistinctive({
     education,
     additionalSections,
     language,
+    sectionLabels,
+    sectionOrder,
   } = resolveResumeContent(resume, optimization, { includeSummary });
-  const labels = getResumeSectionLabels(language);
+  const labels = getResumeSectionLabels(language, sectionLabels);
   const sectionLabel = (label: string) =>
     variant === "tech" ? `[ ${label} ]` : label;
   const bulletMarker = variant === "tech" ? "›" : variant === "elegant" ? "—" : "•";
@@ -292,6 +306,132 @@ export function ResumePdfDistinctive({
       <Text style={styles.bulletText}>{text}</Text>
     </View>
   );
+  const renderEntries = (entries: typeof experience) =>
+    entries.map((entry) => (
+      <View key={entry.id} style={styles.entry}>
+        <View wrap={false}>
+          <View style={styles.entryHeader}>
+            <View style={styles.entryHeadingGroup}>
+              <Text style={styles.entryHeading}>{entry.heading}</Text>
+              {entry.subheading ? (
+                <Text style={styles.entrySubheading}>{entry.subheading}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.entryDates}>
+              {[entry.start, entry.end].filter(Boolean).join(" — ")}
+            </Text>
+          </View>
+          {entry.location ? (
+            <Text style={styles.location}>{entry.location}</Text>
+          ) : null}
+          {entry.bullets[0]
+            ? renderBullet(entry.bullets[0], `${entry.id}-bullet-0`)
+            : null}
+        </View>
+        {entry.bullets
+          .slice(1)
+          .map((text, index) =>
+            renderBullet(text, `${entry.id}-bullet-${index + 1}`),
+          )}
+      </View>
+    ));
+  const renderSection = (ref: (typeof sectionOrder)[number]) => {
+    if (ref === "summary") {
+      return summary ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel}>
+            {sectionLabel(labels.summary)}
+          </Text>
+          <Text style={styles.summary}>{summary}</Text>
+        </View>
+      ) : null;
+    }
+    if (ref === "skills") {
+      return skills.length > 0 ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel}>{sectionLabel(labels.skills)}</Text>
+          <View style={styles.skillsBand}>
+            <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+          </View>
+        </View>
+      ) : null;
+    }
+    if (ref === "experience" || ref === "projects") {
+      const entries = ref === "experience" ? experience : projects;
+      return entries.length > 0 ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel}>{sectionLabel(labels[ref])}</Text>
+          {renderEntries(entries)}
+        </View>
+      ) : null;
+    }
+    if (ref === "education") {
+      return education.length > 0 ? (
+        <View key={ref} style={styles.section}>
+          <Text style={styles.sectionLabel}>
+            {sectionLabel(labels.education)}
+          </Text>
+          {education.map((item, index) => (
+            <View key={`${item.school}-${index}`} style={styles.educationRow}>
+              <View style={styles.educationMain}>
+                <Text style={styles.educationSchool}>{item.school}</Text>
+                {item.degree ? (
+                  <Text style={styles.educationDegree}>{item.degree}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.entryDates}>{item.year}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null;
+    }
+    const id = ref.slice("additional:".length);
+    const section = additionalSections.find((candidate) => candidate.id === id);
+    return section?.items.length ? (
+      <View key={ref} style={styles.section}>
+        <Text style={styles.sectionLabel}>
+          {sectionLabel(section.title || labels[section.kind])}
+        </Text>
+        {isCompactAdditionalSection(section) ? (
+          <Text style={styles.compactAdditional}>
+            {section.items.map(compactAdditionalItemLabel).join("  ·  ")}
+          </Text>
+        ) : section.items.map((entry) => (
+          <View key={entry.id} style={styles.entry}>
+            <View wrap={false}>
+              <View style={styles.entryHeader}>
+                <View style={styles.entryHeadingGroup}>
+                  <Text style={styles.entryHeading}>{entry.heading}</Text>
+                  {entry.subheading ? (
+                    <Text style={styles.entrySubheading}>
+                      {entry.subheading}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.entryDates}>
+                  {[entry.start, entry.end].filter(Boolean).join(" — ")}
+                </Text>
+              </View>
+              {entry.location ? (
+                <Text style={styles.location}>{entry.location}</Text>
+              ) : null}
+              {entry.bullets[0]
+                ? renderBullet(entry.bullets[0].text, `${entry.id}-bullet-0`)
+                : null}
+            </View>
+            {entry.bullets
+              .slice(1)
+              .map((bullet, index) =>
+                renderBullet(
+                  bullet.text,
+                  `${entry.id}-bullet-${index + 1}`,
+                ),
+              )}
+          </View>
+        ))}
+      </View>
+    ) : null;
+  };
 
   return (
     <Document
@@ -327,166 +467,7 @@ export function ResumePdfDistinctive({
           {variant === "elegant" ? <View style={styles.elegantRule} /> : null}
         </View>
 
-        {summary ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
-              {sectionLabel(labels.summary)}
-            </Text>
-            <Text style={styles.summary}>{summary}</Text>
-          </View>
-        ) : null}
-
-        {skills.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
-              {sectionLabel(labels.skills)}
-            </Text>
-            <View style={styles.skillsBand}>
-              <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
-            </View>
-          </View>
-        ) : null}
-
-        {experience.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
-              {sectionLabel(labels.experience)}
-            </Text>
-            {experience.map((entry) => (
-              <View key={entry.id} style={styles.entry}>
-                <View wrap={false}>
-                  <View style={styles.entryHeader}>
-                    <View style={styles.entryHeadingGroup}>
-                      <Text style={styles.entryHeading}>{entry.heading}</Text>
-                      {entry.subheading ? (
-                        <Text style={styles.entrySubheading}>
-                          {entry.subheading}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Text style={styles.entryDates}>
-                      {[entry.start, entry.end].filter(Boolean).join(" — ")}
-                    </Text>
-                  </View>
-                  {entry.location ? (
-                    <Text style={styles.location}>{entry.location}</Text>
-                  ) : null}
-                  {entry.bullets[0]
-                    ? renderBullet(entry.bullets[0], `${entry.id}-bullet-0`)
-                    : null}
-                </View>
-                {entry.bullets
-                  .slice(1)
-                  .map((text, index) =>
-                    renderBullet(text, `${entry.id}-bullet-${index + 1}`),
-                  )}
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {projects.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
-              {sectionLabel(labels.projects)}
-            </Text>
-            {projects.map((entry) => (
-              <View key={entry.id} style={styles.entry}>
-                <View wrap={false}>
-                  <View style={styles.entryHeader}>
-                    <View style={styles.entryHeadingGroup}>
-                      <Text style={styles.entryHeading}>{entry.heading}</Text>
-                      {entry.subheading ? (
-                        <Text style={styles.entrySubheading}>
-                          {entry.subheading}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Text style={styles.entryDates}>
-                      {[entry.start, entry.end].filter(Boolean).join(" — ")}
-                    </Text>
-                  </View>
-                  {entry.location ? (
-                    <Text style={styles.location}>{entry.location}</Text>
-                  ) : null}
-                  {entry.bullets[0]
-                    ? renderBullet(entry.bullets[0], `${entry.id}-bullet-0`)
-                    : null}
-                </View>
-                {entry.bullets
-                  .slice(1)
-                  .map((text, index) =>
-                    renderBullet(text, `${entry.id}-bullet-${index + 1}`),
-                  )}
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {education.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>
-              {sectionLabel(labels.education)}
-            </Text>
-            {education.map((item, index) => (
-              <View key={`${item.school}-${index}`} style={styles.educationRow}>
-                <View style={styles.educationMain}>
-                  <Text style={styles.educationSchool}>{item.school}</Text>
-                  {item.degree ? (
-                    <Text style={styles.educationDegree}>{item.degree}</Text>
-                  ) : null}
-                </View>
-                <Text style={styles.entryDates}>{item.year}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {additionalSections.map((section) =>
-          section.items.length > 0 ? (
-            <View key={section.id} style={styles.section}>
-              <Text style={styles.sectionLabel}>
-                {sectionLabel(section.title || labels[section.kind])}
-              </Text>
-              {section.items.map((entry) => (
-                <View key={entry.id} style={styles.entry}>
-                  <View wrap={false}>
-                    <View style={styles.entryHeader}>
-                      <View style={styles.entryHeadingGroup}>
-                        <Text style={styles.entryHeading}>{entry.heading}</Text>
-                        {entry.subheading ? (
-                          <Text style={styles.entrySubheading}>
-                            {entry.subheading}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <Text style={styles.entryDates}>
-                        {[entry.start, entry.end].filter(Boolean).join(" — ")}
-                      </Text>
-                    </View>
-                    {entry.location ? (
-                      <Text style={styles.location}>{entry.location}</Text>
-                    ) : null}
-                    {entry.bullets[0]
-                      ? renderBullet(
-                          entry.bullets[0].text,
-                          `${entry.id}-bullet-0`,
-                        )
-                      : null}
-                  </View>
-                  {entry.bullets
-                    .slice(1)
-                    .map((bullet, index) =>
-                      renderBullet(
-                        bullet.text,
-                        `${entry.id}-bullet-${index + 1}`,
-                      ),
-                    )}
-                </View>
-              ))}
-            </View>
-          ) : null,
-        )}
+        {sectionOrder.map(renderSection)}
       </Page>
     </Document>
   );

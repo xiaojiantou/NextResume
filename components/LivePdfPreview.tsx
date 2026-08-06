@@ -23,6 +23,9 @@ export function LivePdfPreview({
   personalizedStyleProfile,
   fitVariant,
   sourceRevision,
+  personalizedStatus,
+  personalizedError,
+  onRetryPersonalized,
 }: {
   resume: Resume;
   optimization: Optimization | null;
@@ -33,16 +36,31 @@ export function LivePdfPreview({
   personalizedStyleProfile: ResumeStyleProfile | null;
   fitVariant?: ResumeFitVariant | null;
   sourceRevision?: string | null;
+  personalizedStatus?: "idle" | "generating" | "ready" | "failed";
+  personalizedError?: string | null;
+  onRetryPersonalized?: () => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [approximateLayout, setApproximateLayout] = useState(false);
   const currentUrlRef = useRef<string | null>(null);
   const retryUntilRef = useRef(0);
 
   useEffect(() => {
+    if (style === "personalized" && !personalizedStyleProfile) {
+      if (currentUrlRef.current) {
+        URL.revokeObjectURL(currentUrlRef.current);
+        currentUrlRef.current = null;
+      }
+      setUrl(null);
+      setError(null);
+      setLoading(false);
+      setApproximateLayout(false);
+      return;
+    }
     if (Date.now() < retryUntilRef.current) return;
 
     let active = true;
@@ -84,9 +102,11 @@ export function LivePdfPreview({
             }
             throw new Error(data.error || "Preview failed.");
           }
-          return response.blob();
+          const approximate =
+            response.headers.get("X-Resume-Layout") === "approximate";
+          return response.blob().then((blob) => ({ blob, approximate }));
         })
-        .then((blob) => {
+        .then(({ blob, approximate }) => {
           if (!active) return;
           const nextUrl = URL.createObjectURL(blob);
           if (currentUrlRef.current) {
@@ -94,6 +114,7 @@ export function LivePdfPreview({
           }
           currentUrlRef.current = nextUrl;
           setUrl(nextUrl);
+          setApproximateLayout(approximate);
           setRetrySeconds(0);
           retryUntilRef.current = 0;
         })
@@ -125,6 +146,7 @@ export function LivePdfPreview({
     pageSize,
     palette,
     personalizedStyleProfile,
+    personalizedStatus,
     resume,
     fitVariant,
     retryNonce,
@@ -151,7 +173,52 @@ export function LivePdfPreview({
     [],
   );
 
-  if (error) {
+  if (style === "personalized" && !personalizedStyleProfile) {
+    const failed = personalizedStatus === "failed";
+    return (
+      <div
+        role={failed ? "alert" : "status"}
+        className="grid h-full w-full place-items-center p-6 text-center"
+      >
+        <div className="max-w-sm">
+          <span
+            className={`mx-auto grid h-10 w-10 place-items-center rounded-full ${
+              failed
+                ? "bg-amber-50 text-amber-700"
+                : "bg-accent-50 text-accent-700"
+            }`}
+          >
+            <RefreshCw
+              size={18}
+              className={failed ? undefined : "animate-spin"}
+            />
+          </span>
+          <div className="mt-3 text-sm font-medium text-ink-900">
+            {failed
+              ? "Original-inspired style is not ready"
+              : "Preparing the Original-inspired layout…"}
+          </div>
+          <p className="mt-1 text-sm text-ink-500">
+            {failed
+              ? personalizedError ||
+                "The layout could not be generated. Retry it or choose another PDF style."
+              : "The PDF preview will appear automatically when the layout is ready."}
+          </p>
+          {failed && onRetryPersonalized ? (
+            <button
+              type="button"
+              onClick={onRetryPersonalized}
+              className="btn btn-outline mt-4 min-h-11 bg-white"
+            >
+              <RefreshCw size={14} /> Retry layout
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !url) {
     return (
       <div
         role="alert"
@@ -215,6 +282,36 @@ export function LivePdfPreview({
         >
           <RefreshCw size={13} className="animate-spin" />
           Updating preview…
+        </div>
+      ) : null}
+      {approximateLayout && !loading ? (
+        <div
+          role="status"
+          className="absolute left-3 top-3 rounded-lg border border-amber-200 bg-amber-50/95 px-3 py-2 text-xs font-medium text-amber-900 shadow-soft"
+        >
+          Approximate original-inspired layout — detected page geometry used
+        </div>
+      ) : null}
+      {error ? (
+        <div
+          role="alert"
+          className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-white/95 px-3 py-2 text-xs text-rose-800 shadow-soft"
+        >
+          <span>The latest preview could not replace this saved version: {error}</span>
+          <button
+            type="button"
+            disabled={retrySeconds > 0 || loading}
+            onClick={() => {
+              retryUntilRef.current = 0;
+              setRetrySeconds(0);
+              setLoading(true);
+              setRetryNonce((value) => value + 1);
+            }}
+            className="btn btn-outline min-h-11 bg-white"
+          >
+            <RefreshCw size={14} />
+            {retrySeconds > 0 ? `Retry in ${retrySeconds}s` : "Retry"}
+          </button>
         </div>
       ) : null}
     </div>

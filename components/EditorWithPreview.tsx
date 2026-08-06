@@ -26,9 +26,15 @@ export function EditorWithPreview({
   previewTargetPages,
   previewFitVariant,
   sourceRevision,
+  personalizedStatus,
+  personalizedError,
+  onRetryPersonalized,
   onResumeChange,
   onRegenerate,
   regenerating,
+  keptContentIds,
+  lockedContentIds,
+  onToggleKeep,
 }: {
   resume: Resume;
   optimization: Optimization | null;
@@ -40,9 +46,15 @@ export function EditorWithPreview({
   previewTargetPages?: TargetPages;
   previewFitVariant?: ResumeFitVariant | null;
   sourceRevision?: string | null;
+  personalizedStatus?: "idle" | "generating" | "ready" | "failed";
+  personalizedError?: string | null;
+  onRetryPersonalized?: () => void;
   onResumeChange: (resume: Resume) => void;
   onRegenerate: () => void;
   regenerating: boolean;
+  keptContentIds?: string[];
+  lockedContentIds?: string[];
+  onToggleKeep?: (contentId: string) => void;
 }) {
   const [layout, setLayout] = useState<"split" | "editor" | "preview">("split");
 
@@ -91,9 +103,13 @@ export function EditorWithPreview({
           <div className="overflow-y-auto pr-4 pb-4">
             <EditableResumeCanvas
               resume={resume}
+              optimizedPreview={Boolean(optimization)}
               onResumeChange={onResumeChange}
               onRegenerate={onRegenerate}
               regenerating={regenerating}
+              keptContentIds={keptContentIds}
+              lockedContentIds={lockedContentIds}
+              onToggleKeep={onToggleKeep}
             />
           </div>
 
@@ -109,6 +125,9 @@ export function EditorWithPreview({
               personalizedStyleProfile={personalizedStyleProfile}
               fitVariant={previewFitVariant}
               sourceRevision={sourceRevision}
+              personalizedStatus={personalizedStatus}
+              personalizedError={personalizedError}
+              onRetryPersonalized={onRetryPersonalized}
             />
           </div>
         </div>
@@ -116,9 +135,13 @@ export function EditorWithPreview({
         <div className="overflow-y-auto">
           <EditableResumeCanvas
             resume={resume}
+            optimizedPreview={Boolean(optimization)}
             onResumeChange={onResumeChange}
             onRegenerate={onRegenerate}
             regenerating={regenerating}
+            keptContentIds={keptContentIds}
+            lockedContentIds={lockedContentIds}
+            onToggleKeep={onToggleKeep}
           />
         </div>
       ) : (
@@ -133,6 +156,9 @@ export function EditorWithPreview({
             personalizedStyleProfile={personalizedStyleProfile}
             fitVariant={previewFitVariant}
             sourceRevision={sourceRevision}
+            personalizedStatus={personalizedStatus}
+            personalizedError={personalizedError}
+            onRetryPersonalized={onRetryPersonalized}
           />
         </div>
       )}

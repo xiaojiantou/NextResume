@@ -13,6 +13,11 @@ import {
 } from "@/lib/pdf/config";
 import { renderFixedFitted } from "@/lib/pdf/renderFixed";
 import {
+  validateLockedOptimization,
+  validatePreservedFitOptimization,
+  validatePreservedOptimization,
+} from "@/lib/resumeStructure";
+import {
   defaultResumePage,
   type ResumeFitVariant,
 } from "@/lib/resumeFit";
@@ -67,19 +72,22 @@ export async function POST(req: NextRequest) {
       sourceRevision,
       personalizedStyleProfile,
       includeSummary,
-    } = (await req.json()) as {
-      resume: Resume;
-      optimization: Optimization | null;
-      targetTitle?: string;
-      style?: PdfStyle;
-      palette?: string;
-      targetPages?: TargetPages;
-      pageSize?: ResumePageSpec;
-      fitVariant?: ResumeFitVariant | null;
-      sourceRevision?: string;
-      personalizedStyleProfile?: ResumeStyleProfile | null;
-      includeSummary?: boolean;
-    };
+      lockedContentIds,
+    } =
+      (await req.json()) as {
+        resume: Resume;
+        optimization: Optimization | null;
+        targetTitle?: string;
+        style?: PdfStyle;
+        palette?: string;
+        targetPages?: TargetPages;
+        pageSize?: ResumePageSpec;
+        fitVariant?: ResumeFitVariant | null;
+        sourceRevision?: string;
+        personalizedStyleProfile?: ResumeStyleProfile | null;
+        includeSummary?: boolean;
+        lockedContentIds?: string[];
+      };
 
     if (!resume?.name || !Array.isArray(resume.experience)) {
       return NextResponse.json(
@@ -113,11 +121,46 @@ export async function POST(req: NextRequest) {
     const effectiveResume = fitVariant?.fittedResume ?? resume;
     const effectiveOptimization =
       fitVariant?.fittedOptimization ?? optimization;
+    if (
+      effectiveOptimization?.structureMode === "preserve"
+    ) {
+      const preservationIssues = usesFitVariant
+        ? validatePreservedFitOptimization(
+            resume,
+            effectiveOptimization,
+            optimization ?? effectiveOptimization,
+          )
+        : validatePreservedOptimization(resume, effectiveOptimization);
+      const integrityIssues = [
+        ...preservationIssues,
+        ...validateLockedOptimization({
+          resume,
+          candidate: effectiveOptimization,
+          baseline: optimization,
+          lockedContentIds: Array.isArray(lockedContentIds)
+            ? lockedContentIds
+            : [],
+        }),
+      ];
+      if (integrityIssues.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              usesFitVariant
+                ? "The fitted version changed a protected section or entry. Fit the latest resume again before downloading."
+                : "Structure integrity checks failed. Regenerate the original-structure version before downloading.",
+            issues: [...new Set(integrityIssues)].slice(0, 12),
+          },
+          { status: 409 },
+        );
+      }
+    }
     let buffer: Buffer;
     let density = "source";
     let desiredPages =
       selectedTargetPages === "auto" ? "auto" : String(selectedTargetPages);
     let overflow = false;
+    let approximateLayout = false;
 
     if (selectedStyle === "personalized") {
       if (!personalizedStyleProfile) {
@@ -129,14 +172,49 @@ export async function POST(req: NextRequest) {
           { status: 409 },
         );
       }
-      buffer = await renderPersonalizedPdf({
-        styleProfile: personalizedStyleProfile,
-        resume: effectiveResume,
-        optimization: effectiveOptimization,
-        includeSummary,
-        targetPages: selectedTargetPages,
-        allowMinimumTypography: usesFitVariant,
-      });
+      approximateLayout = Boolean(personalizedStyleProfile.approximate);
+      try {
+        buffer = await renderPersonalizedPdf({
+          styleProfile: personalizedStyleProfile,
+          resume: effectiveResume,
+          optimization: effectiveOptimization,
+          includeSummary,
+          targetPages: selectedTargetPages,
+          allowMinimumTypography: usesFitVariant,
+        });
+      } catch (error) {
+        console.warn(
+          "original-inspired export fell back to a safe fixed layout",
+          error,
+        );
+        const fallbackStyle =
+          personalizedStyleProfile.layout === "single-column"
+            ? "classic"
+            : "sidebar";
+        const fallback = await renderFixedFitted({
+          style: fallbackStyle,
+          palette: getResumePalette(fallbackStyle),
+          resume: effectiveResume,
+          optimization: effectiveOptimization,
+          includeSummary,
+          page: selectedPage,
+          targetPages: selectedTargetPages,
+          requireExact: usesFitVariant,
+        });
+        if (usesFitVariant && !fallback.exact) {
+          return NextResponse.json(
+            {
+              error: `The latest fitted content rendered as ${fallback.pageCount} pages instead of ${selectedTargetPages}. Fit it again before downloading.`,
+            },
+            { status: 409 },
+          );
+        }
+        buffer = fallback.buffer;
+        density = fallback.density;
+        desiredPages = String(fallback.desiredPages);
+        overflow = fallback.overflow;
+        approximateLayout = true;
+      }
     } else {
       const selectedPalette = getResumePalette(selectedStyle, palette);
       const fitted = await renderFixedFitted({
@@ -192,12 +270,26 @@ export async function POST(req: NextRequest) {
         "X-Resume-Target-Pages": desiredPages,
         "X-Resume-Density": density,
         "X-Resume-Overflow": overflow ? "true" : "false",
+        "X-Resume-Layout": approximateLayout ? "approximate" : "matched",
       },
     });
   } catch (e) {
     console.error("pdf export failed", e);
+    const message = e instanceof Error ? e.message : "PDF export failed";
+    if (
+      /^Personalized (?:PDF text|content) integrity failed:/.test(message)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The Original-inspired layout could not safely render every field. Retry the preview or rebuild the layout.",
+          issue: message,
+        },
+        { status: 422 },
+      );
+    }
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "PDF export failed" },
+      { error: message },
       { status: 500 },
     );
   }

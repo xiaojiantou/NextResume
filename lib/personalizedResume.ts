@@ -7,6 +7,7 @@ import { generateResumeStyleProfile } from "./ai";
 import { launchBrowser } from "./browser";
 import {
   getResumeSectionLabels,
+  isCompactAdditionalSection,
   resolveResumeContent,
   type ResolvedBlock,
   type ResolvedResumeDocument,
@@ -14,12 +15,14 @@ import {
 import { partitionResumeForPages } from "./pdf/balancedPages";
 import type { TargetPages } from "./pdf/config";
 import {
+  approximateResumeStyleProfile,
   sanitizeResumeStyleProfile,
 } from "./resumeStyle";
 import type {
   Optimization,
   Resume,
   ResumeAdditionalSection,
+  ResumeLayoutSection,
   ResumeSectionRef,
   ResumeStyleProfile,
   ResumeStyleSource,
@@ -182,7 +185,28 @@ function renderAdditionalItems(
   section: ResumeAdditionalSection,
   profile: ResumeStyleProfile,
 ): string {
-  return section.items
+  const compactItems = isCompactAdditionalSection(section)
+    ? section.items
+    : [];
+  const compactIds = new Set(compactItems.map((item) => item.id));
+  const compactMarkup = compactItems.length
+      ? `<div class="additional-inline">${compactItems
+        .map((item) => {
+          const prefix = `additional:${section.id}:${item.id}`;
+          const heading = contentLeaf(
+            "span",
+            `${prefix}:heading`,
+            item.heading,
+          );
+          const subheading = item.subheading
+            ? ` · ${contentLeaf("span", `${prefix}:subheading`, item.subheading)}`
+            : "";
+          return `<span class="additional-inline-item">${heading}${subheading}</span>`;
+        })
+        .join("")}</div>`
+    : "";
+  const detailedMarkup = section.items
+    .filter((item) => !compactIds.has(item.id))
     .map((item) => {
       const prefix = `additional:${section.id}:${item.id}`;
       return `<article class="entry additional-entry">
@@ -198,6 +222,7 @@ function renderAdditionalItems(
       </article>`;
     })
     .join("");
+  return `${compactMarkup}${detailedMarkup}`;
 }
 
 function sectionMarkup(
@@ -205,7 +230,10 @@ function sectionMarkup(
   content: ResolvedResumeDocument,
   profile: ResumeStyleProfile,
 ): string {
-  const labels = getResumeSectionLabels(content.language);
+  const labels = getResumeSectionLabels(
+    content.language,
+    content.sectionLabels,
+  );
   let label = "";
   let body = "";
   let headingContentId = "";
@@ -284,27 +312,22 @@ function sectionMarkup(
   </section>`;
 }
 
-function sectionRegion(
+function sectionCategory(ref: ResumeSectionRef): ResumeLayoutSection {
+  return ref.startsWith("additional:")
+    ? "additional"
+    : (ref as ResumeLayoutSection);
+}
+
+function regionForSection(
   ref: ResumeSectionRef,
   profile: ResumeStyleProfile,
-): "sidebar" | "main" {
-  if (profile.layout === "single-column") return "main";
-  if (ref === "summary" && profile.sidebarSections.includes("summary")) {
-    return "sidebar";
-  }
-  if (ref === "skills" && profile.sidebarSections.includes("skills")) {
-    return "sidebar";
-  }
-  if (ref === "education" && profile.sidebarSections.includes("education")) {
-    return "sidebar";
-  }
-  if (
-    ref.startsWith("additional:") &&
-    profile.sidebarSections.includes("additional")
-  ) {
-    return "sidebar";
-  }
-  return "main";
+): string {
+  const category = sectionCategory(ref);
+  return (
+    profile.layoutBlueprint.regions.find((region) =>
+      region.sections.includes(category),
+    )?.id ?? profile.layoutBlueprint.primaryRegionId
+  );
 }
 
 function fontSize(base: number, scale: number, floor: number): number {
@@ -331,17 +354,13 @@ export function buildPersonalizedHtml({
     fit.fontScale,
     8,
   );
-  const mainSections = content.sectionOrder
-    .filter((ref) => sectionRegion(ref, profile) === "main")
-    .map((ref) => sectionMarkup(ref, content, profile))
-    .join("");
-  const sidebarSections = content.sectionOrder
-    .filter((ref) => sectionRegion(ref, profile) === "sidebar")
-    .map((ref) => sectionMarkup(ref, content, profile))
-    .join("");
-
-  const hasSidebar = profile.layout !== "single-column";
-  const contact = [content.email, content.phone, content.location, ...content.links]
+  const blueprint = profile.layoutBlueprint;
+  const contact = [
+    content.email,
+    content.phone,
+    content.location,
+    ...content.links,
+  ]
     .filter(Boolean)
     .join(" · ");
   const photoPosition =
@@ -352,17 +371,16 @@ export function buildPersonalizedHtml({
     content.photo && photoPosition !== "none"
       ? `<img class="photo photo-${photoPosition}" data-content-id="photo" src="${escapeHtml(content.photo)}" alt="">`
       : "";
-  const mainContact =
-    !hasSidebar || !profile.sidebarSections.includes("contact")
-      ? contentLeaf("div", "contact", contact, "contact")
-      : "";
-  const sidebarContact =
-    hasSidebar && profile.sidebarSections.includes("contact") && contact
-      ? `<section class="resume-section contact-section"><h2>Contact</h2>${contentLeaf("div", "contact", contact, "sidebar-contact")}</section>`
-      : "";
-  const sidebarPhoto =
-    hasSidebar && content.photo && photoPosition !== "none" ? photo : "";
-  const headerPhoto = sidebarPhoto ? "" : photo;
+  const contactRegionId = blueprint.regions.find((region) =>
+    region.sections.includes("contact"),
+  )?.id;
+  const photoRegionId = blueprint.regions.find((region) =>
+    region.sections.includes("photo"),
+  )?.id;
+  const headerPhoto = photoRegionId ? "" : photo;
+  const headerContact = contactRegionId
+    ? ""
+    : contentLeaf("div", "contact", contact, "contact");
 
   const margins = {
     top: Math.max(
@@ -382,12 +400,9 @@ export function buildPersonalizedHtml({
       profile.marginsPt.left * fit.marginScale,
     ),
   };
-  const sidebarFirst = profile.layout === "sidebar-left";
-  const sidebarWidth = profile.sidebarWidthPercent;
-  const mainWidth = 100 - sidebarWidth;
-  const gridColumns = sidebarFirst
-    ? `${sidebarWidth}% ${mainWidth}%`
-    : `${mainWidth}% ${sidebarWidth}%`;
+  const gridColumns = blueprint.regions
+    .map((region) => `${region.widthPercent}fr`)
+    .join(" ");
   const headerClass = `header align-${profile.header.alignment} photo-${photoPosition}`;
   const radius =
     profile.header.photoShape === "circle"
@@ -403,6 +418,66 @@ export function buildPersonalizedHtml({
     fit.minimumBodyPt === 9 ? 1.1 : 1.18,
     profile.typography.lineHeight * fit.lineHeightScale,
   );
+  const renderHeader = (scope: "full" | "primary") => `<header class="${headerClass} header-${scope}">
+      ${headerPhoto}
+      ${contentLeaf("div", "name", content.name, "name")}
+      ${contentLeaf("div", "title", content.title, "title")}
+      ${headerContact}
+    </header>`;
+  const fullHeader =
+    blueprint.headerPlacement === "full" ? renderHeader("full") : "";
+  const regionRules = blueprint.regions
+    .map((region, index) => {
+      const isFirst = index === 0;
+      const isLast = index === blueprint.regions.length - 1;
+      const innerPadding =
+        region.role === "main"
+          ? Math.max(14, margins.left * 0.45)
+          : Math.max(12, margins.left * 0.34);
+      const left = isFirst ? margins.left : innerPadding;
+      const right = isLast ? margins.right : innerPadding;
+      const top =
+        blueprint.headerPlacement === "full"
+          ? Math.max(8, profile.spacing.sectionPt * fit.spacingScale * 0.55)
+          : margins.top;
+      return `.region-${escapeHtml(region.id)} { grid-column: ${index + 1}; grid-row: 1; padding: ${top}pt ${right}pt ${margins.bottom}pt ${left}pt; }`;
+    })
+    .join("\n");
+  // Keep the primary narrative first in DOM/PDF extraction order while CSS
+  // places every region in the visual left-to-right column requested by AI.
+  const renderOrder = [...blueprint.regions].sort((left, right) => {
+    if (left.id === blueprint.primaryRegionId) return -1;
+    if (right.id === blueprint.primaryRegionId) return 1;
+    return (
+      blueprint.regions.findIndex((region) => region.id === left.id) -
+      blueprint.regions.findIndex((region) => region.id === right.id)
+    );
+  });
+  const regionMarkup = renderOrder
+    .map((region) => {
+      const sections = content.sectionOrder
+        .filter((ref) => regionForSection(ref, profile) === region.id)
+        .map((ref) => sectionMarkup(ref, content, profile))
+        .join("");
+      const regionContact =
+        contactRegionId === region.id && contact
+          ? `<section class="resume-section contact-section"><h2>Contact</h2>${contentLeaf("div", "contact", contact, "region-contact")}</section>`
+          : "";
+      const regionPhoto = photoRegionId === region.id ? photo : "";
+      const primaryHeader =
+        blueprint.headerPlacement === "primary" &&
+        region.id === blueprint.primaryRegionId
+          ? renderHeader("primary")
+          : "";
+      const tag = region.id === blueprint.primaryRegionId ? "main" : "aside";
+      return `<${tag} class="layout-region region-${escapeHtml(region.id)} role-${region.role} surface-${region.surface}" data-layout-region="${escapeHtml(region.id)}">
+        ${regionPhoto}
+        ${primaryHeader}
+        ${regionContact}
+        ${sections}
+      </${tag}>`;
+    })
+    .join("");
 
   return `<!doctype html>
 <html lang="en">
@@ -424,23 +499,24 @@ export function buildPersonalizedHtml({
     width: 100%;
     min-height: ${heightPt}pt;
     background: ${profile.colors.background};
+    display: flex;
+    flex-direction: column;
   }
-  .single { padding: ${margins.top}pt ${margins.right}pt ${margins.bottom}pt ${margins.left}pt; }
-  .with-sidebar {
+  .blueprint-grid {
     display: grid;
     grid-template-columns: ${gridColumns};
+    column-gap: ${blueprint.gutterPt * fit.spacingScale}pt;
     align-items: stretch;
+    flex: 1;
   }
-  .main {
-    padding: ${margins.top}pt ${margins.right}pt ${margins.bottom}pt ${margins.left}pt;
-    ${sidebarFirst ? "grid-column: 2;" : "grid-column: 1;"}
-  }
-  .sidebar {
-    padding: ${margins.top}pt ${Math.max(18, margins.right * 0.7)}pt ${margins.bottom}pt ${Math.max(18, margins.left * 0.7)}pt;
+  .layout-region { min-width: 0; }
+  .surface-sidebar {
     background: ${profile.colors.sidebarBackground};
     color: ${profile.colors.sidebarText};
-    ${sidebarFirst ? "grid-column: 1; grid-row: 1;" : "grid-column: 2; grid-row: 1;"}
   }
+  .surface-subtle { background: color-mix(in srgb, ${profile.colors.background} 92%, ${profile.colors.accent} 8%); }
+  .header-full { margin: ${margins.top}pt ${margins.right}pt 0 ${margins.left}pt; }
+  ${regionRules}
   .header {
     position: relative;
     min-height: ${content.photo && headerPhoto ? profile.header.photoSizePt : 0}pt;
@@ -462,12 +538,12 @@ export function buildPersonalizedHtml({
     font-size: ${fontSize(profile.typography.titlePt, fit.fontScale, 9)}pt;
     font-weight: 600;
   }
-  .contact, .sidebar-contact {
+  .contact, .region-contact {
     margin-top: ${4 * fit.spacingScale}pt;
     color: ${profile.colors.muted};
     font-size: ${metaPt}pt;
   }
-  .sidebar-contact { color: ${profile.colors.sidebarText}; overflow-wrap: anywhere; }
+  .surface-sidebar .region-contact { color: ${profile.colors.sidebarText}; overflow-wrap: anywhere; }
   .photo {
     width: ${profile.header.photoSizePt}pt;
     height: ${profile.header.photoSizePt}pt;
@@ -477,7 +553,7 @@ export function buildPersonalizedHtml({
   .header .photo { position: absolute; top: 0; }
   .header .photo-left { left: 0; }
   .header .photo-right { right: 0; }
-  .sidebar > .photo { display: block; margin: 0 auto ${10 * fit.spacingScale}pt; }
+  .layout-region > .photo { display: block; margin: 0 auto ${10 * fit.spacingScale}pt; }
   .resume-section { margin-top: ${profile.spacing.sectionPt * fit.spacingScale}pt; }
   .resume-section h2 {
     /* Never leave a section heading orphaned at a page bottom while its
@@ -497,7 +573,7 @@ export function buildPersonalizedHtml({
     text-align: ${profile.sectionHeading.alignment};
     text-transform: ${sectionTransform};
   }
-  .sidebar .resume-section h2 {
+  .surface-sidebar .resume-section h2 {
     color: ${profile.colors.sidebarText};
     border-color: ${profile.colors.sidebarText};
     background: ${profile.sectionHeading.filled ? "rgba(255,255,255,.14)" : "transparent"};
@@ -515,6 +591,10 @@ export function buildPersonalizedHtml({
   .skill-group .skill:not(:last-child) { margin-right: ${3 * fit.spacingScale}pt; }
   .skill-group .skill-group-label::after { content: ":"; }
   .skill-group .skill-group-label { margin-right: ${3 * fit.spacingScale}pt; }
+  .additional-inline { display: flex; flex-wrap: wrap; gap: ${3 * fit.spacingScale}pt ${6 * fit.spacingScale}pt; }
+  .additional-inline-item { display: inline-block; }
+  .additional-inline-item:not(:last-child)::after { content: " ·"; color: ${profile.colors.muted}; }
+  .surface-sidebar .skill { padding: 2pt 5pt; border: .5pt solid currentColor; border-radius: 2pt; }
   .entry {
     margin-top: ${profile.spacing.entryPt * fit.spacingScale}pt;
     break-inside: avoid;
@@ -526,7 +606,7 @@ export function buildPersonalizedHtml({
   .entry-name { font-weight: 700; }
   .entry-sub, .entry-location { color: ${profile.colors.muted}; font-size: ${metaPt}pt; }
   .entry-dates { flex: none; color: ${profile.colors.muted}; font-size: ${metaPt}pt; font-weight: 600; }
-  .sidebar .entry-sub, .sidebar .entry-location, .sidebar .entry-dates { color: ${profile.colors.sidebarText}; opacity: .86; }
+  .surface-sidebar .entry-sub, .surface-sidebar .entry-location, .surface-sidebar .entry-dates { color: ${profile.colors.sidebarText}; opacity: .86; }
   .bullets { list-style: none; margin: ${profile.spacing.bulletPt * fit.spacingScale}pt 0 0; padding: 0; }
   .bullets li {
     display: flex;
@@ -535,39 +615,15 @@ export function buildPersonalizedHtml({
     margin-top: ${profile.spacing.bulletPt * fit.spacingScale}pt;
   }
   .bullet-marker { flex: 0 0 7pt; color: ${markerColor}; font-weight: 700; }
-  .sidebar .bullet-marker { color: ${profile.colors.sidebarText}; }
+  .surface-sidebar .bullet-marker { color: ${profile.colors.sidebarText}; }
   .bullet-text { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
-  ${
-    hasSidebar
-      ? `<div class="resume with-sidebar">
-          <main class="main">
-            <header class="${headerClass}">
-              ${headerPhoto}
-              ${contentLeaf("div", "name", content.name, "name")}
-              ${contentLeaf("div", "title", content.title, "title")}
-              ${mainContact}
-            </header>
-            ${mainSections}
-          </main>
-          <aside class="sidebar">
-            ${sidebarPhoto}
-            ${sidebarContact}
-            ${sidebarSections}
-          </aside>
-        </div>`
-      : `<main class="resume single">
-          <header class="${headerClass}">
-            ${headerPhoto}
-            ${contentLeaf("div", "name", content.name, "name")}
-            ${contentLeaf("div", "title", content.title, "title")}
-            ${mainContact}
-          </header>
-          ${mainSections}
-        </main>`
-  }
+  <div class="resume blueprint-layout">
+    ${fullHeader}
+    <div class="blueprint-grid">${regionMarkup}</div>
+  </div>
 </body>
 </html>`;
 }
@@ -741,6 +797,76 @@ async function assertContentIntegrity(
   }
 }
 
+async function assertPdfTextIntegrity(
+  buffer: Buffer,
+  manifest: ManifestItem[],
+): Promise<void> {
+  // DOM validation cannot see Chromium print fragmentation. Verify the final
+  // PDF text layer as well so narrow AI-generated rails cannot split normal
+  // words into ATS-hostile fragments or silently drop a region at a page edge.
+  // @ts-expect-error pdf-parse's internal CommonJS entry has no declarations.
+  const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default as (
+    value: Buffer,
+  ) => Promise<{ text: string }>;
+  const parsed = await pdfParse(buffer);
+  const normalize = (value: string) =>
+    value
+      .normalize("NFKC")
+      .replace(/[\u00ad\u200b-\u200d\u2060\ufeff]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  // PDF text engines may normalize curly quotes, dashes, or punctuation around
+  // a wrapped phrase even though every word is present. Compare a word-token
+  // representation as a fallback, while retaining the strict DOM assertion
+  // above to guarantee that each expected field was rendered exactly once.
+  const wordTokens = (value: string) =>
+    normalize(value)
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const extracted = normalize(parsed.text);
+  const extractedCompact = extracted.replace(/\s+/g, "");
+  const extractedWords = wordTokens(extracted);
+  const extractedWordSet = new Set(extractedWords.split(" ").filter(Boolean));
+  const hasStrongTokenCoverage = (value: string) => {
+    const significant = [
+      ...new Set(
+        wordTokens(value)
+          .split(" ")
+          .filter((token) => token.length >= 3 || /\d/.test(token)),
+      ),
+    ];
+    if (significant.length < 4) return false;
+    const matched = significant.filter((token) =>
+      extractedWordSet.has(token),
+    ).length;
+    return matched / significant.length >= 0.9;
+  };
+  const missing = manifest
+    .filter((item) => item.value)
+    .filter((item) => {
+      const expected = normalize(item.value);
+      if (item.id === "contact") {
+        // Email addresses and phone numbers may wrap inside a faithful narrow
+        // contact rail. Whitespace-only fragmentation is harmless here, while
+        // every body field below must remain contiguous in the PDF text layer.
+        return !extractedCompact.includes(expected.replace(/\s+/g, ""));
+      }
+      return (
+        !extracted.includes(expected) &&
+        !extractedWords.includes(wordTokens(expected)) &&
+        !hasStrongTokenCoverage(expected)
+      );
+    })
+    .map((item) => item.id);
+  if (missing.length) {
+    throw new Error(
+      `Personalized PDF text integrity failed: ${missing.slice(0, 8).join(", ")}`,
+    );
+  }
+}
+
 async function measurePageFill(
   page: Page,
   pageHeightPt: number,
@@ -783,7 +909,7 @@ export async function generateValidatedStyleProfile(
       );
     }
   }
-  return null;
+  return approximateResumeStyleProfile(source);
 }
 
 export async function renderPersonalizedPdf({
@@ -804,27 +930,33 @@ export async function renderPersonalizedPdf({
   const source: ResumeStyleSource = {
     screenshots: [],
     page: styleProfile.page,
-    pageCount: 1,
+    pageCount: Math.max(1, styleProfile.pageLayouts?.length ?? 1),
   };
-  const profile = sanitizeResumeStyleProfile(styleProfile, source);
-  const content = resolveResumeContent(resume, optimization, {
-    includeSummary,
-  });
-  const manifest = createContentManifest(content, profile);
+  const requestedProfile = sanitizeResumeStyleProfile(styleProfile, source);
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
-    const renderedCandidates: Array<{
+    type Rendered = {
       buffer: Buffer;
       fill: number;
       pageCount: number;
-    }> = [];
+    };
+    const profileForPage = (index: number): ResumeStyleProfile => {
+      const template =
+        requestedProfile.pageLayouts[index] ??
+        requestedProfile.pageLayouts[requestedProfile.pageLayouts.length - 1];
+      return {
+        ...requestedProfile,
+        layout: template.layout,
+        layoutBlueprint: template.layoutBlueprint,
+      };
+    };
     const renderFit = async (
       fit: FitPreset,
-      candidateContent = content,
-      candidateManifest = manifest,
-      trackCandidate = true,
-    ) => {
+      candidateContent: ResolvedResumeDocument,
+      candidateManifest: ManifestItem[],
+      candidateProfile: ResumeStyleProfile,
+    ): Promise<Rendered> => {
       const safeFit = allowMinimumTypography
         ? {
             ...fit,
@@ -834,102 +966,142 @@ export async function renderPersonalizedPdf({
         : fit;
       const html = buildPersonalizedHtml({
         content: candidateContent,
-        profile,
+        profile: candidateProfile,
         fit: safeFit,
       });
       await page.setContent(html, { waitUntil: "load", timeout: 15_000 });
       await assertContentIntegrity(page, candidateManifest);
-      const fill = await measurePageFill(page, profile.page.heightPt);
+      const fill = await measurePageFill(
+        page,
+        candidateProfile.page.heightPt,
+      );
       const pdf = await page.pdf({
-        width: `${profile.page.widthPt / 72}in`,
-        height: `${profile.page.heightPt / 72}in`,
+        width: `${candidateProfile.page.widthPt / 72}in`,
+        height: `${candidateProfile.page.heightPt / 72}in`,
         preferCSSPageSize: true,
         printBackground: true,
         margin: { top: 0, right: 0, bottom: 0, left: 0 },
       });
       const buffer = Buffer.from(pdf);
+      await assertPdfTextIntegrity(buffer, candidateManifest);
       const pageCount = (await PDFDocument.load(buffer)).getPageCount();
-      const rendered = { buffer, fill, pageCount };
-      if (trackCandidate) renderedCandidates.push(rendered);
-      return rendered;
+      return { buffer, fill, pageCount };
     };
-
-    const baseline = await renderFit(BASE_FIT_PRESET);
-    const desiredPages =
-      targetPages === "auto"
-        ? Math.min(10, Math.max(1, baseline.pageCount))
-        : targetPages;
-    const fitPresets = [
-      ...EXPANDED_FIT_PRESETS,
-      BASE_FIT_PRESET,
-      ...COMPACT_FIT_PRESETS,
-    ];
-    for (const fit of fitPresets) {
-      const rendered = await renderFit(fit);
-      if (rendered.pageCount === desiredPages) return rendered.buffer;
-    }
-    const maximumObserved = Math.max(
-      ...renderedCandidates.map((candidate) => candidate.pageCount),
-    );
-    if (
-      typeof desiredPages === "number" &&
-      desiredPages > maximumObserved
-    ) {
+    const renderChunk = async (
+      chunk: { resume: Resume; optimization: Optimization | null },
+      pageIndex: number,
+    ): Promise<Buffer | null> => {
+      const candidateProfile = profileForPage(pageIndex);
+      const candidateContent = resolveResumeContent(
+        chunk.resume,
+        chunk.optimization,
+        { includeSummary },
+      );
+      const candidateManifest = createContentManifest(
+        candidateContent,
+        candidateProfile,
+      );
+      const base = await renderFit(
+        BASE_FIT_PRESET,
+        candidateContent,
+        candidateManifest,
+        candidateProfile,
+      );
+      const exact: Rendered[] = base.pageCount === 1 ? [base] : [];
+      if (
+        base.pageCount === 1 &&
+        base.fill >= BALANCED_PAGE_FILL.min &&
+        base.fill <= BALANCED_PAGE_FILL.max
+      ) {
+        return base.buffer;
+      }
+      const presets =
+        base.pageCount > 1
+          ? COMPACT_FIT_PRESETS
+          : [...EXPANDED_FIT_PRESETS].reverse();
+      for (const fit of presets) {
+        const rendered = await renderFit(
+          fit,
+          candidateContent,
+          candidateManifest,
+          candidateProfile,
+        );
+        if (rendered.pageCount !== 1) continue;
+        exact.push(rendered);
+        if (
+          rendered.fill >= BALANCED_PAGE_FILL.min &&
+          rendered.fill <= BALANCED_PAGE_FILL.max
+        ) {
+          return rendered.buffer;
+        }
+      }
+      return (
+        exact.sort(
+          (left, right) =>
+            Math.abs(left.fill - TARGET_PAGE_FILL) -
+            Math.abs(right.fill - TARGET_PAGE_FILL),
+        )[0]?.buffer ?? null
+      );
+    };
+    const mergePages = async (buffers: Buffer[]): Promise<Buffer> => {
+      const merged = await PDFDocument.create();
+      merged.setTitle(`${resume.name} — Resume`);
+      merged.setAuthor(resume.name);
+      merged.setCreator("NextResume");
+      merged.setProducer("NextResume");
+      for (const buffer of buffers) {
+        const sourcePdf = await PDFDocument.load(buffer);
+        const [copied] = await merged.copyPages(sourcePdf, [0]);
+        merged.addPage(copied);
+      }
+      return Buffer.from(await merged.save());
+    };
+    const renderAtPageCount = async (
+      desiredPages: number,
+    ): Promise<Buffer | null> => {
       const chunks = partitionResumeForPages({
         resume,
         optimization,
         pageCount: desiredPages,
       });
-      if (chunks) {
-        const chunkBuffers: Buffer[] = [];
-        for (const chunk of chunks) {
-          const chunkContent = resolveResumeContent(
-            chunk.resume,
-            chunk.optimization,
-          );
-          const chunkManifest = createContentManifest(chunkContent, profile);
-          let selected: Buffer | null = null;
-          for (const fit of fitPresets) {
-            const rendered = await renderFit(
-              fit,
-              chunkContent,
-              chunkManifest,
-              false,
-            );
-            if (rendered.pageCount === 1) {
-              selected = rendered.buffer;
-              break;
-            }
-          }
-          if (!selected) {
-            chunkBuffers.length = 0;
-            break;
-          }
-          chunkBuffers.push(selected);
-        }
-        if (chunkBuffers.length === desiredPages) {
-          const merged = await PDFDocument.create();
-          merged.setTitle(`${resume.name} — Resume`);
-          merged.setAuthor(resume.name);
-          merged.setCreator("NextResume");
-          merged.setProducer("NextResume");
-          for (const chunkBuffer of chunkBuffers) {
-            const sourcePdf = await PDFDocument.load(chunkBuffer);
-            const [copied] = await merged.copyPages(sourcePdf, [0]);
-            merged.addPage(copied);
-          }
-          return Buffer.from(await merged.save());
-        }
+      const pageChunks =
+        desiredPages === 1
+          ? [{ resume, optimization }]
+          : chunks;
+      if (!pageChunks || pageChunks.length !== desiredPages) return null;
+      const buffers: Buffer[] = [];
+      for (let index = 0; index < pageChunks.length; index += 1) {
+        const buffer = await renderChunk(pageChunks[index], index);
+        if (!buffer) return null;
+        buffers.push(buffer);
+      }
+      return mergePages(buffers);
+    };
+
+    if (targetPages !== "auto") {
+      const exact = await renderAtPageCount(targetPages);
+      if (exact) return exact;
+      for (let count = targetPages + 1; count <= 10; count += 1) {
+        const overflow = await renderAtPageCount(count);
+        if (overflow) return overflow;
+      }
+    } else {
+      const preferred = Math.max(
+        1,
+        Math.min(10, requestedProfile.pageLayouts.length),
+      );
+      for (let count = preferred; count <= 10; count += 1) {
+        const candidate = await renderAtPageCount(count);
+        if (candidate) return candidate;
+      }
+      for (let count = preferred - 1; count >= 1; count -= 1) {
+        const candidate = await renderAtPageCount(count);
+        if (candidate) return candidate;
       }
     }
-    const closest = renderedCandidates.sort((left, right) => {
-      const distance =
-        Math.abs(left.pageCount - desiredPages) -
-        Math.abs(right.pageCount - desiredPages);
-      if (distance !== 0) return distance;
-      return right.fill - left.fill;
-    })[0];
-    return closest?.buffer ?? baseline.buffer;
+    throw new Error(
+      "Original-inspired V2 could not paginate this content safely.",
+    );
   } finally {
     await browser.close();
   }

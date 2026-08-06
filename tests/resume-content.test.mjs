@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  attachResumeStructureMetadata,
   mergeParsedResumes,
   normalizeParsedResume,
   splitResumeText,
 } from "../lib/resumeParser.ts";
-import { resolveResumeContent } from "../lib/pdf/shared.ts";
+import { analyzePdfPageLayout } from "../lib/pdfLayout.ts";
+import {
+  compactAdditionalItemLabel,
+  isCompactAdditionalSection,
+  resolveResumeContent,
+} from "../lib/pdf/shared.ts";
 import { partitionResumeForPages } from "../lib/pdf/balancedPages.ts";
 import {
   PDF_STYLE_DEFINITIONS,
@@ -15,15 +21,33 @@ import {
 import { TEMPLATE_DESIGN_SPECS } from "../lib/pdf/templateDesignSpecs.ts";
 import {
   createFitCacheKey,
+  createFitLayoutRevision,
   createResumeRevision,
   defaultResumePage,
   pruneFitVariants,
 } from "../lib/resumeFit.ts";
 import {
   RESUME_STYLE_PROFILE_VERSION,
+  approximateResumeStyleProfile,
   isCurrentResumeStyleProfile,
   sanitizeResumeStyleProfile,
 } from "../lib/resumeStyle.ts";
+import {
+  createOptimizationCacheKey,
+  createStructureIntegrity,
+  constrainRoleOptimizedStructure,
+  currentResumeManifestSections,
+  constrainPreservedOptimization,
+  enforceLockedOptimization,
+  numbersAreGrounded,
+  reconcileGroundedSkills,
+  validateGroundedOptimization,
+  validateLockedOptimization,
+  validatePreservedFitOptimization,
+  validatePreservedOptimization,
+  validateResumeStructureManifest,
+  unsupportedNumberClaims,
+} from "../lib/resumeStructure.ts";
 
 const fixtureResume = normalizeParsedResume({
   name: "Candidate",
@@ -75,6 +99,165 @@ test("splitResumeText retains all paragraphs without a hard tail cutoff", () => 
       `missing paragraph: ${paragraph.slice(0, 20)}`,
     );
   }
+});
+
+test("short coursework and skill taxonomies render as compact flowing lists", () => {
+  const coursework = {
+    id: "coursework",
+    kind: "custom",
+    title: "Core Coursework",
+    items: [
+      {
+        id: "course-1",
+        heading: "Operating Systems",
+        subheading: "97",
+        location: "",
+        start: "",
+        end: "",
+        bullets: [],
+      },
+      {
+        id: "course-2",
+        heading: "Data Structures",
+        subheading: "93",
+        location: "",
+        start: "",
+        end: "",
+        bullets: [],
+      },
+    ],
+  };
+  const award = {
+    ...coursework,
+    id: "awards",
+    kind: "awards",
+    title: "Awards",
+  };
+
+  assert.equal(isCompactAdditionalSection(coursework), true);
+  assert.equal(compactAdditionalItemLabel(coursework.items[0]), "Operating Systems · 97");
+  assert.equal(isCompactAdditionalSection(award), false);
+});
+
+test("coordinate layout detection preserves two-column reading regions", () => {
+  const bodyItems = Array.from({ length: 10 }, (_, index) => {
+    const y = 620 - index * 35;
+    return [
+      { str: `Sidebar ${index}`, width: 70, height: 10, transform: [1, 0, 0, 10, 40, y] },
+      { str: `Main ${index}`, width: 90, height: 10, transform: [1, 0, 0, 10, 360, y] },
+    ];
+  }).flat();
+  const page = analyzePdfPageLayout(1, 600, 800, [
+    { str: "Candidate Name", width: 100, height: 12, transform: [1, 0, 0, 12, 250, 730] },
+    ...bodyItems,
+  ]);
+
+  assert.equal(page.columns, 2);
+  assert.match(page.readingOrderText, /\[PAGE 1 HEADER\]/);
+  assert.ok(
+    page.readingOrderText.indexOf("Sidebar 0") <
+      page.readingOrderText.indexOf("Main 0"),
+  );
+});
+
+test("right-aligned dates do not turn a single-column resume into two columns", () => {
+  const items = Array.from({ length: 30 }, (_, index) => {
+    const y = 700 - index * 20;
+    return [
+      {
+        str: `Single-column content line ${index}`,
+        width: 440,
+        height: 10,
+        transform: [1, 0, 0, 10, 40, y],
+      },
+      ...(index % 6 === 0
+        ? [
+            {
+              str: "2024",
+              width: 28,
+              height: 10,
+              transform: [1, 0, 0, 10, 520, y],
+            },
+          ]
+        : []),
+    ];
+  }).flat();
+  const page = analyzePdfPageLayout(1, 600, 800, items);
+
+  assert.equal(page.columns, 1);
+  assert.doesNotMatch(page.readingOrderText, /LEFT COLUMN/);
+});
+
+test("visual page classification can override coordinate column detection", () => {
+  const items = Array.from({ length: 12 }, (_, index) => {
+    const y = 650 - index * 30;
+    return [
+      { str: `Left ${index}`, width: 60, height: 10, transform: [1, 0, 0, 10, 40, y] },
+      { str: `Right ${index}`, width: 90, height: 10, transform: [1, 0, 0, 10, 360, y] },
+    ];
+  }).flat();
+
+  assert.equal(analyzePdfPageLayout(1, 600, 800, items, 1).columns, 1);
+});
+
+test("structure metadata records layout, coverage, and protected ids", () => {
+  const resume = attachResumeStructureMetadata({
+    resume: fixtureResume,
+    sourceText:
+      "Candidate Engineer Builds reliable systems TypeScript Company Built a reliable platform",
+    layout: {
+      parser: "pdfjs-coordinates",
+      pageCount: 2,
+      maxColumns: 2,
+      pages: [
+        { page: 1, widthPt: 595, heightPt: 842, columns: 2 },
+        { page: 2, widthPt: 595, heightPt: 842, columns: 1 },
+      ],
+      issues: ["Confirm multi-column order."],
+    },
+  });
+
+  assert.equal(resume.sourceLayout?.maxColumns, 2);
+  assert.equal(resume.structureManifest?.pageCount, 2);
+  assert.equal(resume.structureManifest?.confirmed, false);
+  assert.equal(resume.structureConfidence?.level, "low");
+  assert.deepEqual(
+    resume.structureManifest?.sections.find(
+      (section) => section.ref === "experience",
+    )?.bulletIds,
+    ["b1"],
+  );
+});
+
+test("confirmed structure manifest detects added or removed entries", () => {
+  const order = ["summary", "skills", "experience"];
+  const confirmed = {
+    ...fixtureResume,
+    sectionOrder: order,
+    structureManifest: {
+      version: 1,
+      sourceFingerprint: "fixture",
+      parser: "linear-text",
+      pageCount: 1,
+      maxColumns: 1,
+      coverage: 1,
+      confirmed: true,
+      sectionOrder: order,
+      sections: currentResumeManifestSections({
+        ...fixtureResume,
+        sectionOrder: order,
+      }),
+    },
+  };
+  assert.deepEqual(validateResumeStructureManifest(confirmed), []);
+
+  const changed = structuredClone(confirmed);
+  changed.experience[0].bullets.push({ id: "b2", text: "New bullet." });
+  assert.ok(
+    validateResumeStructureManifest(changed).some((issue) =>
+      issue.includes("Bullets in experience changed"),
+    ),
+  );
 });
 
 test("mergeParsedResumes preserves core and additional sections in source order", () => {
@@ -214,7 +397,7 @@ test("all PDF styles can consume one canonical complete document", () => {
   assert.deepEqual(content.experience[0].bullets, ["Optimized role bullet."]);
   assert.deepEqual(content.projects[0].bullets, ["Optimized project bullet."]);
   assert.equal(content.education[0].school, "University");
-  assert.equal(content.additionalSections[0].title, "Competition Awards");
+  assert.equal(content.additionalSections[0].title, "Awards");
   assert.equal(
     content.additionalSections[0].items[0].heading,
     "First Prize",
@@ -282,7 +465,7 @@ test("personalized style treats a header photo/contact rail as single-column", (
   assert.deepEqual(headerRail.sidebarSections, []);
   assert.equal(headerRail.header.photoPosition, "right");
   assert.equal(isCurrentResumeStyleProfile(headerRail), true);
-  assert.equal(isCurrentResumeStyleProfile({ ...headerRail, version: 1 }), false);
+  assert.equal(isCurrentResumeStyleProfile({ ...headerRail, version: 2 }), false);
 
   const realSidebar = sanitizeResumeStyleProfile(
     {
@@ -293,6 +476,184 @@ test("personalized style treats a header photo/contact rail as single-column", (
   );
   assert.equal(realSidebar.layout, "sidebar-right");
   assert.deepEqual(realSidebar.sidebarSections, ["contact", "skills"]);
+});
+
+test("original-inspired blueprint safely supports three flow regions", () => {
+  const source = {
+    screenshots: ["data:image/png;base64,fixture"],
+    page: {
+      widthPt: 595.276,
+      heightPt: 841.89,
+      orientation: "portrait",
+    },
+    pageCount: 2,
+  };
+  const profile = sanitizeResumeStyleProfile(
+    {
+      layoutBlueprint: {
+        headerPlacement: "primary",
+        primaryRegionId: "content",
+        gutterPt: 10,
+        regions: [
+          {
+            id: "left rail",
+            role: "sidebar",
+            widthPercent: 35,
+            surface: "sidebar",
+            sections: ["contact", "photo", "skills"],
+          },
+          {
+            id: "content",
+            role: "main",
+            widthPercent: 30,
+            surface: "sidebar",
+            sections: ["experience", "skills"],
+          },
+          {
+            id: "right support",
+            role: "supporting",
+            widthPercent: 35,
+            surface: "subtle",
+            sections: ["additional"],
+          },
+        ],
+      },
+    },
+    source,
+  );
+
+  assert.equal(profile.version, 5);
+  assert.equal(profile.pageLayouts.length, 2);
+  assert.equal(profile.pageLayouts[0].layout, "regional");
+  assert.equal(profile.pageLayouts[1].layout, "regional");
+  assert.equal(profile.layout, "regional");
+  assert.equal(profile.layoutBlueprint.regions.length, 3);
+  assert.equal(profile.layoutBlueprint.primaryRegionId, "content");
+  assert.ok(
+    profile.layoutBlueprint.regions.find((region) => region.id === "content")
+      .widthPercent >= 42,
+  );
+  assert.equal(
+    profile.layoutBlueprint.regions.reduce(
+      (total, region) => total + region.widthPercent,
+      0,
+    ),
+    100,
+  );
+  assert.equal(
+    profile.layoutBlueprint.regions.filter((region) =>
+      region.sections.includes("skills"),
+    ).length,
+    1,
+  );
+  assert.equal(
+    profile.layoutBlueprint.regions.find((region) => region.id === "content")
+      .surface,
+    "page",
+  );
+  for (const section of ["summary", "projects", "education"]) {
+    assert.ok(
+      profile.layoutBlueprint.regions
+        .find((region) => region.id === "content")
+        .sections.includes(section),
+    );
+  }
+});
+
+test("original-inspired profiles preserve different source layouts page by page", () => {
+  const source = {
+    screenshots: ["data:image/png;base64,page1", "data:image/png;base64,page2"],
+    page: {
+      widthPt: 595.276,
+      heightPt: 841.89,
+      orientation: "portrait",
+    },
+    pageCount: 2,
+  };
+  const profile = sanitizeResumeStyleProfile(
+    {
+      pageLayouts: [
+        {
+          page: 1,
+          layoutBlueprint: {
+            headerPlacement: "full",
+            primaryRegionId: "main",
+            gutterPt: 8,
+            regions: [
+              {
+                id: "rail",
+                role: "sidebar",
+                widthPercent: 28,
+                surface: "subtle",
+                sections: ["skills", "additional"],
+              },
+              {
+                id: "main",
+                role: "main",
+                widthPercent: 72,
+                surface: "page",
+                sections: ["experience", "projects", "education"],
+              },
+            ],
+          },
+        },
+        {
+          page: 2,
+          layoutBlueprint: {
+            headerPlacement: "none",
+            primaryRegionId: "main",
+            gutterPt: 0,
+            regions: [
+              {
+                id: "main",
+                role: "main",
+                widthPercent: 100,
+                surface: "page",
+                sections: ["experience", "projects", "skills", "additional"],
+              },
+            ],
+          },
+        },
+      ],
+    },
+    source,
+  );
+
+  assert.equal(profile.pageLayouts.length, 2);
+  assert.equal(profile.pageLayouts[0].layout, "sidebar-left");
+  assert.equal(profile.pageLayouts[0].layoutBlueprint.headerPlacement, "full");
+  assert.equal(profile.pageLayouts[1].layout, "single-column");
+  assert.equal(profile.pageLayouts[1].layoutBlueprint.headerPlacement, "none");
+});
+
+test("vision fallback keeps a detected document sidebar across sparse continuation pages", () => {
+  const profile = approximateResumeStyleProfile({
+    screenshots: ["data:image/jpeg;base64,page1", "data:image/jpeg;base64,page2"],
+    page: {
+      widthPt: 595.276,
+      heightPt: 841.89,
+      orientation: "portrait",
+    },
+    pageCount: 2,
+    sourceLayout: {
+      parser: "pdfjs-coordinates",
+      pageCount: 2,
+      maxColumns: 2,
+      pages: [
+        { page: 1, widthPt: 595.276, heightPt: 841.89, columns: 2 },
+        { page: 2, widthPt: 595.276, heightPt: 841.89, columns: 1 },
+      ],
+      issues: [],
+    },
+  });
+
+  assert.equal(profile.approximate, true);
+  assert.deepEqual(
+    profile.pageLayouts.map((page) => page.layout),
+    ["sidebar-left", "sidebar-left"],
+  );
+  assert.equal(profile.pageLayouts[0].layoutBlueprint.headerPlacement, "full");
+  assert.equal(profile.pageLayouts[1].layoutBlueprint.headerPlacement, "none");
 });
 
 test("target page values are constrained to Auto or 1–10 pages", () => {
@@ -343,6 +704,137 @@ test("balanced page chunks preserve content without duplicating body sections", 
   );
 });
 
+test("balanced pagination does not revive explicitly removed summary or skills", () => {
+  const resume = normalizeParsedResume({
+    name: "Candidate",
+    summary: "Source summary that the page-fit version removed.",
+    skills: ["Source-only skill"],
+    experience: [],
+    projects: [],
+    education: [],
+    additionalSections: [],
+    sectionOrder: ["summary", "skills"],
+  });
+  const optimization = {
+    title: "Engineer",
+    summary: "",
+    skills: [],
+    roles: [],
+    projects: [],
+    sectionOrder: ["summary", "skills"],
+  };
+
+  assert.equal(
+    partitionResumeForPages({ resume, optimization, pageCount: 2 }),
+    null,
+  );
+});
+
+test("balanced page chunks can continue one long entry without splitting a bullet", () => {
+  const resume = {
+    ...fixtureResume,
+    summary: "",
+    skills: [],
+    projects: [],
+    education: [],
+    additionalSections: [],
+    sectionOrder: ["experience"],
+    experience: [
+      {
+        ...fixtureResume.experience[0],
+        bullets: Array.from({ length: 4 }, (_, index) => ({
+          id: `continued-${index + 1}`,
+          text: `Delivered a distinct evidence-backed result ${index + 1}.`,
+        })),
+      },
+    ],
+  };
+  const optimization = {
+    ...fixtureOptimization,
+    summary: "",
+    skills: [],
+    projects: [],
+    sectionOrder: ["experience"],
+    roles: [
+      {
+        id: resume.experience[0].id,
+        bullets: resume.experience[0].bullets.map((bullet) => ({
+          id: bullet.id,
+          text: bullet.text,
+          evidence: [bullet.id],
+          matchedKeywords: [],
+          rationale: "Source-backed.",
+        })),
+      },
+    ],
+  };
+  const chunks = partitionResumeForPages({
+    resume,
+    optimization,
+    pageCount: 2,
+  });
+  assert.equal(chunks?.length, 2);
+  assert.ok(chunks.every((chunk) => chunk.resume.experience.length === 1));
+  const ids = chunks.flatMap((chunk) =>
+    chunk.optimization.roles.flatMap((role) =>
+      role.bullets.map((bullet) => bullet.id),
+    ),
+  );
+  assert.deepEqual(ids.sort(), resume.experience[0].bullets.map((bullet) => bullet.id).sort());
+});
+
+test("balanced pagination does not duplicate source-only additional bullets", () => {
+  const resume = normalizeParsedResume({
+    name: "Candidate",
+    summary: "",
+    skills: [],
+    experience: [],
+    projects: [],
+    education: [],
+    additionalSections: [
+      {
+        id: "awards",
+        kind: "awards",
+        title: "Awards",
+        items: [
+          {
+            id: "award-entry",
+            heading: "Selected Awards",
+            bullets: Array.from({ length: 4 }, (_, index) => ({
+              id: `award-${index + 1}`,
+              text: `Received evidence-backed award ${index + 1}.`,
+            })),
+          },
+        ],
+      },
+    ],
+    sectionOrder: ["additional:awards"],
+  });
+  const optimization = {
+    title: "Engineer",
+    summary: "",
+    skills: [],
+    roles: [],
+    projects: [],
+    additionalSections: [],
+    structureMode: "optimize",
+    sectionOrder: ["additional:awards"],
+  };
+  const chunks = partitionResumeForPages({
+    resume,
+    optimization,
+    pageCount: 2,
+  });
+
+  assert.equal(chunks?.length, 2);
+  const ids = chunks.flatMap((chunk) =>
+    chunk.resume.additionalSections.flatMap((section) =>
+      section.items.flatMap((item) => item.bullets.map((bullet) => bullet.id)),
+    ),
+  );
+  assert.deepEqual(ids.sort(), resume.additionalSections[0].items[0].bullets.map((bullet) => bullet.id).sort());
+});
+
 test("resume revisions change with content but not object key order", () => {
   const first = createResumeRevision({
     resume: fixtureResume,
@@ -388,6 +880,14 @@ test("fit cache keys include template, page target, paper, and keep choices", ()
     createFitCacheKey(base),
     createFitCacheKey({ ...base, keptContentIds: ["b1"] }),
   );
+  assert.notEqual(
+    createFitCacheKey(base),
+    createFitCacheKey({ ...base, layoutRevision: "rebuilt-layout" }),
+  );
+  assert.notEqual(
+    createFitLayoutRevision(null),
+    createFitLayoutRevision({ version: 5, layout: "single-column" }),
+  );
 });
 
 test("fit variant pruning keeps the newest version per key and caps history", () => {
@@ -415,5 +915,680 @@ test("fit variant pruning keeps the newest version per key and caps history", ()
   assert.equal(
     pruned.find((variant) => variant.cacheKey === "duplicate")?.id,
     "variant-1",
+  );
+});
+
+const preservedResume = normalizeParsedResume({
+  name: "Candidate",
+  title: "Engineer",
+  summary: "Built reliable systems for 4 years.",
+  skills: ["TypeScript", "PostgreSQL"],
+  experience: [
+    {
+      id: "r1",
+      company: "Company",
+      title: "Engineer",
+      start: "2022",
+      end: "Present",
+      bullets: [
+        { id: "b1", text: "Improved reliability by 20%." },
+        { id: "b2", text: "Built an internal platform." },
+      ],
+    },
+  ],
+  projects: [
+    {
+      id: "p1",
+      name: "Project",
+      role: "Lead",
+      bullets: [{ id: "b3", text: "Created a research workflow." }],
+    },
+  ],
+  education: [{ school: "University", degree: "BSc", year: "2022" }],
+  additionalSections: [
+    {
+      id: "extra1",
+      kind: "awards",
+      title: "Selected Honors",
+      items: [
+        {
+          id: "extra1-item1",
+          heading: "Research Award",
+          bullets: [{ id: "b4", text: "Recognized for the research workflow." }],
+        },
+      ],
+    },
+  ],
+  sectionLabels: {
+    experience: "PROFESSIONAL HISTORY",
+    projects: "SELECTED WORK",
+  },
+  sectionOrder: [
+    "summary",
+    "experience",
+    "projects",
+    "education",
+    "skills",
+    "additional:extra1",
+  ],
+});
+
+const preservedOptimization = {
+  title: "Engineer",
+  summary: "Engineer who built reliable systems for 4 years.",
+  skills: ["PostgreSQL", "TypeScript"],
+  roles: [
+    {
+      id: "r1",
+      bullets: [
+        {
+          id: "b1",
+          text: "Raised system reliability by 20%.",
+          evidence: ["b1"],
+          matchedKeywords: ["reliability"],
+          rationale: "Clarifies impact.",
+        },
+        {
+          id: "b2",
+          text: "Built an internal engineering platform.",
+          evidence: ["b2"],
+          matchedKeywords: ["platform"],
+          rationale: "Clarifies scope.",
+        },
+      ],
+    },
+  ],
+  projects: [
+    {
+      id: "p1",
+      bullets: [
+        {
+          id: "b3",
+          text: "Created a workflow supporting research.",
+          evidence: ["b3"],
+          matchedKeywords: ["research"],
+          rationale: "Improves relevance.",
+        },
+      ],
+    },
+  ],
+  additionalSections: [
+    {
+      id: "extra1",
+      items: [
+        {
+          id: "extra1-item1",
+          bullets: [
+            {
+              id: "b4",
+              text: "Recognized for the research workflow.",
+              evidence: ["b4"],
+              matchedKeywords: [],
+              rationale: "Preserves the award evidence.",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  structureMode: "preserve",
+};
+
+test("Keep original accepts one-to-one rewrites while preserving source labels and order", () => {
+  assert.deepEqual(
+    validatePreservedOptimization(preservedResume, preservedOptimization),
+    [],
+  );
+  const content = resolveResumeContent(
+    preservedResume,
+    preservedOptimization,
+  );
+  assert.equal(content.sectionLabels.experience, "PROFESSIONAL HISTORY");
+  assert.equal(content.sectionLabels.projects, "SELECTED WORK");
+  assert.deepEqual(content.sectionOrder, preservedResume.sectionOrder);
+  const integrity = createStructureIntegrity(
+    preservedResume,
+    preservedOptimization,
+    "preserve",
+  );
+  assert.equal(integrity.valid, true);
+  assert.equal(integrity.bulletsPreserved, integrity.totalBullets);
+});
+
+test("Keep original page fitting locks headings but may trim lower-priority content", () => {
+  const fitted = structuredClone(preservedOptimization);
+  fitted.skills = ["TypeScript"];
+  fitted.roles[0].bullets = [fitted.roles[0].bullets[0]];
+  fitted.projects[0].bullets = [];
+  fitted.additionalSections[0].items[0].bullets = [];
+
+  assert.deepEqual(
+    validatePreservedFitOptimization(
+      preservedResume,
+      fitted,
+      preservedOptimization,
+    ),
+    [],
+  );
+
+  const missingEntry = structuredClone(fitted);
+  missingEntry.projects = [];
+  assert.ok(
+    validatePreservedFitOptimization(
+      preservedResume,
+      missingEntry,
+      preservedOptimization,
+    ).some((issue) => issue.includes("entire project section")),
+  );
+
+  const missingSkillsSection = structuredClone(fitted);
+  missingSkillsSection.skills = [];
+  assert.ok(
+    validatePreservedFitOptimization(
+      preservedResume,
+      missingSkillsSection,
+      preservedOptimization,
+    ).some((issue) => issue.includes("entire skills section")),
+  );
+
+  const resumeWithExtraEntries = structuredClone(preservedResume);
+  resumeWithExtraEntries.experience.push({
+    id: "r2",
+    company: "Earlier Company",
+    title: "Intern",
+    start: "2021",
+    end: "2021",
+    bullets: [{ id: "b5", text: "Supported an internal reporting tool." }],
+  });
+  resumeWithExtraEntries.projects.push({
+    id: "p2",
+    name: "Older Project",
+    role: "Contributor",
+    bullets: [{ id: "b6", text: "Built a prototype dashboard." }],
+  });
+  resumeWithExtraEntries.additionalSections[0].items.push({
+    id: "extra1-item2",
+    heading: "Earlier Award",
+    bullets: [{ id: "b7", text: "Received an earlier award." }],
+  });
+  const optimizationWithExtraEntries = structuredClone(preservedOptimization);
+  optimizationWithExtraEntries.roles.push({
+    id: "r2",
+    bullets: [{
+      id: "b5",
+      text: "Supported an internal reporting tool.",
+      evidence: ["b5"],
+      matchedKeywords: [],
+      rationale: "Preserves evidence.",
+    }],
+  });
+  optimizationWithExtraEntries.projects.push({
+    id: "p2",
+    bullets: [{
+      id: "b6",
+      text: "Built a prototype dashboard.",
+      evidence: ["b6"],
+      matchedKeywords: [],
+      rationale: "Preserves evidence.",
+    }],
+  });
+  optimizationWithExtraEntries.additionalSections[0].items.push({
+    id: "extra1-item2",
+    bullets: [{
+      id: "b7",
+      text: "Received an earlier award.",
+      evidence: ["b7"],
+      matchedKeywords: [],
+      rationale: "Preserves evidence.",
+    }],
+  });
+  const onePageSubset = structuredClone(optimizationWithExtraEntries);
+  onePageSubset.roles = onePageSubset.roles.slice(0, 1);
+  onePageSubset.projects = onePageSubset.projects.slice(0, 1);
+  onePageSubset.additionalSections[0].items =
+    onePageSubset.additionalSections[0].items.slice(0, 1);
+  assert.deepEqual(
+    validatePreservedFitOptimization(
+      resumeWithExtraEntries,
+      onePageSubset,
+      optimizationWithExtraEntries,
+    ),
+    [],
+  );
+});
+
+test("page-fit rendering honors explicit empty optimized fields", () => {
+  const fitted = structuredClone(preservedOptimization);
+  fitted.summary = "";
+  fitted.skills = [];
+  fitted.roles[0].bullets = [];
+  fitted.projects[0].bullets = [];
+  fitted.additionalSections[0].items[0].bullets = [];
+
+  const content = resolveResumeContent(preservedResume, fitted);
+  assert.equal(content.summary, "");
+  assert.deepEqual(content.skills, []);
+  assert.deepEqual(content.experience[0].bullets, []);
+  assert.deepEqual(content.projects[0].bullets, []);
+  assert.deepEqual(content.additionalSections[0].items[0].bullets, []);
+});
+
+test("Keep original rebuilds malformed model JSON from the source structure", () => {
+  const constrained = constrainPreservedOptimization({
+    resume: preservedResume,
+    candidate: {
+      title: "Engineer",
+      summary: "Engineer with 99 years of experience.",
+      skills: ["Go", "TypeScript"],
+      roles: [
+        {
+          id: "wrong-role",
+          bullets: [
+            {
+              id: "invented-id",
+              text: "Raised system reliability by 20%.",
+              evidence: ["b1"],
+              matchedKeywords: ["reliability"],
+              rationale: "Safe rewrite with a malformed id.",
+            },
+          ],
+        },
+      ],
+      projects: [],
+      additionalSections: [],
+    },
+    baseline: null,
+    lockedContentIds: [],
+  });
+
+  assert.deepEqual(
+    validatePreservedOptimization(preservedResume, constrained),
+    [],
+  );
+  assert.equal(constrained.roles[0].id, "r1");
+  assert.deepEqual(
+    constrained.roles[0].bullets.map((bullet) => bullet.id),
+    ["b1", "b2"],
+  );
+  assert.equal(
+    constrained.roles[0].bullets[0].text,
+    "Raised system reliability by 20%.",
+  );
+  assert.equal(
+    constrained.roles[0].bullets[1].text,
+    preservedResume.experience[0].bullets[1].text,
+  );
+  assert.equal(constrained.summary, preservedResume.summary);
+  assert.deepEqual(constrained.sectionOrder, preservedResume.sectionOrder);
+  assert.deepEqual(constrained.sectionLabels, preservedResume.sectionLabels);
+  assert.deepEqual(
+    new Set(constrained.skills.map((skill) => skill.toLowerCase())),
+    new Set(preservedResume.skills.map((skill) => skill.toLowerCase())),
+  );
+});
+
+test("Optimize for role safely applies relevant headings and section order", () => {
+  const resume = normalizeParsedResume({
+    ...preservedResume,
+    sectionOrder: [
+      "education",
+      "experience",
+      "projects",
+      "skills",
+      "summary",
+      "additional:extra1",
+    ],
+  });
+  const optimized = constrainRoleOptimizedStructure({
+    resume,
+    candidate: {
+      ...preservedOptimization,
+      structureMode: "optimize",
+      sectionOrder: [
+        "projects",
+        "projects",
+        "additional:not-real",
+        "experience",
+      ],
+      sectionLabels: {
+        projects: "Research Projects",
+        experience: "Totally Custom History",
+      },
+    },
+  });
+
+  assert.deepEqual(optimized.sectionOrder, [
+    "projects",
+    "experience",
+    "summary",
+    "skills",
+    "education",
+    "additional:extra1",
+  ]);
+  assert.equal(optimized.sectionLabels?.projects, "Research Projects");
+  assert.equal(
+    optimized.sectionLabels?.experience,
+    "Professional Experience",
+  );
+  assert.equal(new Set(optimized.sectionOrder).size, optimized.sectionOrder.length);
+
+  const content = resolveResumeContent(resume, optimized);
+  assert.deepEqual(content.sectionOrder, optimized.sectionOrder);
+  assert.equal(content.sectionLabels.projects, "Research Projects");
+  assert.equal(content.additionalSections[0].title, "Awards");
+});
+
+test("Optimize for role folds coursework and exam details into Education", () => {
+  const resume = normalizeParsedResume({
+    name: "Candidate",
+    additionalSections: [
+      {
+        id: "extra1",
+        kind: "custom",
+        title: "GRAD. ENTRANCE EXAM",
+        items: [{ id: "exam", heading: "Code 11408", bullets: [] }],
+      },
+      {
+        id: "extra2",
+        kind: "custom",
+        title: "CORE COURSEWORK",
+        items: [{ id: "course", heading: "Operating Systems 97", bullets: [] }],
+      },
+    ],
+    sectionOrder: ["additional:extra1", "additional:extra2"],
+  });
+  const optimization = {
+    title: "Software Engineer",
+    summary: "",
+    skills: [],
+    roles: [],
+    projects: [],
+    structureMode: "optimize",
+    sectionOrder: ["additional:extra1", "additional:extra2"],
+    sectionLabels: {},
+  };
+
+  const content = resolveResumeContent(resume, optimization);
+  assert.equal(content.additionalSections.length, 0);
+  assert.deepEqual(
+    content.education.map((item) => [item.school, item.degree]),
+    [
+      [
+        "Education details",
+        "Graduate Entrance Exam: Code 11408 · Relevant Coursework: Operating Systems 97",
+      ],
+    ],
+  );
+  assert.deepEqual(content.sectionOrder, ["education"]);
+});
+
+test("Optimize for role maps familiar source headings to system extras", () => {
+  const resume = normalizeParsedResume({
+    name: "Candidate",
+    additionalSections: [
+      {
+        id: "extra1",
+        kind: "custom",
+        title: "COMMUNITY",
+        items: [{ id: "community", heading: "AI tooling reviews", bullets: [] }],
+      },
+    ],
+  });
+  const content = resolveResumeContent(resume, {
+    title: "Engineer",
+    summary: "",
+    skills: [],
+    roles: [],
+    projects: [],
+    structureMode: "optimize",
+  });
+
+  assert.equal(content.additionalSections[0].kind, "volunteering");
+  assert.equal(content.additionalSections[0].title, "Volunteering");
+});
+
+test("Optimize for role folds AGENT / AI source groups into Skills", () => {
+  const resume = normalizeParsedResume({
+    name: "Candidate",
+    skills: ["Python"],
+    additionalSections: [
+      {
+        id: "extra1",
+        kind: "custom",
+        title: "AGENT / AI",
+        items: [
+          { id: "agent", heading: "Agent Engineering", bullets: [] },
+          { id: "rag", heading: "RAG", bullets: [] },
+          { id: "python", heading: "Python", bullets: [] },
+        ],
+      },
+    ],
+    sectionOrder: ["additional:extra1", "skills"],
+  });
+  const content = resolveResumeContent(resume, {
+    title: "AI Engineer",
+    summary: "",
+    skills: ["Python", "FastAPI"],
+    roles: [],
+    projects: [],
+    structureMode: "optimize",
+    sectionOrder: ["additional:extra1", "skills"],
+  });
+
+  assert.deepEqual(content.skills, [
+    "Python",
+    "FastAPI",
+    "Agent Engineering",
+    "RAG",
+  ]);
+  assert.equal(content.additionalSections.length, 0);
+  assert.deepEqual(content.sectionOrder, ["skills"]);
+});
+
+test("Keep original rejects missing, reordered, merged, or numerically invented bullets", () => {
+  const invalid = structuredClone(preservedOptimization);
+  invalid.roles[0].bullets = [
+    {
+      ...invalid.roles[0].bullets[1],
+      text: "Built an internal platform used by 500 people.",
+      evidence: ["b1", "b2"],
+    },
+    invalid.roles[0].bullets[0],
+  ];
+  const issues = validatePreservedOptimization(preservedResume, invalid);
+  assert.ok(issues.some((issue) => /count, ids, or order/i.test(issue)));
+  const inventedNumber = structuredClone(preservedOptimization);
+  inventedNumber.roles[0].bullets[1].text =
+    "Built an internal platform used by 500 people.";
+  assert.ok(
+    validateGroundedOptimization(preservedResume, inventedNumber).some(
+      (issue) => /unsupported number/i.test(issue),
+    ),
+  );
+});
+
+test("number grounding accepts safe formatting and lower-bound weakening", () => {
+  assert.equal(numbersAreGrounded("Reached 800 users.", "Reached 800+ users."), true);
+  assert.equal(numbersAreGrounded("Reviewed 1K profiles.", "Reviewed 1,000 profiles."), true);
+  assert.equal(numbersAreGrounded("Reached 80+ users.", "Reached 80 users."), false);
+  assert.equal(numbersAreGrounded("Improved 80%.", "Improved 80."), false);
+  assert.deepEqual(unsupportedNumberClaims("Reached 80+ users.", "Reached 80 users."), ["80+"]);
+});
+
+test("grounding accepts skills containing PDF whitespace and Unicode separators", () => {
+  const resume = structuredClone(preservedResume);
+  resume.skills = [
+    "vision\u00a0models",
+    "knowledge\u200b graphs",
+    "AI\ninsights",
+    "embed\u200bdings",
+  ];
+  const optimization = structuredClone(preservedOptimization);
+  optimization.skills = [
+    "Vision Models",
+    "knowledge graphs",
+    "AI insights",
+    "embeddings",
+  ];
+
+  assert.deepEqual(validateGroundedOptimization(resume, optimization), []);
+
+  optimization.skills.push("Invented Skill");
+  assert.ok(
+    validateGroundedOptimization(resume, optimization).some((issue) =>
+      issue.includes('Skill "Invented Skill"'),
+    ),
+  );
+});
+
+test("role optimization drops unsupported skills instead of failing the resume", () => {
+  const grounded = reconcileGroundedSkills(fixtureResume, [
+    "Vision Models",
+    "reliable platform",
+  ]);
+
+  assert.deepEqual(grounded.skills, ["reliable platform", "TypeScript"]);
+  assert.deepEqual(
+    validateGroundedOptimization(fixtureResume, {
+      ...fixtureOptimization,
+      skills: grounded.skills,
+      skillEvidence: grounded.skillEvidence,
+    }),
+    [],
+  );
+});
+
+test("role optimization keeps strongly evidenced indirect capabilities", () => {
+  const grounded = reconcileGroundedSkills(
+    fixtureResume,
+    ["Platform Reliability", "PyTorch", "Unexplained Capability"],
+    [
+      {
+        skill: "Platform Reliability",
+        grounding: "indirect",
+        skillType: "capability",
+        evidence: ["b1"],
+        rationale:
+          "The source bullet demonstrates building a reliable platform.",
+      },
+      {
+        skill: "PyTorch",
+        grounding: "indirect",
+        skillType: "tool",
+        evidence: ["b1"],
+        rationale: "A framework cannot be inferred from generic platform work.",
+      },
+      {
+        skill: "Unexplained Capability",
+        grounding: "indirect",
+        skillType: "capability",
+        evidence: ["missing-bullet"],
+        rationale: "The cited bullet does not exist.",
+      },
+    ],
+  );
+
+  assert.deepEqual(grounded.skills, ["Platform Reliability", "TypeScript"]);
+  assert.equal(grounded.skillEvidence[0].grounding, "indirect");
+  assert.deepEqual(grounded.skillEvidence[0].evidence, ["b1"]);
+  assert.deepEqual(
+    validateGroundedOptimization(fixtureResume, {
+      ...fixtureOptimization,
+      skills: grounded.skills,
+      skillEvidence: grounded.skillEvidence,
+    }),
+    [],
+  );
+});
+
+test("grounding validator rejects indirect tools even when they cite a real bullet", () => {
+  const issues = validateGroundedOptimization(fixtureResume, {
+    ...fixtureOptimization,
+    skills: ["PyTorch"],
+    skillEvidence: [
+      {
+        skill: "PyTorch",
+        grounding: "indirect",
+        skillType: "tool",
+        evidence: ["b1"],
+        rationale: "Incorrectly inferred from unrelated engineering work.",
+      },
+    ],
+  });
+
+  assert.ok(issues.some((issue) => issue.includes('Skill "PyTorch"')));
+});
+
+test("locked optimized wording cannot be removed by regeneration or Fit", () => {
+  const candidate = structuredClone(preservedOptimization);
+  candidate.roles[0].bullets[1].text = "Changed locked wording.";
+  assert.deepEqual(
+    validateLockedOptimization({
+      resume: preservedResume,
+      candidate: preservedOptimization,
+      baseline: preservedOptimization,
+      lockedContentIds: ["b2"],
+    }),
+    [],
+  );
+  assert.ok(
+    validateLockedOptimization({
+      resume: preservedResume,
+      candidate,
+      baseline: preservedOptimization,
+      lockedContentIds: ["b2"],
+    }).some((issue) => issue.includes("b2")),
+  );
+});
+
+test("locked wording is restored deterministically before validation", () => {
+  const candidate = structuredClone(preservedOptimization);
+  candidate.roles[0].bullets = candidate.roles[0].bullets.filter(
+    (bullet) => bullet.id !== "b2",
+  );
+  const enforced = enforceLockedOptimization({
+    resume: preservedResume,
+    candidate,
+    baseline: preservedOptimization,
+    lockedContentIds: ["b2"],
+  });
+
+  assert.equal(
+    enforced.roles[0].bullets.find((bullet) => bullet.id === "b2")?.text,
+    preservedOptimization.roles[0].bullets.find((bullet) => bullet.id === "b2")?.text,
+  );
+  assert.deepEqual(
+    validateLockedOptimization({
+      resume: preservedResume,
+      candidate: enforced,
+      baseline: preservedOptimization,
+      lockedContentIds: ["b2"],
+    }),
+    [],
+  );
+});
+
+test("optimization caches are isolated by structure mode and model", () => {
+  const job = {
+    title: "Engineer",
+    company: "",
+    seniority: "",
+    requiredKeywords: [],
+    niceToHaveKeywords: [],
+    responsibilities: [],
+  };
+  const base = {
+    resume: preservedResume,
+    job,
+    modelId: "model-a",
+    structureMode: "optimize",
+  };
+  assert.notEqual(
+    createOptimizationCacheKey(base),
+    createOptimizationCacheKey({ ...base, structureMode: "preserve" }),
+  );
+  assert.notEqual(
+    createOptimizationCacheKey(base),
+    createOptimizationCacheKey({ ...base, modelId: "model-b" }),
   );
 });
