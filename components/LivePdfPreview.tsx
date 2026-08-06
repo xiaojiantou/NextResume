@@ -26,6 +26,7 @@ export function LivePdfPreview({
   personalizedStatus,
   personalizedError,
   onRetryPersonalized,
+  includeSummary,
 }: {
   resume: Resume;
   optimization: Optimization | null;
@@ -39,6 +40,7 @@ export function LivePdfPreview({
   personalizedStatus?: "idle" | "generating" | "ready" | "failed";
   personalizedError?: string | null;
   onRetryPersonalized?: () => void;
+  includeSummary?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +88,7 @@ export function LivePdfPreview({
           sourceRevision: sourceRevision ?? undefined,
           personalizedStyleProfile:
             style === "personalized" ? personalizedStyleProfile : undefined,
+          includeSummary,
         }),
       })
         .then(async (response) => {
@@ -149,6 +152,7 @@ export function LivePdfPreview({
     personalizedStatus,
     resume,
     fitVariant,
+    includeSummary,
     retryNonce,
     sourceRevision,
     style,

@@ -1618,6 +1618,7 @@ function ResultPageInner() {
                 personalizedStyleProfile={personalizedStyleProfile}
                 personalizedStatus={personalizedStatus}
                 personalizedError={personalizedError}
+                includeSummary={summaryEnabled}
                 onRetryPersonalized={() => {
                   personalizeRan.current = true;
                   void generatePersonalized();

@@ -35,6 +35,7 @@ export function EditorWithPreview({
   keptContentIds,
   lockedContentIds,
   onToggleKeep,
+  includeSummary,
 }: {
   resume: Resume;
   optimization: Optimization | null;
@@ -55,6 +56,7 @@ export function EditorWithPreview({
   keptContentIds?: string[];
   lockedContentIds?: string[];
   onToggleKeep?: (contentId: string) => void;
+  includeSummary?: boolean;
 }) {
   const [layout, setLayout] = useState<"split" | "editor" | "preview">("split");
 
@@ -128,6 +130,7 @@ export function EditorWithPreview({
               personalizedStatus={personalizedStatus}
               personalizedError={personalizedError}
               onRetryPersonalized={onRetryPersonalized}
+              includeSummary={includeSummary}
             />
           </div>
         </div>
@@ -159,6 +162,7 @@ export function EditorWithPreview({
             personalizedStatus={personalizedStatus}
             personalizedError={personalizedError}
             onRetryPersonalized={onRetryPersonalized}
+            includeSummary={includeSummary}
           />
         </div>
       )}
