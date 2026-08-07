@@ -1,0 +1,28 @@
+Intern: AI Engineering - Volvo Financial Services
+
+As an intern, you will play a crucial role in advancing AI initiatives at VFS North America by supporting the development, deployment, and continuous improvement of AI-powered solutions. You will leverage Generative AI capabilities to solve business problems, prototype innovative ideas, and help deliver intelligent solutions that create business value. Some of the tasks you will perform include:
+
+Data Analysis: Review and analyze large datasets to identify patterns, trends, and opportunities that improve AI solutions and support business decision-making.
+Generative AI Solutions: Leverage Generative AI capabilities to solve business problems, develop proof-of-concepts, and build innovative AI-driven solutions that enhance business processes and user experiences.
+AI Development: Collaborate with engineering and AI teams to develop, train, evaluate, and refine machine learning and Generative AI solutions, including applications that generate product content, classify information, and automate business processes.
+Testing and Validation: Conduct rigorous testing of AI solutions to ensure accuracy, reliability, and effectiveness. Evaluate AI-generated outputs, identify opportunities for improvement, and assist in optimizing model performance.
+Documentation: Maintain clear documentation of development activities, model performance, prompts, workflows, and technical changes to support knowledge sharing and continuous improvement.
+Collaboration: Work closely with cross-functional teams, including engineering, product management, marketing, and business stakeholders, to understand requirements and ensure AI solutions align with business objectives.
+Continuous Improvement: Stay current with emerging trends in artificial intelligence, machine learning, and Generative AI, and actively contribute ideas that improve solution quality, business value, and user experience.
+
+Who are you?
+You have a passion for artificial intelligence and are excited to explore how Generative AI can solve real-world business problems.
+You have hands-on experience with AI technologies through coursework, personal projects, research, hackathons, or previous internships. Experience with Generative AI tools, APIs, or AI-powered applications is a plus.
+You have experience with one or more programming languages such as Python, Java, C#, JavaScript, or similar, and understand the importance of writing clean, maintainable, and well-documented code.
+You enjoy learning new technologies, experimenting with new ideas, and continuously improving your technical skills.
+You are naturally curious, enjoy solving complex problems, and can think critically to translate business needs into technical solutions.
+You are detail-oriented, organized, and take ownership of your work from concept through completion.
+You communicate technical concepts clearly and effectively, both verbally and in writing, and enjoy collaborating with cross-functional teams.
+You are patient, approachable, and enjoy sharing knowledge while learning from others.
+Applicants must be currently enrolled in and pursuing a degree in Computer Science, Information Technology, Software Engineering, Data Science, Artificial Intelligence, or a related technical discipline at an accredited institution and have completed at least 30 semester hours prior to the start of the internship.
+Must be in good academic standing with a cumulative GPA of at least 2.75.
+Summer interns may work up to 40 hours per week.
+
+Build practical experience with modern software development practices, Agile methodologies, and collaborative engineering workflows.
+Job Category: Information Technology
+Organization: Volvo Financial Services

@@ -1158,6 +1158,49 @@ function ResultPageInner() {
                 <>Measuring ATS score…</>
               )}
             </p>
+            {/* The headline barely moves on an already-strong resume, because
+                most of the rubric is already near its ceiling. The per-category
+                deltas are where the rewrite's actual work shows up. */}
+            {report.measuredCategories?.length ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {report.measuredCategories.map((after) => {
+                  const before = report.categoriesBefore.find(
+                    (c) => c.label === after.label,
+                  );
+                  const delta = before ? after.score - before.score : 0;
+                  return (
+                    <span
+                      key={after.label}
+                      title={after.detail}
+                      className={
+                        delta > 0
+                          ? "pill !text-xs !text-emerald-700 !border-emerald-200 !bg-emerald-50"
+                          : "pill !text-xs !text-ink-500"
+                      }
+                    >
+                      {after.label}{" "}
+                      {delta !== 0 && before ? (
+                        <span className="font-medium">
+                          {before.score} → {after.score}
+                        </span>
+                      ) : (
+                        <span className="font-medium">{after.score}</span>
+                      )}
+                      {delta > 0 ? ` (+${delta})` : ""}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+            {report.stuffingWarnings?.length ? (
+              <div className="mt-2 space-y-1">
+                {report.stuffingWarnings.map((warning) => (
+                  <p key={warning} className="text-xs text-amber-700">
+                    ⚠ {warning}
+                  </p>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <button

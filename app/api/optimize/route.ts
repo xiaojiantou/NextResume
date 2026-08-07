@@ -2,6 +2,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
+import { MAX_KEYWORD_REPEATS, detectStuffing, resumeToText } from "@/lib/atsScore";
+import { applyOptimizationToResume } from "@/lib/applyOptimization";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import {
   calculateOptimizationAtsScore,
@@ -177,7 +179,11 @@ Start with a strong ownership verb (Led, Built, Shipped, Owned, Drove, Designed,
 const SLOP_PATTERN =
   /[,;–—]\s*(showcasing|demonstrating|highlighting|proving|underscoring|exemplifying|evidencing)\b|\b(showcasing|demonstrating)\s+(expertise|proficiency|strong|robust|deep)\b/i;
 
-function validateOptimization(resume: Resume, opt: Optimization): string[] {
+function validateOptimization(
+  resume: Resume,
+  opt: Optimization,
+  job?: JobAnalysis,
+): string[] {
   const problems: string[] = [];
 
   const checkSection = (
@@ -238,19 +244,36 @@ function validateOptimization(resume: Resume, opt: Optimization): string[] {
     );
   }
 
+  // Chasing matchedKeywords pushes the model to repeat the same term in every
+  // bullet. Scoring counts each keyword once, so that buys nothing, and
+  // Workday's 2026 filter flags the density as manipulation. Catch it here so
+  // the user never receives a resume that trips it.
+  if (job) {
+    const materialized = applyOptimizationToResume(resume, opt);
+    const { worst } = detectStuffing(resumeToText(materialized), job);
+    for (const { keyword, count } of worst) {
+      problems.push(
+        `keyword "${keyword}": repeated ${count} times — state it once or twice where it is load-bearing and rewrite the rest without it (max ${MAX_KEYWORD_REPEATS})`,
+      );
+    }
+  }
+
   return problems;
 }
 
 function publicOptimizationIssue(issue: string): string {
   const skill = issue.match(/^Skill "([^"]+)"/i)?.[1];
   if (skill) {
-    return `The proposed skill “${skill}” was not sufficiently supported by the uploaded resume.`;
+    return `The proposed skill "${skill}" was not sufficiently supported by the uploaded resume.`;
   }
   if (/unsupported number/i.test(issue)) {
     return "A rewrite introduced a number that was not supported by its source evidence.";
   }
   if (/locked/i.test(issue)) {
     return "A manually edited field changed, so the rewrite was rejected.";
+  }
+  if (/^keyword /i.test(issue)) {
+    return "A rewrite repeated a keyword too many times, which trips ATS keyword-stuffing filters.";
   }
   if (/role|project|bullet|evidence/i.test(issue)) {
     return "A rewritten achievement could not be matched safely to its original entry.";
@@ -537,7 +560,7 @@ export async function POST(req: NextRequest) {
         lockedContentIds,
       });
       const issues = [
-        ...validateOptimization(resume, opt),
+        ...validateOptimization(resume, opt, job),
         ...validateGroundedOptimization(resume, opt),
         ...(structureMode === "preserve"
           ? validatePreservedOptimization(resume, opt)

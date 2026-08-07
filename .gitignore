@@ -31,3 +31,6 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 .gstack/
+
+# eval baselines (model output drifts; corpus itself is committed)
+eval/*.jsonl
