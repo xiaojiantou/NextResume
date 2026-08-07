@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resume Layout Guard"
+  short_description: "Keep resume PDFs readable, aligned, complete, and ATS-safe"
+  default_prompt: "Use $resume-layout-guard to review this resume template and fix layout, page-fit, and ATS issues."

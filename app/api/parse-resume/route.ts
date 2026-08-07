@@ -1,13 +1,15 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import { NextRequest, NextResponse } from "next/server";
-import { jsonCompletion } from "@/lib/ai";
+import { analyzeResumeVisualLayout, jsonCompletion } from "@/lib/ai";
 import { extractText } from "@/lib/extract";
 import { screenshotResume } from "@/lib/resumeScreenshot";
+import { extractPdfLayout } from "@/lib/pdfLayout";
 import {
   mergeParsedResumes,
   normalizeParsedResume,
   splitResumeText,
+  attachResumeStructureMetadata,
 } from "@/lib/resumeParser";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { Resume } from "@/lib/types";
@@ -65,6 +67,15 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
     { "school": string, "degree": string, "year": string }
   ],
   "language": "en",
+  "sectionLabels": {
+    // Preserve the exact source heading text and capitalization for every
+    // core section actually visible in this chunk.
+    "summary": string,
+    "skills": string,
+    "experience": string,
+    "projects": string,
+    "education": string
+  },
   "sectionOrder": [
     // Preserve the source resume's reading order. Core values are:
     // "summary", "skills", "experience", "projects", "education".
@@ -102,8 +113,12 @@ Rules:
 - Put awards, certifications, publications, languages, volunteering, and every other non-core section in additionalSections. Never discard an unfamiliar section.
 - "degree" must be verbatim including GPA and honors, e.g. "M.S in Computer Science; GPA: 4.0/4.0".
 - sectionOrder must include every non-empty section in its original reading order.
+- sectionLabels must preserve core headings verbatim. Do not standardize labels such as "PROFESSIONAL EXPERIENCE" to "Experience".
+- Keep content under the section heading where it appears. Never move a source Project into Experience or vice versa.
 - If a field is missing, use "" (or [] for arrays).
-- Skills: "skills" is always the flat deduplicated list of individual skills (never include category labels as items). When the source groups skills under category labels, ALSO output "skillGroups" preserving those labels and their skills verbatim.`;
+- Skills: "skills" is always the flat deduplicated list of individual skills (never include category labels as items). When the source groups skills under category labels, ALSO output "skillGroups" preserving those labels and their skills verbatim.
+- Text markers such as [PAGE 1 LEFT COLUMN] describe PDF coordinates, not resume content. Never copy them into a field.
+- For multi-column PDFs, follow the supplied visual layout guide for semantic section order, while copying field content only from the coordinate-ordered text.`;
 
 export async function POST(req: NextRequest) {
   const rl = rateLimitGuard(req, LIMITS.parseResume);
@@ -121,7 +136,7 @@ export async function POST(req: NextRequest) {
     // critical path every user already goes through. Best-effort: a failure
     // here just means "personalized" style won't be offered later, not a
     // failed upload.
-    const [{ text, photo }, styleSource] = await Promise.all([
+    const [initialExtraction, styleSource] = await Promise.all([
       extractText(buf, file.name),
       screenshotResume(buf, file.name).catch((e) => {
         console.warn("[parse-resume] screenshot failed", e);
@@ -129,12 +144,42 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
+    let { text, photo, layout } = initialExtraction;
+
+    // Coordinates are only a candidate signal: right-aligned dates, scores,
+    // and contact rows can look like a second column. For every PDF, let the
+    // page screenshots arbitrate single-column vs sidebar/mixed structure.
+    const visualGuide =
+      file.name.toLowerCase().endsWith(".pdf") && styleSource
+        ? await analyzeResumeVisualLayout(styleSource).catch((error) => {
+            console.warn("[parse-resume] visual layout analysis failed", error);
+            return null;
+          })
+        : null;
+    if (visualGuide?.pages.length) {
+      const pageColumns = Object.fromEntries(
+        visualGuide.pages.map((page) => [
+          page.page,
+          page.layout === "single-column" ? 1 : 2,
+        ]),
+      ) as Record<number, 1 | 2>;
+      const corrected = await extractPdfLayout(buf, pageColumns);
+      text = corrected.text.trim();
+      layout = corrected.layout;
+    }
+
     if (text.length < 50) {
       return NextResponse.json(
         { error: "Could not extract enough text from this file." },
         { status: 422 },
       );
     }
+
+    // Screenshot analysis also supplies semantic relationships between page
+    // regions. Exact content still comes only from the corrected PDF text.
+    const visualGuideContext = visualGuide
+      ? `\n\nVisual layout guide for the complete document (use only for headings, regions, and reading order):\n${JSON.stringify(visualGuide)}`
+      : "";
 
     const chunks = splitResumeText(text);
     const parsed: Resume[] = [];
@@ -147,7 +192,7 @@ export async function POST(req: NextRequest) {
           const chunkIndex = start + batchIndex;
           const value = await jsonCompletion<Resume>({
             system: SYSTEM,
-            user: `Resume text chunk ${chunkIndex + 1} of ${chunks.length}. Parse only content actually present in this chunk; do not invent missing sections:\n\n${chunk}`,
+            user: `Resume text chunk ${chunkIndex + 1} of ${chunks.length}. Parse only content actually present in this chunk; do not invent missing sections.${visualGuideContext}\n\nCoordinate-ordered source text:\n${chunk}`,
             maxTokens: 6000,
           });
           return normalizeParsedResume(value);
@@ -155,13 +200,24 @@ export async function POST(req: NextRequest) {
       );
       parsed.push(...results);
     }
-    const resume = mergeParsedResumes(parsed);
+    const resume = attachResumeStructureMetadata({
+      resume: mergeParsedResumes(parsed),
+      sourceText: text,
+      layout,
+      visualGuide,
+    });
     if (photo) resume.photo = photo;
 
     return NextResponse.json({
       resume,
       rawText: text,
-      styleSource,
+      styleSource: styleSource
+        ? {
+            ...styleSource,
+            visualLayoutGuide: visualGuide,
+            sourceLayout: layout,
+          }
+        : null,
       // Backwards-compatible response for clients persisted before the
       // multi-page style source was introduced.
       screenshot: styleSource?.screenshots[0] ?? null,

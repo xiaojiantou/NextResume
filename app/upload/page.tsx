@@ -17,6 +17,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
+async function fingerprintFile(file: File): Promise<string> {
+  if (!globalThis.crypto?.subtle) {
+    return `${file.size}:${file.lastModified}:${file.name}`;
+  }
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(digest)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export default function UploadPage() {
   const {
     fileName,
@@ -49,9 +59,14 @@ export default function UploadPage() {
       }
 
       setParsing(true);
-      setFileMeta(f.name, t, f.size);
+      // A newly selected file is a new source document, not a manual edit of
+      // the previous resume. Clear resume-scoped ids, locks, variants and Fit
+      // state before b1/r1 ids are reused by the new parse.
+      clearFile();
 
       try {
+        const fingerprint = await fingerprintFile(f);
+        setFileMeta(f.name, t, f.size, fingerprint);
         const fd = new FormData();
         fd.append("file", f);
         const res = await fetch("/api/parse-resume", {

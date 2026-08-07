@@ -3,7 +3,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCheckoutSession } from "@/lib/stripe";
 import { createOrder, saveOrderSnapshot } from "@/lib/orders";
-import type { JobAnalysis, Resume, ResumeStyleSource } from "@/lib/types";
+import type {
+  ContentStructureMode,
+  AtsReport,
+  JobAnalysis,
+  Resume,
+  ResumeStyleSource,
+} from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -13,16 +19,23 @@ export async function POST(req: NextRequest) {
     // so the buyer can access their resume from any device via the email link.
     let resume: Resume | null = null;
     let job: JobAnalysis | null = null;
+    let report: AtsReport | null = null;
     let resumeStyleSource: ResumeStyleSource | null = null;
+    let contentStructure: ContentStructureMode = "optimize";
     try {
       const body = (await req.json()) as {
         resume?: Resume;
         job?: JobAnalysis;
+        report?: AtsReport;
         resumeStyleSource?: ResumeStyleSource | null;
+        contentStructure?: ContentStructureMode;
       };
       resume = body?.resume ?? null;
       job = body?.job ?? null;
+      report = body?.report ?? null;
       resumeStyleSource = body?.resumeStyleSource ?? null;
+      contentStructure =
+        body?.contentStructure === "preserve" ? "preserve" : "optimize";
     } catch {
       // No body / not JSON — fine, older client behaviour.
     }
@@ -48,8 +61,13 @@ export async function POST(req: NextRequest) {
         await saveOrderSnapshot(orderId, {
           resume,
           job,
+          report,
           optimization: null,
           optimizationModel: null,
+          optimizationStructureMode: null,
+          optimizationVariants: [],
+          contentStructure,
+          lockedContentIds: [],
           resumeStyleSource,
           personalizedStyleProfile: null,
         });

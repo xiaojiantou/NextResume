@@ -31,6 +31,21 @@ export type ResumeSkillGroup = {
 
 export type ResumeLanguage = "en";
 
+export type ContentStructureMode = "optimize" | "preserve";
+
+export type CoreResumeSection =
+  | "summary"
+  | "skills"
+  | "experience"
+  | "projects"
+  | "education";
+
+export type ResumeStructureConfidence = {
+  level: "high" | "low";
+  issues: string[];
+  coverage?: number;
+};
+
 export type ResumeAdditionalSectionKind =
   | "awards"
   | "certifications"
@@ -65,6 +80,49 @@ export type ResumeSectionRef =
   | "education"
   | `additional:${string}`;
 
+export type ResumeSourceLayout = {
+  parser: "pdfjs-coordinates" | "linear-text" | "vision-image";
+  pageCount: number;
+  maxColumns: 1 | 2;
+  pages: Array<{
+    page: number;
+    widthPt: number;
+    heightPt: number;
+    columns: 1 | 2;
+  }>;
+  issues: string[];
+};
+
+export type ResumeVisualLayoutGuide = {
+  pages: Array<{
+    page: number;
+    layout: "single-column" | "sidebar-left" | "sidebar-right" | "mixed";
+    regions: Array<{
+      name: string;
+      headings: string[];
+    }>;
+  }>;
+  readingOrder: string[];
+  issues: string[];
+};
+
+export type ResumeStructureManifest = {
+  version: 1;
+  sourceFingerprint: string;
+  parser: ResumeSourceLayout["parser"];
+  pageCount: number;
+  maxColumns: 1 | 2;
+  coverage: number;
+  confirmed: boolean;
+  sectionOrder: ResumeSectionRef[];
+  sections: Array<{
+    ref: ResumeSectionRef;
+    label: string;
+    entryIds: string[];
+    bulletIds: string[];
+  }>;
+};
+
 export type ResumeProject = {
   id: string;
   name: string;
@@ -98,6 +156,14 @@ export type Resume = {
   language?: ResumeLanguage;
   /** Reading order detected from the source resume. */
   sectionOrder?: ResumeSectionRef[];
+  /** Verbatim headings detected for core sections. */
+  sectionLabels?: Partial<Record<CoreResumeSection, string>>;
+  /** Low confidence is surfaced as a non-blocking approximation warning. */
+  structureConfidence?: ResumeStructureConfidence;
+  /** Coordinate/vision summary used to assess complex source layouts. */
+  sourceLayout?: ResumeSourceLayout;
+  /** Immutable snapshot of the detected semantic structure. */
+  structureManifest?: ResumeStructureManifest;
   /** Verbatim sections that do not fit the core resume schema. */
   additionalSections?: ResumeAdditionalSection[];
 };
@@ -112,16 +178,60 @@ export type ResumeStyleSource = {
   screenshots: string[];
   page: ResumePageSpec;
   pageCount: number;
+  /** Optional semantic layout hints captured during the original parse. */
+  visualLayoutGuide?: ResumeVisualLayoutGuide | null;
+  /** Deterministic PDF-coordinate fallback when vision is unavailable. */
+  sourceLayout?: ResumeSourceLayout | null;
 };
 
 export type ResumeLayout =
   | "single-column"
   | "sidebar-left"
-  | "sidebar-right";
+  | "sidebar-right"
+  | "regional";
+
+export type ResumeLayoutSection =
+  | "contact"
+  | "photo"
+  | "summary"
+  | "skills"
+  | "experience"
+  | "projects"
+  | "education"
+  | "additional";
+
+export type ResumeLayoutRegion = {
+  id: string;
+  role: "main" | "sidebar" | "supporting";
+  widthPercent: number;
+  surface: "page" | "sidebar" | "subtle";
+  sections: ResumeLayoutSection[];
+};
+
+export type ResumeLayoutBlueprint = {
+  /** Header spans the page or begins the primary content region. */
+  headerPlacement: "full" | "primary" | "none";
+  primaryRegionId: string;
+  gutterPt: number;
+  /** Left-to-right, flow-based regions. Absolute positioning is forbidden. */
+  regions: ResumeLayoutRegion[];
+};
+
+export type ResumePageLayout = {
+  page: number;
+  layout: ResumeLayout;
+  layoutBlueprint: ResumeLayoutBlueprint;
+};
 
 export type ResumeStyleProfile = {
-  version: 1;
+  version: 5;
+  /** V2 renders every output page from an independent, bounded template. */
+  pageLayouts: ResumePageLayout[];
+  /** True when the safe deterministic approximation replaced vision output. */
+  approximate?: boolean;
   layout: ResumeLayout;
+  layoutBlueprint: ResumeLayoutBlueprint;
+  /** Derived legacy fields retained for persisted v2 profiles and Fit calls. */
   sidebarWidthPercent: number;
   sidebarSections: Array<
     "contact" | "summary" | "skills" | "education" | "additional"
@@ -239,12 +349,70 @@ export type OptimizedProject = {
   bullets: OptimizedBullet[];
 };
 
+export type OptimizedAdditionalItem = {
+  id: string;
+  bullets: OptimizedBullet[];
+};
+
+export type OptimizedAdditionalSection = {
+  id: string;
+  items: OptimizedAdditionalItem[];
+};
+
+export type SkillGrounding = "direct" | "indirect";
+
+export type SkillEvidenceType =
+  | "tool"
+  | "capability"
+  | "domain"
+  | "soft"
+  | "credential"
+  | "language";
+
+export type SkillEvidence = {
+  skill: string;
+  grounding: SkillGrounding;
+  skillType: SkillEvidenceType;
+  evidence: string[];
+  rationale: string;
+};
+
+export type StructureIntegrity = {
+  valid: boolean;
+  sectionsPreserved: number;
+  totalSections: number;
+  entriesPreserved: number;
+  totalEntries: number;
+  bulletsPreserved: number;
+  totalBullets: number;
+  factualFieldsChanged: number;
+  issues: string[];
+};
+
 export type Optimization = {
   summary: string;
   title: string;
   skills: string[];
+  skillEvidence?: SkillEvidence[];
   roles: OptimizedRole[];
   projects: OptimizedProject[];
+  additionalSections?: OptimizedAdditionalSection[];
+  /** Section order selected for the optimized document. */
+  sectionOrder?: ResumeSectionRef[];
+  /** Optimized core headings. Preserve mode copies the source headings here. */
+  sectionLabels?: Partial<Record<CoreResumeSection, string>>;
+  structureMode?: ContentStructureMode;
+  structureIntegrity?: StructureIntegrity;
+  atsScore?: number;
+};
+
+export type OptimizationVariant = {
+  cacheKey: string;
+  structureMode: ContentStructureMode;
+  modelId: string;
+  optimization: Optimization;
+  createdAt: string;
+  lastUsedAt: string;
 };
 
 export type PreviewBullet = {

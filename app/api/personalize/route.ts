@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateValidatedStyleProfile } from "@/lib/personalizedResume";
 import { rateLimitGuard } from "@/lib/ratelimit";
-import type { ResumeStyleSource } from "@/lib/types";
+import type { ResumeSourceLayout, ResumeStyleSource } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -19,9 +19,10 @@ export async function POST(req: NextRequest) {
   if (rl) return rl;
 
   try {
-    const { styleSource, screenshot } = (await req.json()) as {
+    const { styleSource, screenshot, sourceLayout } = (await req.json()) as {
       styleSource?: ResumeStyleSource;
       screenshot?: string;
+      sourceLayout?: ResumeSourceLayout | null;
     };
     const source =
       styleSource ??
@@ -43,10 +44,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const styleProfile = await generateValidatedStyleProfile(source);
+    const styleProfile = await generateValidatedStyleProfile(
+      {
+        ...source,
+        sourceLayout: source.sourceLayout ?? sourceLayout ?? null,
+      },
+    );
     if (!styleProfile) {
       return NextResponse.json(
-        { error: "Could not generate a personalized layout for this resume." },
+        { error: "Could not rebuild an original-inspired layout for this resume." },
         { status: 422 },
       );
     }

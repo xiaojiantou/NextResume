@@ -4,22 +4,59 @@
 
 import { EditableResumeCanvas } from "./EditableResumeCanvas";
 import { LivePdfPreview } from "./LivePdfPreview";
-import type { Resume, Optimization } from "@/lib/types";
+import type {
+  Resume,
+  Optimization,
+  ResumePageSpec,
+  ResumeStyleProfile,
+} from "@/lib/types";
+import type { PdfStyle, TargetPages } from "@/lib/pdf/config";
+import type { ResumeFitVariant } from "@/lib/resumeFit";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useState } from "react";
 
 export function EditorWithPreview({
   resume,
   optimization,
+  pdfStyle,
+  pdfPalette,
+  targetPages,
+  pageSize,
+  personalizedStyleProfile,
+  previewTargetPages,
+  previewFitVariant,
+  sourceRevision,
+  personalizedStatus,
+  personalizedError,
+  onRetryPersonalized,
   onResumeChange,
   onRegenerate,
   regenerating,
+  keptContentIds,
+  lockedContentIds,
+  onToggleKeep,
+  includeSummary,
 }: {
   resume: Resume;
   optimization: Optimization | null;
+  pdfStyle: PdfStyle;
+  pdfPalette: string;
+  targetPages: TargetPages;
+  pageSize: ResumePageSpec;
+  personalizedStyleProfile: ResumeStyleProfile | null;
+  previewTargetPages?: TargetPages;
+  previewFitVariant?: ResumeFitVariant | null;
+  sourceRevision?: string | null;
+  personalizedStatus?: "idle" | "generating" | "ready" | "failed";
+  personalizedError?: string | null;
+  onRetryPersonalized?: () => void;
   onResumeChange: (resume: Resume) => void;
   onRegenerate: () => void;
   regenerating: boolean;
+  keptContentIds?: string[];
+  lockedContentIds?: string[];
+  onToggleKeep?: (contentId: string) => void;
+  includeSummary?: boolean;
 }) {
   const [layout, setLayout] = useState<"split" | "editor" | "preview">("split");
 
@@ -68,29 +105,65 @@ export function EditorWithPreview({
           <div className="overflow-y-auto pr-4 pb-4">
             <EditableResumeCanvas
               resume={resume}
+              optimizedPreview={Boolean(optimization)}
               onResumeChange={onResumeChange}
               onRegenerate={onRegenerate}
               regenerating={regenerating}
+              keptContentIds={keptContentIds}
+              lockedContentIds={lockedContentIds}
+              onToggleKeep={onToggleKeep}
             />
           </div>
 
           {/* Preview Side */}
           <div className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
-            <LivePdfPreview resume={resume} optimization={optimization} />
+            <LivePdfPreview
+              resume={resume}
+              optimization={optimization}
+              style={pdfStyle}
+              palette={pdfPalette}
+              targetPages={previewTargetPages ?? targetPages}
+              pageSize={pageSize}
+              personalizedStyleProfile={personalizedStyleProfile}
+              fitVariant={previewFitVariant}
+              sourceRevision={sourceRevision}
+              personalizedStatus={personalizedStatus}
+              personalizedError={personalizedError}
+              onRetryPersonalized={onRetryPersonalized}
+              includeSummary={includeSummary}
+            />
           </div>
         </div>
       ) : layout === "editor" ? (
         <div className="overflow-y-auto">
           <EditableResumeCanvas
             resume={resume}
+            optimizedPreview={Boolean(optimization)}
             onResumeChange={onResumeChange}
             onRegenerate={onRegenerate}
             regenerating={regenerating}
+            keptContentIds={keptContentIds}
+            lockedContentIds={lockedContentIds}
+            onToggleKeep={onToggleKeep}
           />
         </div>
       ) : (
         <div className="h-[calc(100vh-200px)] rounded-lg border border-ink-100 bg-ink-50 overflow-hidden">
-          <LivePdfPreview resume={resume} optimization={optimization} />
+          <LivePdfPreview
+            resume={resume}
+            optimization={optimization}
+            style={pdfStyle}
+            palette={pdfPalette}
+            targetPages={previewTargetPages ?? targetPages}
+            pageSize={pageSize}
+            personalizedStyleProfile={personalizedStyleProfile}
+            fitVariant={previewFitVariant}
+            sourceRevision={sourceRevision}
+            personalizedStatus={personalizedStatus}
+            personalizedError={personalizedError}
+            onRetryPersonalized={onRetryPersonalized}
+            includeSummary={includeSummary}
+          />
         </div>
       )}
     </div>

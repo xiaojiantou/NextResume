@@ -3,6 +3,7 @@
 "use client";
 
 import { AppShell } from "@/components/AppShell";
+import { ContentStructurePicker } from "@/components/ContentStructurePicker";
 import { useFlow } from "@/lib/store";
 import {
   AlertCircle,
@@ -19,7 +20,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function CheckoutPage() {
-  const { markPaid, resume, job, resumeStyleSource } = useFlow();
+  const {
+    markPaid,
+    resume,
+    job,
+    report,
+    resumeStyleSource,
+    contentStructure,
+    setContentStructure,
+  } = useFlow();
   const [processing, setProcessing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -27,7 +36,6 @@ export default function CheckoutPage() {
   const [codeError, setCodeError] = useState<string | null>(null);
 
   const router = useRouter();
-
   const startCheckout = async () => {
     setProcessing(true);
     setCheckoutError(null);
@@ -35,7 +43,13 @@ export default function CheckoutPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, job, resumeStyleSource }),
+        body: JSON.stringify({
+          resume,
+          job,
+          report,
+          resumeStyleSource,
+          contentStructure,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Checkout failed");
@@ -81,6 +95,14 @@ export default function CheckoutPage() {
             <p className="text-ink-500 mt-2">
               Secure Stripe checkout. One payment, no subscription.
             </p>
+          </div>
+
+          <div className="card p-5 space-y-4">
+            <ContentStructurePicker
+              current={contentStructure}
+              onPick={setContentStructure}
+              variant="cards"
+            />
           </div>
 
           <div className="card p-5 space-y-4">
