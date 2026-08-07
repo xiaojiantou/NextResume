@@ -1,0 +1,18 @@
+Senior Backend Engineer - Stripe
+
+About the role
+We are looking for a Senior Backend Engineer to join the Payments Infrastructure team. You will design and operate the services that move billions of dollars a year.
+
+Responsibilities:
+Architecture: Design distributed systems that stay correct under partial failure.
+Implementation: Write production Go and Ruby, with a bias toward simple, boring solutions.
+Reliability: Own on-call for your services. Drive down p99 latency and error budgets.
+Mentorship: Review code and grow engineers around you.
+
+What we look for
+7+ years building backend systems at scale.
+Deep experience with Go, Ruby, or Java in production.
+Strong grounding in PostgreSQL, Kafka, and distributed systems fundamentals such as idempotency and exactly-once delivery.
+Comfort with Kubernetes, Terraform, and AWS.
+Excellent written communication and a collaborative approach to code review.
+Bachelor's degree in Computer Science or equivalent practical experience.
