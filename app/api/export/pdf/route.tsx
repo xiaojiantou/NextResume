@@ -1,17 +1,30 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import { NextRequest, NextResponse } from "next/server";
-import { renderToBuffer } from "@react-pdf/renderer";
 import { PDFDocument } from "pdf-lib";
-import { ResumePdf } from "@/lib/pdf/ResumePdf";
-import { ResumePdfSidebar } from "@/lib/pdf/ResumePdfSidebar";
-import { ResumePdfMinimal } from "@/lib/pdf/ResumePdfMinimal";
 import { renderPersonalizedPdf } from "@/lib/personalizedResume";
 import { rateLimitGuard } from "@/lib/ratelimit";
-import type { PdfStyle } from "@/lib/store";
+import {
+  getResumePalette,
+  isPdfStyle,
+  normalizeTargetPages,
+  type PdfStyle,
+  type TargetPages,
+} from "@/lib/pdf/config";
+import { renderFixedFitted } from "@/lib/pdf/renderFixed";
+import {
+  validateLockedOptimization,
+  validatePreservedFitOptimization,
+  validatePreservedOptimization,
+} from "@/lib/resumeStructure";
+import {
+  defaultResumePage,
+  type ResumeFitVariant,
+} from "@/lib/resumeFit";
 import type {
   Optimization,
   Resume,
+  ResumePageSpec,
   ResumeStyleProfile,
 } from "@/lib/types";
 
@@ -24,6 +37,12 @@ const EXPORT_LIMIT = {
   windowMs: 60_000,
 };
 
+const PREVIEW_LIMIT = {
+  key: "preview-pdf",
+  limit: 30,
+  windowMs: 60_000,
+};
+
 function safeFilename(name: string, target: string): string {
   const base = (name || "resume").trim().replace(/[^\p{L}\p{N}\-_ ]/gu, "");
   const suffix = (target || "").trim().replace(/[^\p{L}\p{N}\-_ ]/gu, "");
@@ -31,48 +50,13 @@ function safeFilename(name: string, target: string): string {
   return `${parts}.pdf`;
 }
 
-// Start with roomier variants so a short or medium resume uses the page
-// gracefully. Then compact whitespace and leading before reducing type.
-// A genuinely long resume is still allowed to span multiple pages.
-const FIT_PRESETS = [
-  { fontScale: 1.14, spacingScale: 1.42, lineHeightScale: 1.1 },
-  { fontScale: 1.1, spacingScale: 1.3, lineHeightScale: 1.07 },
-  { fontScale: 1.06, spacingScale: 1.18, lineHeightScale: 1.04 },
-  { fontScale: 1.03, spacingScale: 1.09, lineHeightScale: 1.02 },
-  { fontScale: 1, spacingScale: 1, lineHeightScale: 1 },
-  { fontScale: 1, spacingScale: 0.9, lineHeightScale: 0.94 },
-  { fontScale: 0.97, spacingScale: 0.82, lineHeightScale: 0.9 },
-  { fontScale: 0.94, spacingScale: 0.74, lineHeightScale: 0.86 },
-  { fontScale: 0.9, spacingScale: 0.67, lineHeightScale: 0.83 },
-  { fontScale: 0.86, spacingScale: 0.61, lineHeightScale: 0.8 },
-  { fontScale: 0.84, spacingScale: 0.56, lineHeightScale: 0.78 },
-] as const;
-
-async function renderFittedToOnePage(
-  Template: typeof ResumePdf,
-  resume: Resume,
-  optimization: Optimization | null,
-  includeSummary: boolean | undefined,
-): Promise<Buffer> {
-  let lastBuffer: Buffer | null = null;
-  for (const fit of FIT_PRESETS) {
-    const buffer = await renderToBuffer(
-      <Template
-        resume={resume}
-        optimization={optimization}
-        includeSummary={includeSummary}
-        {...fit}
-      />,
-    );
-    lastBuffer = buffer;
-    const pageCount = (await PDFDocument.load(buffer)).getPageCount();
-    if (pageCount <= 1) return buffer;
-  }
-  return lastBuffer!;
-}
-
 export async function POST(req: NextRequest) {
-  const rl = rateLimitGuard(req, EXPORT_LIMIT);
+  const rl = rateLimitGuard(
+    req,
+    req.headers.get("x-resume-preview") === "1"
+      ? PREVIEW_LIMIT
+      : EXPORT_LIMIT,
+  );
   if (rl) return rl;
 
   try {
@@ -81,16 +65,28 @@ export async function POST(req: NextRequest) {
       optimization,
       targetTitle,
       style,
+      palette,
+      targetPages,
+      pageSize,
+      fitVariant,
+      sourceRevision,
       personalizedStyleProfile,
       includeSummary,
+      lockedContentIds,
     } =
       (await req.json()) as {
         resume: Resume;
         optimization: Optimization | null;
         targetTitle?: string;
         style?: PdfStyle;
+        palette?: string;
+        targetPages?: TargetPages;
+        pageSize?: ResumePageSpec;
+        fitVariant?: ResumeFitVariant | null;
+        sourceRevision?: string;
         personalizedStyleProfile?: ResumeStyleProfile | null;
         includeSummary?: boolean;
+        lockedContentIds?: string[];
       };
 
     if (!resume?.name || !Array.isArray(resume.experience)) {
@@ -100,8 +96,73 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const selectedStyle: PdfStyle = isPdfStyle(style) ? style : "classic";
+    const selectedTargetPages = normalizeTargetPages(targetPages);
+    const selectedPage = defaultResumePage(
+      pageSize ?? personalizedStyleProfile?.page,
+    );
+    const usesFitVariant =
+      selectedTargetPages !== "auto" && Boolean(fitVariant);
+    if (usesFitVariant) {
+      if (
+        fitVariant!.sourceRevision !== sourceRevision ||
+        fitVariant!.style !== selectedStyle ||
+        fitVariant!.targetPages !== selectedTargetPages
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "This fitted version is outdated. Fit the latest resume before downloading.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+    const effectiveResume = fitVariant?.fittedResume ?? resume;
+    const effectiveOptimization =
+      fitVariant?.fittedOptimization ?? optimization;
+    if (
+      effectiveOptimization?.structureMode === "preserve"
+    ) {
+      const preservationIssues = usesFitVariant
+        ? validatePreservedFitOptimization(
+            resume,
+            effectiveOptimization,
+            optimization ?? effectiveOptimization,
+          )
+        : validatePreservedOptimization(resume, effectiveOptimization);
+      const integrityIssues = [
+        ...preservationIssues,
+        ...validateLockedOptimization({
+          resume,
+          candidate: effectiveOptimization,
+          baseline: optimization,
+          lockedContentIds: Array.isArray(lockedContentIds)
+            ? lockedContentIds
+            : [],
+        }),
+      ];
+      if (integrityIssues.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              usesFitVariant
+                ? "The fitted version changed a protected section or entry. Fit the latest resume again before downloading."
+                : "Structure integrity checks failed. Regenerate the original-structure version before downloading.",
+            issues: [...new Set(integrityIssues)].slice(0, 12),
+          },
+          { status: 409 },
+        );
+      }
+    }
     let buffer: Buffer;
-    if (style === "personalized") {
+    let density = "source";
+    let desiredPages =
+      selectedTargetPages === "auto" ? "auto" : String(selectedTargetPages);
+    let overflow = false;
+    let approximateLayout = false;
+
+    if (selectedStyle === "personalized") {
       if (!personalizedStyleProfile) {
         return NextResponse.json(
           {
@@ -111,30 +172,91 @@ export async function POST(req: NextRequest) {
           { status: 409 },
         );
       }
-      buffer = await renderPersonalizedPdf({
-        styleProfile: personalizedStyleProfile,
-        resume,
-        optimization,
-        includeSummary,
-      });
+      approximateLayout = Boolean(personalizedStyleProfile.approximate);
+      try {
+        buffer = await renderPersonalizedPdf({
+          styleProfile: personalizedStyleProfile,
+          resume: effectiveResume,
+          optimization: effectiveOptimization,
+          includeSummary,
+          targetPages: selectedTargetPages,
+          allowMinimumTypography: usesFitVariant,
+        });
+      } catch (error) {
+        console.warn(
+          "original-inspired export fell back to a safe fixed layout",
+          error,
+        );
+        const fallbackStyle =
+          personalizedStyleProfile.layout === "single-column"
+            ? "classic"
+            : "sidebar";
+        const fallback = await renderFixedFitted({
+          style: fallbackStyle,
+          palette: getResumePalette(fallbackStyle),
+          resume: effectiveResume,
+          optimization: effectiveOptimization,
+          includeSummary,
+          page: selectedPage,
+          targetPages: selectedTargetPages,
+          requireExact: usesFitVariant,
+        });
+        if (usesFitVariant && !fallback.exact) {
+          return NextResponse.json(
+            {
+              error: `The latest fitted content rendered as ${fallback.pageCount} pages instead of ${selectedTargetPages}. Fit it again before downloading.`,
+            },
+            { status: 409 },
+          );
+        }
+        buffer = fallback.buffer;
+        density = fallback.density;
+        desiredPages = String(fallback.desiredPages);
+        overflow = fallback.overflow;
+        approximateLayout = true;
+      }
     } else {
-      const Template =
-        style === "sidebar"
-          ? ResumePdfSidebar
-          : style === "minimal"
-            ? ResumePdfMinimal
-            : ResumePdf;
-      buffer = await renderFittedToOnePage(
-        Template,
-        resume,
-        optimization,
+      const selectedPalette = getResumePalette(selectedStyle, palette);
+      const fitted = await renderFixedFitted({
+        style: selectedStyle,
+        palette: selectedPalette,
+        resume: effectiveResume,
+        optimization: effectiveOptimization,
         includeSummary,
-      );
+        page: selectedPage,
+        targetPages: selectedTargetPages,
+        requireExact: usesFitVariant,
+      });
+      if (usesFitVariant && !fitted.exact) {
+        return NextResponse.json(
+          {
+            error: `The fitted version rendered as ${fitted.pageCount} pages instead of ${selectedTargetPages}. Refit before downloading.`,
+          },
+          { status: 409 },
+        );
+      }
+      buffer = fitted.buffer;
+      density = fitted.density;
+      desiredPages = String(fitted.desiredPages);
+      overflow = fitted.overflow;
     }
     const pageCount = (await PDFDocument.load(buffer)).getPageCount();
+    if (
+      selectedStyle === "personalized" &&
+      selectedTargetPages !== "auto"
+    ) {
+      overflow = pageCount > selectedTargetPages;
+    }
+    if (usesFitVariant && pageCount !== selectedTargetPages) {
+      return NextResponse.json(
+        {
+          error: `The fitted version rendered as ${pageCount} pages instead of ${selectedTargetPages}. Refit before downloading.`,
+        },
+        { status: 409 },
+      );
+    }
 
-    const filename = safeFilename(resume.name, targetTitle || "");
-    // Use ASCII-only fallback for Content-Disposition to avoid header issues.
+    const filename = safeFilename(effectiveResume.name, targetTitle || "");
     const asciiName = filename.replace(/[^\x20-\x7E]/g, "_");
 
     return new NextResponse(buffer as unknown as BodyInit, {
@@ -145,12 +267,29 @@ export async function POST(req: NextRequest) {
         "Content-Disposition": `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "Cache-Control": "private, no-store",
         "X-Resume-Pages": String(pageCount),
+        "X-Resume-Target-Pages": desiredPages,
+        "X-Resume-Density": density,
+        "X-Resume-Overflow": overflow ? "true" : "false",
+        "X-Resume-Layout": approximateLayout ? "approximate" : "matched",
       },
     });
   } catch (e) {
     console.error("pdf export failed", e);
+    const message = e instanceof Error ? e.message : "PDF export failed";
+    if (
+      /^Personalized (?:PDF text|content) integrity failed:/.test(message)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The Original-inspired layout could not safely render every field. Retry the preview or rebuild the layout.",
+          issue: message,
+        },
+        { status: 422 },
+      );
+    }
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "PDF export failed" },
+      { error: message },
       { status: 500 },
     );
   }

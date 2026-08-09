@@ -4,6 +4,8 @@
 import "server-only";
 import { transcribeImage } from "./ai";
 import { extractPdfPhoto } from "./pdfImage";
+import { extractPdfLayout } from "./pdfLayout";
+import type { ResumeSourceLayout } from "./types";
 
 const IMAGE_MIME: Record<string, string> = {
   jpg: "image/jpeg",
@@ -14,6 +16,7 @@ const IMAGE_MIME: Record<string, string> = {
 export type ExtractedFile = {
   text: string;
   photo?: string;
+  layout?: ResumeSourceLayout;
 };
 
 // mammoth's default HTML image converter (images.dataUri) inlines embedded
@@ -41,20 +44,11 @@ export async function extractText(
   }
 
   if (ext === "pdf") {
-    // Import the internal implementation directly. The top-level `pdf-parse`
-    // entrypoint has a debug-mode code path that tries to read a bundled test
-    // PDF (./test/data/05-versions-space.pdf) at load time, which ENOENTs on
-    // Vercel serverless. Reaching straight for the impl file dodges it.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error — deep import into pdf-parse has no types
-    const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default as (
-      b: Buffer,
-    ) => Promise<{ text: string }>;
     const [data, photo] = await Promise.all([
-      pdfParse(buffer),
+      extractPdfLayout(buffer),
       extractPdfPhoto(buffer),
     ]);
-    return { text: data.text.trim(), photo };
+    return { text: data.text.trim(), photo, layout: data.layout };
   }
 
   if (ext === "docx") {

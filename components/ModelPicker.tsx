@@ -169,7 +169,7 @@ export function ModelPicker({
             size={12}
             className={regenerating ? "animate-spin" : ""}
           />
-          {regenerating ? "Regenerating…" : "Regenerate"}
+          {regenerating ? "Regenerating content…" : "Regenerate content"}
         </button>
       )}
     </div>

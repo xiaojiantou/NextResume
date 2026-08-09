@@ -6,11 +6,15 @@ import type {
   ResumeAdditionalSection,
   ResumeAdditionalSectionKind,
   ResumeBullet,
+  CoreResumeSection,
   ResumeEducation,
   ResumeProject,
   ResumeRole,
   ResumeSectionRef,
   ResumeSkillGroup,
+  ResumeSourceLayout,
+  ResumeStructureManifest,
+  ResumeVisualLayoutGuide,
 } from "./types";
 
 const CORE_REFS = new Set<ResumeSectionRef>([
@@ -148,6 +152,19 @@ function sectionOrder(value: unknown): ResumeSectionRef[] {
     );
 }
 
+function sectionLabels(
+  value: unknown,
+): Partial<Record<CoreResumeSection, string>> {
+  const input = record(value);
+  const labels: Partial<Record<CoreResumeSection, string>> = {};
+  for (const ref of CORE_REFS) {
+    const key = ref as CoreResumeSection;
+    const label = text(input[key]);
+    if (label) labels[key] = label;
+  }
+  return labels;
+}
+
 export function normalizeParsedResume(value: unknown): Resume {
   const input = record(value);
   const language = text(input.language);
@@ -166,6 +183,7 @@ export function normalizeParsedResume(value: unknown): Resume {
     education: education(input.education),
     language: language === "en" ? "en" : undefined,
     sectionOrder: sectionOrder(input.sectionOrder),
+    sectionLabels: sectionLabels(input.sectionLabels),
     additionalSections: additionalSections(input.additionalSections),
   };
 }
@@ -204,6 +222,7 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     education: [],
     additionalSections: [],
     sectionOrder: [],
+    sectionLabels: {},
   };
 
   const order: string[] = [];
@@ -223,6 +242,12 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       if (!merged[key] && part[key]) merged[key] = part[key];
     }
     if (!merged.language && part.language) merged.language = part.language;
+    for (const [ref, label] of Object.entries(part.sectionLabels ?? {})) {
+      const key = ref as CoreResumeSection;
+      if (!merged.sectionLabels?.[key] && label) {
+        merged.sectionLabels = { ...merged.sectionLabels, [key]: label };
+      }
+    }
 
     const linkKeys = new Set(
       merged.links!.map((link) => link.toLocaleLowerCase()),
@@ -473,7 +498,187 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     if (!remappedOrder.includes(stableRef)) remappedOrder.push(stableRef);
   }
   merged.sectionOrder = remappedOrder;
+  const expectedCore: CoreResumeSection[] = [
+    ...(merged.summary ? (["summary"] as const) : []),
+    ...(merged.skills.length ? (["skills"] as const) : []),
+    ...(merged.experience.length ? (["experience"] as const) : []),
+    ...(merged.projects.length ? (["projects"] as const) : []),
+    ...(merged.education.length ? (["education"] as const) : []),
+  ];
+  const structureIssues: string[] = [];
+  for (const ref of expectedCore) {
+    if (!merged.sectionLabels?.[ref]) {
+      structureIssues.push(`Could not confidently detect the original ${ref} heading.`);
+    }
+    if (!merged.sectionOrder.includes(ref)) {
+      structureIssues.push(`Could not confidently place the ${ref} section in reading order.`);
+      merged.sectionOrder.push(ref);
+    }
+  }
+  merged.structureConfidence = {
+    level: structureIssues.length > 0 ? "low" : "high",
+    issues: structureIssues,
+  };
   return merged;
+}
+
+function manifestHash(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function coverageTokens(value: string): Set<string> {
+  const ignored = new Set(["page", "header", "left", "right", "column"]);
+  return new Set(
+    (value
+      .normalize("NFKC")
+      .toLocaleLowerCase()
+      .match(/[\p{L}\p{N}][\p{L}\p{N}+.@/-]*/gu) ?? [])
+      .filter((token) => token.length > 1 && !ignored.has(token)),
+  );
+}
+
+function detectedOrder(resume: Resume): ResumeSectionRef[] {
+  if (resume.sectionOrder?.length) return resume.sectionOrder;
+  return [
+    ...(resume.summary ? (["summary"] as ResumeSectionRef[]) : []),
+    ...(resume.skills.length ? (["skills"] as ResumeSectionRef[]) : []),
+    ...(resume.experience.length ? (["experience"] as ResumeSectionRef[]) : []),
+    ...(resume.projects?.length ? (["projects"] as ResumeSectionRef[]) : []),
+    ...(resume.education.length ? (["education"] as ResumeSectionRef[]) : []),
+    ...(resume.additionalSections ?? []).map(
+      (section) => `additional:${section.id}` as ResumeSectionRef,
+    ),
+  ];
+}
+
+function manifestSection(
+  resume: Resume,
+  ref: ResumeSectionRef,
+): ResumeStructureManifest["sections"][number] {
+  if (ref === "summary") {
+    return {
+      ref,
+      label: resume.sectionLabels?.summary ?? "Summary",
+      entryIds: ["summary"],
+      bulletIds: [],
+    };
+  }
+  if (ref === "skills") {
+    return {
+      ref,
+      label: resume.sectionLabels?.skills ?? "Skills",
+      entryIds: resume.skills.map((_, index) => `skill:${index + 1}`),
+      bulletIds: [],
+    };
+  }
+  if (ref === "experience") {
+    return {
+      ref,
+      label: resume.sectionLabels?.experience ?? "Experience",
+      entryIds: resume.experience.map((role) => role.id),
+      bulletIds: resume.experience.flatMap((role) =>
+        role.bullets.map((bullet) => bullet.id),
+      ),
+    };
+  }
+  if (ref === "projects") {
+    return {
+      ref,
+      label: resume.sectionLabels?.projects ?? "Projects",
+      entryIds: (resume.projects ?? []).map((project) => project.id),
+      bulletIds: (resume.projects ?? []).flatMap((project) =>
+        project.bullets.map((bullet) => bullet.id),
+      ),
+    };
+  }
+  if (ref === "education") {
+    return {
+      ref,
+      label: resume.sectionLabels?.education ?? "Education",
+      entryIds: resume.education.map((_, index) => `education:${index + 1}`),
+      bulletIds: [],
+    };
+  }
+  const id = ref.slice("additional:".length);
+  const section = (resume.additionalSections ?? []).find(
+    (candidate) => candidate.id === id,
+  );
+  return {
+    ref,
+    label: section?.title ?? "Additional section",
+    entryIds: section?.items.map((item) => item.id) ?? [],
+    bulletIds:
+      section?.items.flatMap((item) =>
+        item.bullets.map((bullet) => bullet.id),
+      ) ?? [],
+  };
+}
+
+export function attachResumeStructureMetadata({
+  resume,
+  sourceText,
+  layout,
+  visualGuide,
+}: {
+  resume: Resume;
+  sourceText: string;
+  layout?: ResumeSourceLayout;
+  visualGuide?: ResumeVisualLayoutGuide | null;
+}): Resume {
+  const sourceTokens = coverageTokens(sourceText);
+  const parsedTokens = coverageTokens(JSON.stringify(resume));
+  const matched = [...sourceTokens].filter((token) => parsedTokens.has(token));
+  const coverage = sourceTokens.size
+    ? Math.round((matched.length / sourceTokens.size) * 1000) / 1000
+    : 0;
+  const sectionOrder = detectedOrder(resume);
+  const layoutValue: ResumeSourceLayout = layout ?? {
+    parser: "linear-text",
+    pageCount: 1,
+    maxColumns: 1,
+    pages: [],
+    issues: [],
+  };
+  const issues = [
+    ...(resume.structureConfidence?.issues ?? []),
+    ...layoutValue.issues,
+    ...(visualGuide?.issues ?? []),
+    ...(coverage < 0.72
+      ? [
+          `Only ${Math.round(coverage * 100)}% of unique source tokens were mapped into structured fields.`,
+        ]
+      : []),
+  ];
+  const uniqueIssues = [...new Set(issues)];
+  return {
+    ...resume,
+    sectionOrder,
+    sourceLayout: {
+      ...layoutValue,
+      issues: [...new Set([...layoutValue.issues, ...(visualGuide?.issues ?? [])])],
+    },
+    structureConfidence: {
+      level: uniqueIssues.length > 0 ? "low" : "high",
+      issues: uniqueIssues,
+      coverage,
+    },
+    structureManifest: {
+      version: 1,
+      sourceFingerprint: manifestHash(sourceText.normalize("NFKC")),
+      parser: layoutValue.parser,
+      pageCount: layoutValue.pageCount,
+      maxColumns: layoutValue.maxColumns,
+      coverage,
+      confirmed: uniqueIssues.length === 0,
+      sectionOrder,
+      sections: sectionOrder.map((ref) => manifestSection(resume, ref)),
+    },
+  };
 }
 
 /**
