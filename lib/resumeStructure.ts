@@ -69,7 +69,10 @@ function canonicalDecimal(value: number, fallback: string): string {
 }
 
 function parseNumberClaim(rawValue: string): NumberClaim {
-  const raw = rawValue.trim();
+  // Sentence punctuation is never part of a magnitude, and leaving it on made
+  // Number("1.5.") NaN, which fell back to the raw string as the key — so the
+  // same figure stopped matching itself across a sentence boundary.
+  const raw = rawValue.trim().replace(/[.,]+$/, "");
   let value = raw.toLocaleLowerCase().replaceAll(",", "").replaceAll("×", "x");
   const lowerBound = value.endsWith("+");
   if (lowerBound) value = value.slice(0, -1);
@@ -95,15 +98,67 @@ function parseNumberClaim(rawValue: string): NumberClaim {
   };
 }
 
+// Digits glued to letters are names, not quantities: S3, EC2, p99, GPT-4,
+// OAuth 2.0. Scoring them as magnitudes broke this both ways — it rejected
+// "migrated to S3" as an unsupported "3", with repair feedback the model
+// cannot act on, and it let an invented "3 regions" pass whenever the source
+// happened to mention S3. Compare those as whole tokens instead.
+const IDENT_LEFT = /[A-Za-z0-9.\-]/;
+const IDENT_RIGHT = /[A-Za-z0-9]/;
+const HAS_LETTER = /[A-Za-z]/;
+
+// Spelled-out counts ground their digit form, so a source saying "three
+// engineers" supports a rewrite saying "3 engineers".
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+  seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+};
+const NUMBER_WORD_PATTERN = new RegExp(
+  `(?<![a-z])(${Object.keys(NUMBER_WORDS).join("|")})(?![a-z])`,
+  "gi",
+);
+
 export function numberClaims(value: string): NumberClaim[] {
-  return (value.match(NUMBER_PATTERN) ?? []).map(parseNumberClaim);
+  const claims: NumberClaim[] = [];
+  for (const match of value.matchAll(NUMBER_PATTERN)) {
+    const matched = match[0];
+    const start = match.index ?? 0;
+    const end = start + matched.length;
+
+    let left = start;
+    while (left > 0 && IDENT_LEFT.test(value[left - 1])) left -= 1;
+    let right = end;
+    while (right < value.length && IDENT_RIGHT.test(value[right])) right += 1;
+
+    const context = value.slice(left, start) + value.slice(end, right);
+    if (HAS_LETTER.test(context)) {
+      // Trim punctuation the number pattern swallowed ("S3," -> "S3").
+      const token = value.slice(left, right).replace(/[.,]+$/, "");
+      claims.push({
+        raw: token,
+        key: `ident|${token.toLocaleLowerCase()}`,
+        lowerBound: false,
+      });
+      continue;
+    }
+    claims.push(parseNumberClaim(matched));
+  }
+  return claims;
+}
+
+// Only ever widens what the source supports. Emitting these from the rewrite
+// side would reject ordinary prose ("one of the largest teams").
+function spelledOutClaims(source: string): NumberClaim[] {
+  return [...source.matchAll(NUMBER_WORD_PATTERN)].map((match) =>
+    parseNumberClaim(String(NUMBER_WORDS[match[1].toLocaleLowerCase()])),
+  );
 }
 
 export function unsupportedNumberClaims(
   value: string,
   source: string,
 ): string[] {
-  const available = numberClaims(source);
+  const available = [...numberClaims(source), ...spelledOutClaims(source)];
   return numberClaims(value)
     .filter(
       (claim) =>

@@ -101,7 +101,8 @@ Hard rules — content preservation:
 
 Hard rules — factual integrity:
 - A metric (number, percentage, dollar amount, latency) must stay attached to the exact action that produced it in the original bullet. Never move a metric onto a different action, tool, or system than the original credits.
-- You may insert a quantified estimate ONLY if the original bullet suggested impact. Otherwise stay qualitative.
+- NEVER introduce a number the cited evidence does not already contain — no estimates, no approximations, no rounding a figure the source never stated. If the original bullet has no metric, stay qualitative.
+- Version and product names carry digits (S3, EC2, p99, GPT-4, OAuth 2.0). Use one only if that exact name appears in the bullet you are rewriting.
 
 Hard rules — writing style:
 - Weave matched keywords into the factual claim itself — the tool used, the method applied, the thing built. NEVER append meta-commentary clauses such as "showcasing proficiency in X", "demonstrating expertise in Y", "highlighting Z", "proving ability to W". A bullet ends with a concrete outcome or fact, never with a comment about the candidate's skills.
@@ -643,6 +644,13 @@ export async function POST(req: NextRequest) {
 
     // Concrete safety issues beat a generic timeout notice: if we collected
     // any, the user gets something actionable even though we stopped early.
+    if (lastIssues.length > 0) {
+      console.error(
+        `optimize exhausted attempts (${structureMode}, model=${model ?? "default"})`,
+        lastIssues.slice(0, 20),
+      );
+    }
+
     if (ranOutOfTime && lastIssues.length === 0) {
       return NextResponse.json(
         {
