@@ -4,11 +4,10 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
-  // Landing page + the free flow (upload, paste JD, ATS analysis) — no
+  // Landing page + the free flow (resume + JD on /upload, ATS analysis) — no
   // account needed, per the site's own "no account required" copy.
   "/",
   "/upload",
-  "/job",
   "/analysis",
   // The result page gates itself: it already redirects to /checkout unless
   // `paid` is set, or a valid order/token pair was supplied (email-link
