@@ -161,3 +161,32 @@ test("a source with no document environment is still editable", () => {
     String.raw`\resumeItem{Shipped the billing migration ahead of schedule}`,
   );
 });
+
+// --- preview: which lines an export will touch ---------------------------
+
+test("edited ranges map onto the lines that display them", async () => {
+  const { linesTouchedByEdits } = await import("../lib/tex/lines.ts");
+  const target = byText("Cut p99");
+  const touched = linesTouchedByEdits(SOURCE, blocks, [
+    { blockIndex: target.index, text: "Cut p99 latency 43%" },
+  ]);
+  const lines = SOURCE.split("\n");
+  assert.equal(touched.size, 1);
+  const [only] = [...touched];
+  assert.match(lines[only], /\\resumeItem\{Cut p99 checkout latency/);
+});
+
+test("a bullet wrapped across lines marks every line it covers", async () => {
+  const { linesTouchedByEdits } = await import("../lib/tex/lines.ts");
+  const wrapped = ["\\begin{document}", "\\resumeItem{Cut p99 checkout", "  latency by 43\\% in Go}", "\\end{document}"].join("\n");
+  const wrappedBlocks = parseTexBlocks(wrapped);
+  const touched = linesTouchedByEdits(wrapped, wrappedBlocks, [
+    { blockIndex: 0, text: "Cut p99 latency 43%" },
+  ]);
+  assert.deepEqual([...touched].sort(), [1, 2]);
+});
+
+test("nothing is marked when no wording changed", async () => {
+  const { linesTouchedByEdits } = await import("../lib/tex/lines.ts");
+  assert.equal(linesTouchedByEdits(SOURCE, blocks, []).size, 0);
+});

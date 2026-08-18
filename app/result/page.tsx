@@ -9,6 +9,7 @@ import { PdfPalettePicker } from "@/components/PdfPalettePicker";
 import { TargetPagesPicker } from "@/components/TargetPagesPicker";
 import { ContentStructurePicker } from "@/components/ContentStructurePicker";
 import { OriginalDocumentPreview } from "@/components/OriginalDocumentPreview";
+import { LatexSourcePreview } from "@/components/LatexSourcePreview";
 import {
   FIT_PROGRESS_STAGES,
   ResumeFitPanel,
@@ -135,6 +136,14 @@ export default function ResultPage() {
   );
 }
 
+// atob yields a binary string, so a resume with any non-ASCII character —
+// an accented name, a CJK school — needs decoding rather than a cast.
+function decodeBase64Utf8(value: string): string {
+  const binary = atob(value);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 // Streams an export response to disk, honouring the filename the server set.
 async function saveResponseAsFile(res: Response, fallbackName: string) {
   const blob = await res.blob();
@@ -201,6 +210,15 @@ function ResultPageInner() {
     markPaid,
     setOrderAccess,
   } = useFlow();
+
+  // Decoding is cheap but not free, and the pane re-renders on every hover.
+  const latexSource = useMemo(
+    () =>
+      sourceDocument?.kind === "tex"
+        ? decodeBase64Utf8(sourceDocument.base64)
+        : null,
+    [sourceDocument],
+  );
 
   const [view, setView] = useState<View>("split");
   const [contentVersion, setContentVersion] =
@@ -1871,7 +1889,9 @@ function ResultPageInner() {
                 title={
                   resumeStyleSource?.screenshots.length
                     ? "Original PDF"
-                    : "Original content (reconstructed)"
+                    : latexSource
+                      ? "Original LaTeX source"
+                      : "Original content (reconstructed)"
                 }
                 tone="muted"
                 meta={
@@ -1883,11 +1903,20 @@ function ResultPageInner() {
                           ? "Multi-column"
                           : "Single-column"
                       }`
-                    : `${pageLabel} · Source content`
+                    : latexSource
+                      ? "LaTeX · rewritten in place"
+                      : `${pageLabel} · Source content`
                 }
               >
                 {resumeStyleSource?.screenshots.length ? (
                   <OriginalDocumentPreview source={resumeStyleSource} />
+                ) : latexSource ? (
+                  <LatexSourcePreview
+                    source={latexSource}
+                    resume={resume}
+                    optimization={optimization}
+                    includeSummary={summaryEnabled}
+                  />
                 ) : (
                   <ResumeView
                     mode="original"
