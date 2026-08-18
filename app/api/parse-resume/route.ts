@@ -15,7 +15,7 @@ import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { Resume } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 90;
+export const maxDuration = 300;
 
 const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JSON matching this schema (no prose, no markdown):
 

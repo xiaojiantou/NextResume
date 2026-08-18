@@ -97,13 +97,28 @@ async function screenshotPdf(buffer: Buffer): Promise<ResumeStyleSource> {
   }
 }
 
+// @sparticuz/chromium is a stripped headless build with no PDF viewer plugin,
+// so navigating to a `data:application/pdf` URL there fails with ERR_ABORTED.
+// Worse, the launch itself has to decompress a ~65MB brotli archive first, and
+// the parse route awaits this before it starts the AI parse — so on serverless
+// the PDF path spends a cold start just to fail. Skip it until the rasterizing
+// path lands; the caller treats a throw as "no style source", same as today.
+const CAN_RENDER_PDF_IN_BROWSER = !process.env.VERCEL;
+
 export async function screenshotResume(
   buffer: Buffer,
   filename: string,
 ): Promise<ResumeStyleSource> {
   const ext = filename.split(".").pop()?.toLowerCase();
 
-  if (ext === "pdf") return screenshotPdf(buffer);
+  if (ext === "pdf") {
+    if (!CAN_RENDER_PDF_IN_BROWSER) {
+      throw new Error(
+        "PDF screenshots are unavailable on serverless (no PDF viewer in headless Chromium)",
+      );
+    }
+    return screenshotPdf(buffer);
+  }
 
   if (ext === "docx") {
     const mammoth = await import("mammoth");
