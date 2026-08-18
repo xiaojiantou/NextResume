@@ -20,11 +20,16 @@ const isPublicRoute = createRouteMatcher([
   "/api/import-job-url(.*)",
   "/api/import-job-image(.*)",
   "/api/analyze(.*)",
+  // Public to Clerk, but not open: everything below except the free
+  // `mode: "preview"` branch of /api/optimize gates itself on a paid order
+  // via requirePaidOrder(). They can't require a session — buyers returning
+  // from the emailed link have none by design.
   "/api/optimize(.*)",
   "/api/fit-resume(.*)",
   "/api/export(.*)",
   "/api/personalize(.*)",
   "/api/voice-rewrite(.*)",
+
   // Its own token check (verifyOrderToken) is the real gate here, so buyers
   // can open their order from any device via the emailed link.
   "/api/order(.*)",

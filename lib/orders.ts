@@ -28,15 +28,24 @@ import type { ResumeFitVariant } from "./resumeFit";
 
 type OrderStatus = "pending" | "paid" | "expired";
 
+export type OrderSource = "stripe" | "promo";
+
 export type Order = {
   id: string;
-  stripeSessionId: string;
+  // Null for promo-code orders, which never touch Stripe.
+  stripeSessionId: string | null;
   status: OrderStatus;
   paymentStatus?: string;
   email?: string;
+  // Clerk user, when the buyer happened to be signed in. Checkout works
+  // signed-out by design, so this is best-effort attribution — never the
+  // thing that grants access.
+  userId?: string | null;
+  source?: OrderSource;
   createdAt: string;
   updatedAt: string;
 };
+
 
 // The buyer's data attached to an order — hydrated on the /result page when
 // they click through from the email on a new device.
@@ -64,6 +73,8 @@ const STORE_PATH = path.join(process.cwd(), ".nextresume-orders.json");
 const ORDER_KEY = (id: string) => `nextresume:order:${id}`;
 const SESSION_KEY = (sid: string) => `nextresume:session:${sid}`;
 const SNAPSHOT_KEY = (id: string) => `nextresume:snapshot:${id}`;
+const PROMO_KEY = (code: string) => `nextresume:promo:${code}`;
+
 
 function hasRedis() {
   return Boolean(
@@ -130,17 +141,27 @@ async function writeFileStore(store: FileStore) {
 
 export async function createOrder({
   id,
-  stripeSessionId,
+  stripeSessionId = null,
+  status = "pending",
+  source = "stripe",
+  userId = null,
 }: {
   id: string;
-  stripeSessionId: string;
+  stripeSessionId?: string | null;
+  // Promo redemptions mint an already-paid order; Stripe orders start pending
+  // and are flipped by the webhook.
+  status?: OrderStatus;
+  source?: OrderSource;
+  userId?: string | null;
 }): Promise<Order> {
   guardProd();
   const now = new Date().toISOString();
   const order: Order = {
     id,
     stripeSessionId,
-    status: "pending",
+    status,
+    source,
+    userId,
     createdAt: now,
     updatedAt: now,
   };
@@ -150,10 +171,13 @@ export async function createOrder({
     // Two atomic writes: the order + the session→order index.
     await Promise.all([
       redis.set(ORDER_KEY(id), JSON.stringify(order)),
-      redis.set(SESSION_KEY(stripeSessionId), id),
+      ...(stripeSessionId
+        ? [redis.set(SESSION_KEY(stripeSessionId), id)]
+        : []),
     ]);
     return order;
   }
+
 
   const store = await readFileStore();
   store.orders[id] = order;
@@ -239,7 +263,29 @@ export async function markOrderFromCheckoutSession({
   return order;
 }
 
+// --- promo codes ---------------------------------------------------------
+
+// Counts one redemption and returns the new total, so a code carrying a
+// max-uses cap can be retired once it's been spent.
+export async function incrementPromoUse(code: string): Promise<number> {
+  guardProd();
+  if (hasRedis()) {
+    return getRedis().incr(PROMO_KEY(code));
+  }
+  const store = await readFileStore();
+  const anyStore = store as unknown as {
+    orders: Record<string, Order>;
+    promoUses?: Record<string, number>;
+  };
+  anyStore.promoUses = anyStore.promoUses || {};
+  const next = (anyStore.promoUses[code] ?? 0) + 1;
+  anyStore.promoUses[code] = next;
+  await writeFileStore(anyStore as FileStore);
+  return next;
+}
+
 // --- snapshot (buyer's data, hydrated when clicking through the email) ---
+
 
 export async function saveOrderSnapshot(
   orderId: string,

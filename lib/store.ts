@@ -77,7 +77,12 @@ type State = {
   lockedContentIds: string[];
 
   paid: boolean;
+  // Proof of purchase presented to the paid API routes. Set from the Stripe
+  // return, a redeemed promo code, or the ?order=&token= email link.
+  orderId: string | null;
+  orderToken: string | null;
   step: Step;
+
 
   voiceCount: number;
 };
@@ -135,7 +140,9 @@ type Actions = {
 
   incrementVoiceCount: () => void;
 
-  markPaid: () => void;
+  markPaid: (access?: OrderAccess) => void;
+  setOrderAccess: (access: OrderAccess) => void;
+
   setStep: (s: Step) => void;
   reset: () => void;
 };
@@ -169,7 +176,10 @@ const initial: State = {
   fitPriorityIds: [],
   lockedContentIds: [],
   paid: false,
+  orderId: null,
+  orderToken: null,
   step: "upload",
+
   voiceCount: 0,
 };
 
@@ -483,7 +493,15 @@ export const useFlow = create<State & Actions>()(
           ),
         })),
       incrementVoiceCount: () => set((s) => ({ voiceCount: s.voiceCount + 1 })),
-      markPaid: () => set({ paid: true }),
+      markPaid: (access) =>
+        set(
+          access
+            ? { paid: true, orderId: access.orderId, orderToken: access.token }
+            : { paid: true },
+        ),
+      setOrderAccess: (access) =>
+        set({ orderId: access.orderId, orderToken: access.token }),
+
       setStep: (s) => set({ step: s }),
       reset: () => set(initial),
     }),
@@ -692,5 +710,19 @@ function synchronizeManualEdits({
         })),
       }),
     ),
+  };
+}
+
+export type OrderAccess = { orderId: string; token: string };
+
+// Headers every paid endpoint expects. Reading straight from the store keeps
+// the credentials out of component props — the email-link flow writes the
+// pair into the store on hydration, so both entry paths look the same here.
+export function orderAuthHeaders(): Record<string, string> {
+  const { orderId, orderToken } = useFlow.getState();
+  if (!orderId || !orderToken) return {};
+  return {
+    "X-NextResume-Order": orderId,
+    "X-NextResume-Token": orderToken,
   };
 }

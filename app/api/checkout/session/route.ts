@@ -3,6 +3,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { retrieveCheckoutSession } from "@/lib/stripe";
 import { markOrderFromCheckoutSession } from "@/lib/orders";
+import { signOrderToken } from "@/lib/tokens";
+
 
 export const runtime = "nodejs";
 
@@ -28,13 +30,19 @@ export async function GET(req: NextRequest) {
       (session.payment_status === "paid" ||
         session.payment_status === "no_payment_required");
 
+    // The token is what unlocks the paid endpoints, so it is only ever handed
+    // out once Stripe itself has confirmed the session is paid.
+    const token = paid && order ? signOrderToken(order.id) : null;
+
     return NextResponse.json({
       id: session.id,
       orderId: order?.id ?? null,
+      token,
       paid,
       status: session.status,
       paymentStatus: session.payment_status,
     });
+
   } catch (e) {
     return NextResponse.json(
       {

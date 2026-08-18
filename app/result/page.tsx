@@ -19,7 +19,8 @@ import { EditorWithPreview } from "@/components/EditorWithPreview";
 import { VoiceRefine } from "@/components/VoiceRefine";
 import { findModel } from "@/lib/models";
 import { applyOptimizationToResume } from "@/lib/applyOptimization";
-import { VOICE_QUOTA, useFlow } from "@/lib/store";
+import { VOICE_QUOTA, orderAuthHeaders, useFlow } from "@/lib/store";
+
 import { cn } from "@/lib/cn";
 import {
   PDF_STYLE_DEFINITIONS,
@@ -148,7 +149,9 @@ function ResultPageInner() {
     setPersonalizedStatus,
     clearOptimization,
     markPaid,
+    setOrderAccess,
   } = useFlow();
+
   const [view, setView] = useState<View>("split");
   const [contentVersion, setContentVersion] =
     useState<ContentVersion>("full");
@@ -236,7 +239,8 @@ function ResultPageInner() {
     try {
       const res = await fetch("/api/optimize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+
         body: JSON.stringify({
           resume: sourceResume,
           job: sourceJob,
@@ -504,7 +508,8 @@ function ResultPageInner() {
     try {
       const response = await fetch("/api/fit-resume", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+
         signal: controller.signal,
         body: JSON.stringify({
           resume,
@@ -630,7 +635,8 @@ function ResultPageInner() {
       }
       const res = await fetch("/api/export/pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+
         body: JSON.stringify({
           resume,
           optimization,
@@ -705,7 +711,8 @@ function ResultPageInner() {
     try {
       const res = await fetch("/api/personalize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+
         body: JSON.stringify({
           styleSource: resumeStyleSource,
           sourceLayout: resume?.sourceLayout ?? null,
@@ -773,8 +780,12 @@ function ResultPageInner() {
 
     // Path A: hydrate from email link. Bypasses localStorage / paid check.
     if (hasEmailAccess) {
+      // Adopt the link's credentials before anything calls a paid endpoint,
+      // so this device authenticates the same way a fresh purchase does.
+      setOrderAccess({ orderId: orderIdFromUrl!, token: tokenFromUrl! });
       (async () => {
         setHydrating(true);
+
         try {
           const res = await fetch(
             `/api/order/${encodeURIComponent(orderIdFromUrl!)}?token=${encodeURIComponent(tokenFromUrl!)}`,
@@ -881,6 +892,15 @@ function ResultPageInner() {
       router.replace("/checkout");
       return;
     }
+    // Unlocked locally but with no order credentials to prove it — a session
+    // that predates the server-side paywall. The emailed link still works.
+    if (!useFlow.getState().orderId || !useFlow.getState().orderToken) {
+      setError(
+        "This browser is missing the unlock token for your order. Open your resume from the link in your confirmation email.",
+      );
+      return;
+    }
+
     if (!resume || !job || !report) {
       router.replace("/upload");
       return;

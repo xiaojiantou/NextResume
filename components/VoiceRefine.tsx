@@ -5,6 +5,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Check, Mic, Square, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { orderAuthHeaders } from "@/lib/store";
+
 import type { JobAnalysis, OptimizedBullet } from "@/lib/types";
 
 type SpeechRecognitionAlternative = { transcript: string };
@@ -125,7 +127,8 @@ export function VoiceRefine({
     try {
       const res = await fetch("/api/voice-rewrite", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+
         body: JSON.stringify({
           transcript,
           originalBullet: bullet.text,

@@ -75,8 +75,12 @@ export default function CheckoutPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Invalid code");
-      markPaid();
+      if (!data.orderId || !data.token) {
+        throw new Error("That code didn't return an unlock token.");
+      }
+      markPaid({ orderId: data.orderId, token: data.token });
       router.push("/result");
+
     } catch (err) {
       setCodeError(err instanceof Error ? err.message : "Invalid code");
     } finally {

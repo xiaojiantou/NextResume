@@ -1,8 +1,10 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import { NextRequest, NextResponse } from "next/server";
+import { requirePaidOrder } from "@/lib/entitlement";
 import { generateValidatedStyleProfile } from "@/lib/personalizedResume";
 import { rateLimitGuard } from "@/lib/ratelimit";
+
 import type { ResumeSourceLayout, ResumeStyleSource } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -18,7 +20,11 @@ export async function POST(req: NextRequest) {
   const rl = rateLimitGuard(req, PERSONALIZE_LIMIT);
   if (rl) return rl;
 
+  const entitlement = await requirePaidOrder(req);
+  if (!entitlement.ok) return entitlement.response;
+
   try {
+
     const { styleSource, screenshot, sourceLayout } = (await req.json()) as {
       styleSource?: ResumeStyleSource;
       screenshot?: string;

@@ -10,6 +10,8 @@ import type {
 } from "@/lib/types";
 import type { PdfStyle, TargetPages } from "@/lib/pdf/config";
 import type { ResumeFitVariant } from "@/lib/resumeFit";
+import { orderAuthHeaders } from "@/lib/store";
+
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -75,7 +77,9 @@ export function LivePdfPreview({
         headers: {
           "Content-Type": "application/json",
           "X-Resume-Preview": "1",
+          ...orderAuthHeaders(),
         },
+
         signal: controller.signal,
         body: JSON.stringify({
           resume,

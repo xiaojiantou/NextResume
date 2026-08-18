@@ -1,7 +1,9 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { createCheckoutSession } from "@/lib/stripe";
+
 import { createOrder, saveOrderSnapshot } from "@/lib/orders";
 import type {
   ContentStructureMode,
@@ -53,7 +55,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await createOrder({ id: orderId, stripeSessionId: session.id });
+    // Best-effort attribution only — checkout is deliberately open to
+    // signed-out buyers, so access is always granted by the order token.
+    const { userId } = await auth();
+    await createOrder({
+      id: orderId,
+      stripeSessionId: session.id,
+      userId: userId ?? null,
+      source: "stripe",
+    });
+
 
     // Save snapshot if we got one. Non-fatal on failure.
     if (resume) {

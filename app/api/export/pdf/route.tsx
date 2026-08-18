@@ -2,8 +2,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
+import { requirePaidOrder } from "@/lib/entitlement";
 import { renderPersonalizedPdf } from "@/lib/personalizedResume";
 import { rateLimitGuard } from "@/lib/ratelimit";
+
 import {
   getResumePalette,
   isPdfStyle,
@@ -58,6 +60,12 @@ export async function POST(req: NextRequest) {
       : EXPORT_LIMIT,
   );
   if (rl) return rl;
+
+  // Both the live preview and the download render the paid resume, so both
+  // sit behind the paywall.
+  const entitlement = await requirePaidOrder(req);
+  if (!entitlement.ok) return entitlement.response;
+
 
   try {
     const {

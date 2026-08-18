@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { MAX_KEYWORD_REPEATS, detectStuffing, resumeToText } from "@/lib/atsScore";
 import { applyOptimizationToResume } from "@/lib/applyOptimization";
+import { requirePaidOrder } from "@/lib/entitlement";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
+
 import {
   calculateOptimizationAtsScore,
   constrainPreservedOptimization,
@@ -496,8 +498,16 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    // "preview" rewrites a single bullet as the free teaser on /analysis;
+    // everything else is the deliverable the buyer paid for.
+    if (mode !== "preview") {
+      const entitlement = await requirePaidOrder(req);
+      if (!entitlement.ok) return entitlement.response;
+    }
+
     if (mode === "preview") {
       const target = pickWeakestBullet(resume);
+
       if (!target) {
         return NextResponse.json(
           { error: "No bullets to preview" },

@@ -2,7 +2,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
+import { requirePaidOrder } from "@/lib/entitlement";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
+
 import type { JobAnalysis, OptimizedBullet } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -31,7 +33,11 @@ export async function POST(req: NextRequest) {
   const rl = rateLimitGuard(req, LIMITS.voiceRewrite);
   if (rl) return rl;
 
+  const entitlement = await requirePaidOrder(req);
+  if (!entitlement.ok) return entitlement.response;
+
   try {
+
     const { transcript, originalBullet, originalBulletId, job, model } =
       (await req.json()) as {
         transcript: string;

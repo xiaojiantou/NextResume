@@ -44,7 +44,13 @@ function CheckoutSuccess() {
         if (!data.paid) {
           throw new Error("Stripe has not marked this checkout as paid yet.");
         }
-        markPaid();
+        if (!data.orderId || !data.token) {
+          throw new Error(
+            "Payment went through, but this session couldn't be unlocked. Open your resume from the link in the confirmation email.",
+          );
+        }
+        markPaid({ orderId: data.orderId, token: data.token });
+
         router.replace("/result");
       } catch (e) {
         setError(

@@ -15,8 +15,10 @@ import {
   isSupplementalSkillsSection,
   supplementalEducationLabel,
 } from "@/lib/pdf/shared";
+import { requirePaidOrder } from "@/lib/entitlement";
 import { renderPersonalizedPdf } from "@/lib/personalizedResume";
 import { rateLimitGuard } from "@/lib/ratelimit";
+
 import {
   numbersAreGrounded,
   validateLockedOptimization,
@@ -2178,7 +2180,11 @@ export async function POST(req: NextRequest) {
   const limited = rateLimitGuard(req, FIT_LIMIT);
   if (limited) return limited;
 
+  const entitlement = await requirePaidOrder(req);
+  if (!entitlement.ok) return entitlement.response;
+
   try {
+
     const body = (await req.json()) as FitRequest;
     const {
       resume,

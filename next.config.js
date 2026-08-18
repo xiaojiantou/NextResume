@@ -13,12 +13,22 @@ const nextConfig = {
     "@sparticuz/chromium",
     "puppeteer-core",
     "puppeteer",
+    // Native .node bindings; bundling them breaks the loader's platform probe.
+    "@napi-rs/canvas",
+    "pdfjs-dist",
   ],
   // Externalizing alone is not enough: bin/ holds brotli-packed binaries that
   // nothing imports, so file tracing never sees them and they are left out of
   // the Lambda. Name them explicitly for every route that launches Chromium.
   outputFileTracingIncludes: {
-    "/api/parse-resume": ["./node_modules/@sparticuz/chromium/bin/**"],
+    // pdf.js loads its Foxit substitute fonts from disk at render time, and the
+    // canvas bindings are resolved per-platform at require time — neither is a
+    // static import, so both need naming here for the same reason as chromium.
+    "/api/parse-resume": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+      "./node_modules/pdfjs-dist/standard_fonts/**",
+      "./node_modules/@napi-rs/canvas-linux-x64-gnu/**",
+    ],
     "/api/personalize": ["./node_modules/@sparticuz/chromium/bin/**"],
     "/api/fit-resume": ["./node_modules/@sparticuz/chromium/bin/**"],
     "/api/export/pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
