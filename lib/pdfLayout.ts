@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import type { ResumeSourceLayout } from "./types";
 
 export type PdfTextItem = {
