@@ -36,7 +36,7 @@ import type {
 
 export const VOICE_QUOTA = 10;
 
-type Step = "upload" | "job" | "analysis" | "checkout" | "result";
+type Step = "upload" | "analysis" | "checkout" | "result";
 export type { PdfStyle, TargetPages } from "./pdf/config";
 export type PersonalizedStatus = "idle" | "generating" | "ready" | "failed";
 

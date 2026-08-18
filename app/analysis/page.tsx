@@ -81,7 +81,7 @@ export default function AnalysisPage() {
     ran.current = true;
 
     if (!resume || !job) {
-      router.replace(!resume ? "/upload" : "/job");
+      router.replace("/upload");
       return;
     }
 
@@ -151,7 +151,7 @@ function ErrorBox({ message }: { message: string }) {
         Analysis failed
       </h2>
       <p className="text-ink-500 text-sm mt-2">{message}</p>
-      <Link href="/job" className="btn btn-outline mt-5 inline-flex">
+      <Link href="/upload" className="btn btn-outline mt-5 inline-flex">
         Try again
       </Link>
     </div>
@@ -350,7 +350,7 @@ function Report({
       </div>
 
       <div className="flex items-center justify-between">
-        <Link href="/job" className="btn btn-ghost">
+        <Link href="/upload" className="btn btn-ghost">
           <ArrowLeft size={14} /> Edit job description
         </Link>
         <Link href="/checkout" className="btn btn-accent !px-5">

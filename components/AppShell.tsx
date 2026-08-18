@@ -8,7 +8,7 @@ export function AppShell({
   step,
   children,
 }: {
-  step: "upload" | "job" | "analysis" | "checkout" | "result";
+  step: "upload" | "analysis" | "checkout" | "result";
   children: React.ReactNode;
 }) {
   return (

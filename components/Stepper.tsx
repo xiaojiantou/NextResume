@@ -4,8 +4,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const STEPS = [
-  { id: "upload", label: "Upload" },
-  { id: "job", label: "Job" },
+  { id: "upload", label: "Resume & Job" },
   { id: "analysis", label: "Analysis" },
   { id: "checkout", label: "Unlock" },
   { id: "result", label: "Optimize" },
