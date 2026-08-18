@@ -27,11 +27,11 @@ vercel --prod || { echo "❌ Vercel deploy failed"; exit 1; }
 
 echo ""
 echo "✅ Deployed!"
-echo "🌐 Live: https://nextresume-lovat.vercel.app"
+echo "🌐 Live: https://nextresume.howbetech.com"
 echo ""
 echo "Verifying live site..."
 sleep 5
-if curl -s https://nextresume-lovat.vercel.app | grep -qi clerk; then
+if curl -s https://nextresume.howbetech.com | grep -qi clerk; then
   echo "✅ New build confirmed live (Clerk present)"
 else
   echo "⚠️  Live HTML doesn't contain expected content — check https://vercel.com/dashboard"

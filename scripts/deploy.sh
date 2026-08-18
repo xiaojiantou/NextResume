@@ -79,17 +79,29 @@ else
   exit 1
 fi
 
-# Step 6: Show deployment info
+# Step 6: Deploy
+# This project is NOT connected to GitHub on Vercel, so the push above is for
+# code history only — it deploys nothing. The Vercel CLI is what ships it.
+echo ""
+echo -e "${BLUE}Step 6: Deploying to Vercel production...${NC}"
+if ! command -v vercel >/dev/null 2>&1; then
+  echo -e "${RED}❌ Vercel CLI not found. Install it with: npm i -g vercel${NC}"
+  exit 1
+fi
+if vercel --prod; then
+  echo -e "${GREEN}✅ Deployed to production${NC}"
+else
+  echo -e "${RED}❌ Vercel deploy failed${NC}"
+  exit 1
+fi
+
 echo ""
 echo -e "${GREEN}================================${NC}"
-echo -e "${GREEN}✅ Deployment Initiated!${NC}"
+echo -e "${GREEN}✅ Deployed!${NC}"
 echo -e "${GREEN}================================${NC}"
 echo ""
-echo -e "${BLUE}Your app is deploying...${NC}"
-echo "Live URL: https://nextresume-lovat.vercel.app"
+echo "Live URL: https://nextresume.howbetech.com"
 echo "Vercel Dashboard: https://vercel.com/dashboard"
-echo ""
-echo "Deployment typically completes in 30-60 seconds."
 echo ""
 
 # Step 7: Get last commit
