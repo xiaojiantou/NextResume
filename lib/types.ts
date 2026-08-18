@@ -1,5 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import type { ResumeLink } from "./resumeLinks";
+
 export type ResumeBullet = {
   id: string;
   text: string;
@@ -149,8 +151,14 @@ export type Resume = {
   experience: ResumeRole[];
   projects: ResumeProject[];
   education: ResumeEducation[];
-  /** Profile links from the header (LinkedIn, GitHub, portfolio) in display form. */
-  links?: string[];
+  /**
+   * Profile links from the header (LinkedIn, GitHub, portfolio). Each carries
+   * the label the resume displays and, when recoverable, the target behind it
+   * — a header often shows only "LinkedIn" while the URL lives in the source
+   * file's annotation layer. Legacy resumes stored plain strings, so readers
+   * normalize through normalizeResumeLinks rather than trusting the shape.
+   */
+  links?: ResumeLink[];
   photo?: string; // base64 data URI, extracted from the uploaded PDF/DOCX
   /** Optional for backwards compatibility with previously persisted resumes. */
   language?: ResumeLanguage;

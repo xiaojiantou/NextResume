@@ -6,6 +6,8 @@ import { transcribeImage } from "./ai";
 import { extractPdfPhoto } from "./pdfImage";
 import { extractPdfLayout } from "./pdfLayout";
 import type { ResumeSourceLayout } from "./types";
+import type { ResumeLink } from "./resumeLinks";
+import { dedupeResumeLinks, linkifyText, normalizeLinkUrl } from "./resumeLinks";
 
 const IMAGE_MIME: Record<string, string> = {
   jpg: "image/jpeg",
@@ -17,16 +19,47 @@ export type ExtractedFile = {
   text: string;
   photo?: string;
   layout?: ResumeSourceLayout;
+  /**
+   * Hyperlink targets recovered from the source document. A PDF keeps these
+   * in its annotation layer and a .docx in its relationships, so neither is
+   * visible to text extraction; without them a header that displays only
+   * "LinkedIn" loses its URL entirely.
+   */
+  links?: ResumeLink[];
 };
 
 // mammoth's default HTML image converter (images.dataUri) inlines embedded
 // pictures as base64 <img src="data:..."> — reuse that instead of writing a
 // custom image converter, and just pull the first data URI back out.
-async function extractDocxPhoto(buffer: Buffer): Promise<string | undefined> {
+async function extractDocxHtml(
+  buffer: Buffer,
+): Promise<{ photo?: string; links: ResumeLink[] }> {
   const mammoth = await import("mammoth");
   const { value: html } = await mammoth.convertToHtml({ buffer });
-  const match = html.match(/data:image\/[a-zA-Z+]+;base64,[A-Za-z0-9+/=]+/);
-  return match?.[0];
+  const photo = html.match(
+    /data:image\/[a-zA-Z+]+;base64,[A-Za-z0-9+/=]+/,
+  )?.[0];
+  // <a href="..">label</a> — the anchors mammoth already builds. Reading them
+  // here is what stops a Word resume's links from being silently dropped.
+  const links: ResumeLink[] = [];
+  for (const match of html.matchAll(
+    /<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi,
+  )) {
+    const url = normalizeLinkUrl(decodeHtml(match[1]));
+    if (!url) continue;
+    const label = decodeHtml(match[2].replace(/<[^>]+>/g, "")).trim();
+    links.push({ label: label || url, url });
+  }
+  return { photo, links: dedupeResumeLinks(links) };
+}
+
+function decodeHtml(value: string): string {
+  return value
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&amp;", "&");
 }
 
 export async function extractText(
@@ -40,7 +73,8 @@ export async function extractText(
       base64: buffer.toString("base64"),
       mimeType: IMAGE_MIME[ext],
     });
-    return { text };
+    // An image has no link layer at all, so visible URLs are all there is.
+    return { text, links: linkifyText(text) };
   }
 
   if (ext === "pdf") {
@@ -48,16 +82,29 @@ export async function extractText(
       extractPdfLayout(buffer),
       extractPdfPhoto(buffer),
     ]);
-    return { text: data.text.trim(), photo, layout: data.layout };
+    const text = data.text.trim();
+    return {
+      text,
+      photo,
+      layout: data.layout,
+      // Flattened or scanned exports have no annotation layer; a URL the
+      // reader can see is still a target worth keeping.
+      links: dedupeResumeLinks([...data.links, ...linkifyText(text)]),
+    };
   }
 
   if (ext === "docx") {
     const mammoth = await import("mammoth");
-    const [result, photo] = await Promise.all([
+    const [result, docxHtml] = await Promise.all([
       mammoth.extractRawText({ buffer }),
-      extractDocxPhoto(buffer),
+      extractDocxHtml(buffer),
     ]);
-    return { text: result.value.trim(), photo };
+    const text = result.value.trim();
+    return {
+      text,
+      photo: docxHtml.photo,
+      links: dedupeResumeLinks([...docxHtml.links, ...linkifyText(text)]),
+    };
   }
 
   throw new Error(`Unsupported file type: ${ext}`);

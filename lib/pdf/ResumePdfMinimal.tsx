@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { ContactText, contactEntries } from "./ContactLine";
 import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { ResumePalette } from "./config";
 import {
@@ -57,6 +58,9 @@ function createStyles(
       fontFamily: "Helvetica",
     },
     contact: { fontSize: fs(8.5), color: palette.muted, marginTop: px(6) },
+    // A link keeps the contact line's colour: the default blue underline
+    // would restyle a header the user never asked us to change.
+    contactLink: { color: palette.muted, textDecoration: "none" },
     sectionTag: {
       fontSize: fs(7.5),
       fontFamily: "Helvetica-Bold",
@@ -352,11 +356,15 @@ export function ResumePdfMinimal({
           <View>
             <Text style={styles.name}>{resume.name}</Text>
             {title ? <Text style={styles.title}>{title}</Text> : null}
-            <Text style={styles.contact}>
-              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
-                .filter(Boolean)
-                .join("   ·   ")}
-            </Text>
+            <ContactText
+              entries={contactEntries(
+                [resume.email, resume.phone, resume.location],
+                resume.links,
+              )}
+              separator="   ·   "
+              style={styles.contact}
+              linkStyle={styles.contactLink}
+            />
           </View>
         </View>
 
