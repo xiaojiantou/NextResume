@@ -13,7 +13,7 @@ import { dedupeResumeLinks, labelForUrl, normalizeLinkUrl } from "./resumeLinks.
 // Layout and setup commands whose arguments are not resume content. Anything
 // not listed keeps its argument text, which is what makes custom template
 // macros like \resumeSubheading{Acme}{2021}{Engineer} degrade gracefully.
-const DISCARD_WITH_ARGUMENTS = new Set([
+export const DISCARD_WITH_ARGUMENTS = new Set([
   "documentclass", "usepackage", "RequirePackage", "geometry", "pagestyle",
   "thispagestyle", "fancyhead", "fancyfoot", "renewcommand", "newcommand",
   "providecommand", "def", "let", "setlength", "addtolength", "vspace",
@@ -29,7 +29,7 @@ const DISCARD_WITH_ARGUMENTS = new Set([
 // discarded: the colour is styling, the text is content.
 const KEEP_LAST_ARGUMENT = new Set(["textcolor", "colorbox", "raisebox", "scalebox"]);
 
-const ENVIRONMENTS_WITH_SPEC = new Set([
+export const ENVIRONMENTS_WITH_SPEC = new Set([
   "tabular", "tabular*", "array", "tabularx", "longtable", "multicols",
 ]);
 
@@ -63,7 +63,7 @@ export function stripLatexComments(source: string): string {
 type Group = { content: string; end: number };
 
 /** Reads a balanced {...} starting at `open`, or null if it is not one. */
-function readGroup(source: string, open: number, close = "}"): Group | null {
+export function readGroup(source: string, open: number, close = "}"): Group | null {
   const opener = close === "}" ? "{" : "[";
   if (source[open] !== opener) return null;
   let depth = 0;
@@ -84,7 +84,7 @@ function readGroup(source: string, open: number, close = "}"): Group | null {
   return null;
 }
 
-function skipOptional(source: string, index: number): number {
+export function skipOptional(source: string, index: number): number {
   let cursor = index;
   while (source[cursor] === "[") {
     const group = readGroup(source, cursor, "]");
@@ -94,7 +94,7 @@ function skipOptional(source: string, index: number): number {
   return cursor;
 }
 
-function readArguments(
+export function readArguments(
   source: string,
   index: number,
   limit: number,

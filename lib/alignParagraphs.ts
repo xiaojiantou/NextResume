@@ -1,11 +1,19 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
-// Maps optimized resume text back to the exact source paragraph it came from.
-// This is deliberately deterministic rather than model-driven: writing a
-// rewritten bullet into the wrong paragraph would corrupt the user's document,
-// so an uncertain match is dropped instead of guessed. Anything unmatched
-// simply keeps its original wording.
-import type { DocxParagraph } from "./paragraphs.ts";
+// Maps optimized resume text back to the exact source unit it came from — a
+// Word paragraph or a LaTeX text block; the problem is identical either way,
+// so both formats share this one implementation.
+//
+// Deliberately deterministic rather than model-driven: writing a rewritten
+// bullet into the wrong place would corrupt the user's document, so an
+// uncertain match is dropped instead of guessed. Anything unmatched simply
+// keeps its original wording.
+
+/** The minimum a source unit must expose to be aligned against. */
+export type AlignSource = {
+  index: number;
+  text: string;
+};
 
 export type AlignTarget = {
   /** Resume-side identifier, e.g. a bullet id like "b7". */
@@ -66,7 +74,7 @@ export function similarity(left: string, right: string): number {
 
 export function alignToParagraphs(
   targets: readonly AlignTarget[],
-  paragraphs: readonly DocxParagraph[],
+  paragraphs: readonly AlignSource[],
   minimumConfidence: number = MINIMUM_CONFIDENCE,
 ): AlignmentResult {
   const normalizedParagraphs = paragraphs.map((paragraph) => ({
