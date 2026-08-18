@@ -43,7 +43,10 @@ async function fingerprintFile(file: File): Promise<string> {
   if (!globalThis.crypto?.subtle) {
     return `${file.size}:${file.lastModified}:${file.name}`;
   }
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    await file.arrayBuffer(),
+  );
   return [...new Uint8Array(digest)]
     .map((value) => value.toString(16).padStart(2, "0"))
     .join("");
@@ -329,7 +332,7 @@ export default function UploadPage() {
 
   return (
     <AppShell step="upload">
-      <div className="container-x py-10 max-w-3xl">
+      <div className="container-x py-10 max-w-5xl">
         <h1 className="text-3xl font-semibold tracking-tight text-ink-900">
           Your resume and the job
         </h1>
@@ -337,271 +340,280 @@ export default function UploadPage() {
           Add both and we'll score the match for free — no account needed.
         </p>
 
-        {/* ---------------------------- Resume ---------------------------- */}
-        <div className="mt-9">
-          <SectionHeading
-            n={1}
-            title="Upload your resume"
-            hint="PDF or DOCX, up to 10MB. We'll extract the structure automatically."
-            done={!!resume && !parsing}
-          />
+        {/* The two inputs are genuinely parallel — the resume parses in the
+            background while the job description is being pasted — so on wide
+            screens they sit side by side rather than implying an order. */}
+        <div className="mt-9 grid gap-8 lg:grid-cols-2 lg:gap-10">
+          {/* -------------------------- Resume -------------------------- */}
+          <div className="lg:border-r lg:border-ink-100 lg:pr-10">
+            <SectionHeading
+              n={1}
+              title="Upload your resume"
+              hint="PDF or DOCX, up to 10MB. We'll extract the structure automatically."
+              done={!!resume && !parsing}
+            />
 
-          {!fileName ? (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragging(true);
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragging(false);
-                const f = e.dataTransfer.files?.[0];
-                if (f) handle(f);
-              }}
-              onClick={() => inputRef.current?.click()}
-              className={`mt-4 card p-10 text-center cursor-pointer transition-all ${
-                dragging
-                  ? "border-ink-900 bg-ink-50/60 shadow-pop"
-                  : "hover:border-ink-300"
-              }`}
-            >
-              <input
-                ref={inputRef}
-                type="file"
-                hidden
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
+            {!fileName ? (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  const f = e.dataTransfer.files?.[0];
                   if (f) handle(f);
                 }}
-              />
-              <div className="w-12 h-12 rounded-xl bg-ink-900 text-white mx-auto inline-flex items-center justify-center">
-                <Upload size={20} />
-              </div>
-              <div className="mt-4 font-medium text-ink-900">
-                Drop your resume here, or click to browse
-              </div>
-              <div className="text-sm text-ink-400 mt-1">
-                PDF or DOCX · Max 10MB
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 card p-5 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-ink-100 text-ink-700 inline-flex items-center justify-center shrink-0">
-                {parsing ? (
-                  <div className="w-4 h-4 border-2 border-ink-300 border-t-ink-900 rounded-full animate-spin" />
-                ) : (
-                  <FileText size={20} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-ink-900 truncate">
-                  {fileName}
-                </div>
-                <div className="text-xs text-ink-400 mt-0.5">
-                  {fileType?.toUpperCase()} ·{" "}
-                  {((fileSize ?? 0) / 1024).toFixed(1)} KB ·{" "}
-                  {parsing
-                    ? `${phase} — keep going below`
-                    : resume
-                      ? `Parsed: ${resume.experience.length} roles, ${bulletCount} bullets`
-                      : ""}
-                </div>
-                {parsing && (
-                  <div className="mt-2.5 max-w-xs flex items-center gap-2">
-                    <div
-                      className="h-1.5 flex-1 bg-ink-100 rounded-full overflow-hidden"
-                      role="progressbar"
-                      aria-valuenow={progress}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label="Resume upload progress"
-                    >
-                      <div
-                        className="h-full bg-ink-900 rounded-full transition-[width] duration-300 ease-out"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <span className="text-[11px] text-ink-400 tabular-nums w-8 text-right">
-                      {progress}%
-                    </span>
-                  </div>
-                )}
-              </div>
-              {resume && !parsing && (
-                <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
-              )}
-              <button
-                onClick={clearFile}
-                disabled={parsing}
-                className="btn btn-ghost !p-2 text-ink-400"
-                aria-label="Remove file"
+                onClick={() => inputRef.current?.click()}
+                // On two-column layouts the drop zone stretches to roughly the
+                // height of the JD editor opposite it, so neither side looks
+                // like an afterthought.
+                className={`mt-4 card p-10 text-center cursor-pointer transition-all lg:flex lg:min-h-[23rem] lg:flex-col lg:items-center lg:justify-center ${
+                  dragging
+                    ? "border-ink-900 bg-ink-50/60 shadow-pop"
+                    : "hover:border-ink-300"
+                }`}
               >
-                <X size={16} />
-              </button>
-            </div>
-          )}
+                <input
+                  ref={inputRef}
+                  type="file"
+                  hidden
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handle(f);
+                  }}
+                />
+                <div className="w-12 h-12 rounded-xl bg-ink-900 text-white mx-auto inline-flex items-center justify-center">
+                  <Upload size={20} />
+                </div>
+                <div className="mt-4 font-medium text-ink-900">
+                  Drop your resume here, or click to browse
+                </div>
+                <div className="text-sm text-ink-400 mt-1">
+                  PDF or DOCX · Max 10MB
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 card p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-ink-100 text-ink-700 inline-flex items-center justify-center shrink-0">
+                  {parsing ? (
+                    <div className="w-4 h-4 border-2 border-ink-300 border-t-ink-900 rounded-full animate-spin" />
+                  ) : (
+                    <FileText size={20} />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-ink-900 truncate">
+                    {fileName}
+                  </div>
+                  <div className="text-xs text-ink-400 mt-0.5">
+                    {fileType?.toUpperCase()} ·{" "}
+                    {((fileSize ?? 0) / 1024).toFixed(1)} KB ·{" "}
+                    {parsing
+                      ? `${phase} — keep going below`
+                      : resume
+                        ? `Parsed: ${resume.experience.length} roles, ${bulletCount} bullets`
+                        : ""}
+                  </div>
+                  {parsing && (
+                    <div className="mt-2.5 max-w-xs flex items-center gap-2">
+                      <div
+                        className="h-1.5 flex-1 bg-ink-100 rounded-full overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={progress}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label="Resume upload progress"
+                      >
+                        <div
+                          className="h-full bg-ink-900 rounded-full transition-[width] duration-300 ease-out"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-ink-400 tabular-nums w-8 text-right">
+                        {progress}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {resume && !parsing && (
+                  <CheckCircle2
+                    size={18}
+                    className="text-emerald-600 shrink-0"
+                  />
+                )}
+                <button
+                  onClick={clearFile}
+                  disabled={parsing}
+                  className="btn btn-ghost !p-2 text-ink-400"
+                  aria-label="Remove file"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
 
-          {resumeError && (
-            <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
-              <AlertCircle size={14} className="mt-0.5 shrink-0" />
-              {resumeError}
-            </div>
-          )}
-        </div>
-
-        <div className="hairline my-9" />
-
-        {/* ------------------------ Job description ------------------------ */}
-        <div>
-          <SectionHeading
-            n={2}
-            title="Tell us about the job"
-            hint="Paste the full job description, or import it from a URL or screenshot."
-            done={jdReady}
-          />
-
-          <div className="mt-4 inline-flex bg-ink-100 p-1 rounded-lg">
-            <button
-              onClick={() => setMode("paste")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                mode === "paste"
-                  ? "bg-white text-ink-900 shadow-soft"
-                  : "text-ink-500"
-              }`}
-            >
-              <Briefcase size={13} className="inline mr-1.5 -mt-0.5" />
-              Paste description
-            </button>
-            <button
-              onClick={() => setMode("url")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                mode === "url"
-                  ? "bg-white text-ink-900 shadow-soft"
-                  : "text-ink-500"
-              }`}
-            >
-              <Globe size={13} className="inline mr-1.5 -mt-0.5" />
-              Import from URL
-            </button>
-            <button
-              onClick={() => setMode("image")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
-                mode === "image"
-                  ? "bg-white text-ink-900 shadow-soft"
-                  : "text-ink-500"
-              }`}
-            >
-              <ImageUp size={13} className="inline mr-1.5 -mt-0.5" />
-              Upload image
-            </button>
+            {resumeError && (
+              <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
+                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                {resumeError}
+              </div>
+            )}
           </div>
 
-          {mode === "paste" ? (
-            <div className="mt-4 card overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-ink-100 flex items-center justify-between bg-ink-50/50">
-                <span className="text-xs text-ink-500">
-                  Job description ·{" "}
-                  <span className="tabular-nums">
-                    {jobDescription.length.toLocaleString()}
-                  </span>{" "}
-                  characters
-                </span>
-                <button
-                  onClick={() => setJobDescription(SAMPLE_JD)}
-                  className="text-xs text-accent-600 hover:text-accent-700"
-                >
-                  Use sample JD
-                </button>
-              </div>
-              <textarea
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the full job description here. Include responsibilities, requirements, and any 'nice to haves'."
-                className="w-full h-72 p-4 text-sm text-ink-800 placeholder:text-ink-300 resize-none outline-none font-sans leading-relaxed"
-              />
-            </div>
-          ) : mode === "url" ? (
-            <div className="mt-4 card p-5">
-              <label className="text-sm text-ink-700 font-medium">
-                Job posting URL
-              </label>
-              <div className="mt-2 flex gap-2">
-                <input
-                  value={jobUrl}
-                  onChange={(e) => setJobUrl(e.target.value)}
-                  placeholder="https://jobs.example.com/posting/123"
-                  className="flex-1 px-3 py-2.5 border border-ink-200 rounded-lg text-sm outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10"
-                />
-                <button
-                  disabled={!jobUrl || importing}
-                  onClick={importFromUrl}
-                  className="btn btn-primary"
-                >
-                  {importing ? "Importing…" : "Import"}
-                </button>
-              </div>
-              <p className="text-xs text-ink-400 mt-3">
-                Some job boards block automated reading. If import fails, paste
-                the description directly.
-              </p>
-            </div>
-          ) : (
-            <div
-              tabIndex={0}
-              onClick={() => imageInputRef.current?.click()}
-              onPaste={handlePasteImage}
-              className="mt-4 card p-10 text-center cursor-pointer transition-all hover:border-ink-300 outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10"
-            >
-              <input
-                ref={imageInputRef}
-                type="file"
-                hidden
-                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) importFromImage(f);
-                }}
-              />
-              <div className="w-12 h-12 rounded-xl bg-ink-900 text-white mx-auto inline-flex items-center justify-center">
-                <ImageUp size={20} />
-              </div>
-              <div className="mt-4 font-medium text-ink-900">
-                {importingImage
-                  ? "Reading image…"
-                  : "Click here, then paste (Ctrl/Cmd+V) — or click to browse"}
-              </div>
-              <div className="text-sm text-ink-400 mt-1">
-                JPG or PNG · Max 10MB
-              </div>
-            </div>
-          )}
+          {/* ---------------------- Job description ---------------------- */}
+          <div>
+            <SectionHeading
+              n={2}
+              title="Tell us about the job"
+              hint="Paste the full job description, or import it from a URL or screenshot."
+              done={jdReady}
+            />
 
-          {job && (
-            <div className="mt-5 card p-4 bg-ink-50/30">
-              <div className="text-xs text-ink-500 mb-2">
-                Detected signals · {job.title} ({job.seniority})
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {job.requiredKeywords.slice(0, 12).map((k) => (
-                  <span
-                    key={k}
-                    className="text-xs px-2 py-0.5 rounded-md bg-white border border-ink-100 text-ink-700"
-                  >
-                    {k}
+            <div className="mt-4 inline-flex bg-ink-100 p-1 rounded-lg">
+              <button
+                onClick={() => setMode("paste")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                  mode === "paste"
+                    ? "bg-white text-ink-900 shadow-soft"
+                    : "text-ink-500"
+                }`}
+              >
+                <Briefcase size={13} className="inline mr-1.5 -mt-0.5" />
+                Paste description
+              </button>
+              <button
+                onClick={() => setMode("url")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                  mode === "url"
+                    ? "bg-white text-ink-900 shadow-soft"
+                    : "text-ink-500"
+                }`}
+              >
+                <Globe size={13} className="inline mr-1.5 -mt-0.5" />
+                Import from URL
+              </button>
+              <button
+                onClick={() => setMode("image")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                  mode === "image"
+                    ? "bg-white text-ink-900 shadow-soft"
+                    : "text-ink-500"
+                }`}
+              >
+                <ImageUp size={13} className="inline mr-1.5 -mt-0.5" />
+                Upload image
+              </button>
+            </div>
+
+            {mode === "paste" ? (
+              <div className="mt-4 card overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-ink-100 flex items-center justify-between bg-ink-50/50">
+                  <span className="text-xs text-ink-500">
+                    Job description ·{" "}
+                    <span className="tabular-nums">
+                      {jobDescription.length.toLocaleString()}
+                    </span>{" "}
+                    characters
                   </span>
-                ))}
+                  <button
+                    onClick={() => setJobDescription(SAMPLE_JD)}
+                    className="text-xs text-accent-600 hover:text-accent-700"
+                  >
+                    Use sample JD
+                  </button>
+                </div>
+                <textarea
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  placeholder="Paste the full job description here. Include responsibilities, requirements, and any 'nice to haves'."
+                  className="w-full h-72 p-4 text-sm text-ink-800 placeholder:text-ink-300 resize-none outline-none font-sans leading-relaxed"
+                />
               </div>
-            </div>
-          )}
+            ) : mode === "url" ? (
+              <div className="mt-4 card p-5">
+                <label className="text-sm text-ink-700 font-medium">
+                  Job posting URL
+                </label>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    value={jobUrl}
+                    onChange={(e) => setJobUrl(e.target.value)}
+                    placeholder="https://jobs.example.com/posting/123"
+                    className="flex-1 px-3 py-2.5 border border-ink-200 rounded-lg text-sm outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10"
+                  />
+                  <button
+                    disabled={!jobUrl || importing}
+                    onClick={importFromUrl}
+                    className="btn btn-primary"
+                  >
+                    {importing ? "Importing…" : "Import"}
+                  </button>
+                </div>
+                <p className="text-xs text-ink-400 mt-3">
+                  Some job boards block automated reading. If import fails,
+                  paste the description directly.
+                </p>
+              </div>
+            ) : (
+              <div
+                tabIndex={0}
+                onClick={() => imageInputRef.current?.click()}
+                onPaste={handlePasteImage}
+                className="mt-4 card p-10 text-center cursor-pointer transition-all hover:border-ink-300 outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10"
+              >
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  hidden
+                  accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) importFromImage(f);
+                  }}
+                />
+                <div className="w-12 h-12 rounded-xl bg-ink-900 text-white mx-auto inline-flex items-center justify-center">
+                  <ImageUp size={20} />
+                </div>
+                <div className="mt-4 font-medium text-ink-900">
+                  {importingImage
+                    ? "Reading image…"
+                    : "Click here, then paste (Ctrl/Cmd+V) — or click to browse"}
+                </div>
+                <div className="text-sm text-ink-400 mt-1">
+                  JPG or PNG · Max 10MB
+                </div>
+              </div>
+            )}
 
-          {jobError && (
-            <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
-              <AlertCircle size={14} className="mt-0.5 shrink-0" />
-              {jobError}
-            </div>
-          )}
+            {job && (
+              <div className="mt-5 card p-4 bg-ink-50/30">
+                <div className="text-xs text-ink-500 mb-2">
+                  Detected signals · {job.title} ({job.seniority})
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {job.requiredKeywords.slice(0, 12).map((k) => (
+                    <span
+                      key={k}
+                      className="text-xs px-2 py-0.5 rounded-md bg-white border border-ink-100 text-ink-700"
+                    >
+                      {k}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {jobError && (
+              <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
+                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                {jobError}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-8 flex items-start gap-2 text-xs text-ink-400">

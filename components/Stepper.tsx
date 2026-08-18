@@ -40,7 +40,9 @@ export function Stepper({ current }: { current: StepId }) {
               >
                 {done ? <Check size={12} strokeWidth={3} /> : i + 1}
               </span>
-              {s.label}
+              <span className={cn(!active && "hidden sm:inline")}>
+                {s.label}
+              </span>
             </div>
             {i < STEPS.length - 1 && (
               <div
