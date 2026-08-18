@@ -44,14 +44,20 @@ function CheckoutSuccess() {
         if (!data.paid) {
           throw new Error("Stripe has not marked this checkout as paid yet.");
         }
+        // A pack tops up the balance instead of unlocking a resume, so it
+        // returns to checkout with credits ready to spend.
+        if (data.kind === "credits") {
+          router.replace("/checkout?topped_up=1");
+          return;
+        }
         if (!data.orderId || !data.token) {
           throw new Error(
             "Payment went through, but this session couldn't be unlocked. Open your resume from the link in the confirmation email.",
           );
         }
         markPaid({ orderId: data.orderId, token: data.token });
-
         router.replace("/result");
+
       } catch (e) {
         setError(
           e instanceof Error ? e.message : "Could not verify payment.",

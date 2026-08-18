@@ -28,7 +28,13 @@ import type { ResumeFitVariant } from "./resumeFit";
 
 type OrderStatus = "pending" | "paid" | "expired";
 
-export type OrderSource = "stripe" | "promo";
+export type OrderSource = "stripe" | "promo" | "credits";
+
+// "resume" orders unlock one rewrite. "credits" orders buy a pack and unlock
+// nothing themselves — the webhook turns them into a credit balance, and each
+// credit later mints its own paid "resume" order.
+export type OrderKind = "resume" | "credits";
+
 
 export type Order = {
   id: string;
@@ -42,7 +48,11 @@ export type Order = {
   // thing that grants access.
   userId?: string | null;
   source?: OrderSource;
+  kind?: OrderKind;
+  sku?: string;
+  creditsPurchased?: number;
   createdAt: string;
+
   updatedAt: string;
 };
 
@@ -74,6 +84,9 @@ const ORDER_KEY = (id: string) => `nextresume:order:${id}`;
 const SESSION_KEY = (sid: string) => `nextresume:session:${sid}`;
 const SNAPSHOT_KEY = (id: string) => `nextresume:snapshot:${id}`;
 const PROMO_KEY = (code: string) => `nextresume:promo:${code}`;
+const CREDITS_KEY = (userId: string) => `nextresume:credits:${userId}`;
+const GRANT_KEY = (orderId: string) => `nextresume:grant:${orderId}`;
+
 
 
 function hasRedis() {
@@ -145,14 +158,20 @@ export async function createOrder({
   status = "pending",
   source = "stripe",
   userId = null,
+  kind = "resume",
+  sku,
+  creditsPurchased,
 }: {
   id: string;
   stripeSessionId?: string | null;
-  // Promo redemptions mint an already-paid order; Stripe orders start pending
-  // and are flipped by the webhook.
+  // Promo redemptions and spent credits mint an already-paid order; Stripe
+  // orders start pending and are flipped by the webhook.
   status?: OrderStatus;
   source?: OrderSource;
   userId?: string | null;
+  kind?: OrderKind;
+  sku?: string;
+  creditsPurchased?: number;
 }): Promise<Order> {
   guardProd();
   const now = new Date().toISOString();
@@ -162,9 +181,13 @@ export async function createOrder({
     status,
     source,
     userId,
+    kind,
+    ...(sku ? { sku } : {}),
+    ...(creditsPurchased ? { creditsPurchased } : {}),
     createdAt: now,
     updatedAt: now,
   };
+
 
   if (hasRedis()) {
     const redis = getRedis();
@@ -254,14 +277,28 @@ export async function markOrderFromCheckoutSession({
 
   if (hasRedis()) {
     await getRedis().set(ORDER_KEY(order.id), JSON.stringify(order));
-    return order;
+  } else {
+    const store = await readFileStore();
+    store.orders[order.id] = order;
+    await writeFileStore(store);
   }
 
-  const store = await readFileStore();
-  store.orders[order.id] = order;
-  await writeFileStore(store);
+  // A paid pack turns into a balance. Guarded by a one-shot lock because the
+  // webhook and the success page both land here for the same order.
+  if (
+    paid &&
+    order.kind === "credits" &&
+    order.userId &&
+    order.creditsPurchased
+  ) {
+    if (await claimCreditGrant(order.id)) {
+      await grantCredits(order.userId, order.creditsPurchased);
+    }
+  }
+
   return order;
 }
+
 
 // --- promo codes ---------------------------------------------------------
 
@@ -284,7 +321,87 @@ export async function incrementPromoUse(code: string): Promise<number> {
   return next;
 }
 
+// --- credits -------------------------------------------------------------
+
+type CreditStore = {
+  orders: Record<string, Order>;
+  credits?: Record<string, number>;
+  grants?: Record<string, true>;
+};
+
+export async function getCredits(userId: string): Promise<number> {
+  guardProd();
+  if (hasRedis()) {
+    const raw = await getRedis().get<number | string>(CREDITS_KEY(userId));
+    const value = typeof raw === "string" ? Number.parseInt(raw, 10) : raw;
+    return Number.isFinite(value) && (value as number) > 0
+      ? (value as number)
+      : 0;
+  }
+  const store = (await readFileStore()) as unknown as CreditStore;
+  return store.credits?.[userId] ?? 0;
+}
+
+export async function grantCredits(
+  userId: string,
+  amount: number,
+): Promise<number> {
+  guardProd();
+  if (amount <= 0) return getCredits(userId);
+  if (hasRedis()) {
+    return getRedis().incrby(CREDITS_KEY(userId), amount);
+  }
+  const store = (await readFileStore()) as unknown as CreditStore;
+  store.credits = store.credits || {};
+  const next = (store.credits[userId] ?? 0) + amount;
+  store.credits[userId] = next;
+  await writeFileStore(store as FileStore);
+  return next;
+}
+
+// Spends one credit, or returns null when the balance is empty. The Redis path
+// decrements first and gives the credit back on underflow, so two concurrent
+// spends can never both win the last one.
+export async function consumeCredit(userId: string): Promise<number | null> {
+  guardProd();
+  if (hasRedis()) {
+    const redis = getRedis();
+    const remaining = await redis.decr(CREDITS_KEY(userId));
+    if (remaining < 0) {
+      await redis.incr(CREDITS_KEY(userId));
+      return null;
+    }
+    return remaining;
+  }
+  const store = (await readFileStore()) as unknown as CreditStore;
+  store.credits = store.credits || {};
+  const current = store.credits[userId] ?? 0;
+  if (current <= 0) return null;
+  const remaining = current - 1;
+  store.credits[userId] = remaining;
+  await writeFileStore(store as FileStore);
+  return remaining;
+}
+
+// One-shot lock per order. Both the Stripe webhook and the success page's
+// session lookup mark an order paid, so exactly one of them may hand out the
+// pack's credits.
+export async function claimCreditGrant(orderId: string): Promise<boolean> {
+  guardProd();
+  if (hasRedis()) {
+    const res = await getRedis().set(GRANT_KEY(orderId), "1", { nx: true });
+    return res === "OK";
+  }
+  const store = (await readFileStore()) as unknown as CreditStore;
+  store.grants = store.grants || {};
+  if (store.grants[orderId]) return false;
+  store.grants[orderId] = true;
+  await writeFileStore(store as FileStore);
+  return true;
+}
+
 // --- snapshot (buyer's data, hydrated when clicking through the email) ---
+
 
 
 export async function saveOrderSnapshot(

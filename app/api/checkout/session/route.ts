@@ -30,18 +30,25 @@ export async function GET(req: NextRequest) {
       (session.payment_status === "paid" ||
         session.payment_status === "no_payment_required");
 
+    // A pack order unlocks nothing by itself — marking it paid above credited
+    // the buyer's balance instead, so it gets no resume token.
+    const kind = order?.kind ?? "resume";
+
     // The token is what unlocks the paid endpoints, so it is only ever handed
     // out once Stripe itself has confirmed the session is paid.
-    const token = paid && order ? signOrderToken(order.id) : null;
+    const token =
+      paid && order && kind === "resume" ? signOrderToken(order.id) : null;
 
     return NextResponse.json({
       id: session.id,
       orderId: order?.id ?? null,
+      kind,
       token,
       paid,
       status: session.status,
       paymentStatus: session.payment_status,
     });
+
 
   } catch (e) {
     return NextResponse.json(

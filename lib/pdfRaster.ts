@@ -28,11 +28,10 @@ function pageSpec(widthPt: number, heightPt: number): ResumePageSpec {
   };
 }
 
-// pdf.js resolves the built-in Foxit substitutes from here whenever a PDF
-// references a standard font without embedding it. The trailing slash matters:
-// pdf.js concatenates the filename onto this string directly.
-function standardFontDataUrl(): string {
-  return `${path.join(process.cwd(), "node_modules", "pdfjs-dist", "standard_fonts")}${path.sep}`;
+// pdf.js loads these asset directories from disk at render time, concatenating
+// a filename onto whatever it is given — so the trailing separator matters.
+function pdfjsAsset(dir: string): string {
+  return `${path.join(process.cwd(), "node_modules", "pdfjs-dist", dir)}${path.sep}`;
 }
 
 export async function rasterizePdf(
@@ -68,7 +67,11 @@ export async function rasterizePdf(
     data: new Uint8Array(buffer),
     // Lambdas have no system font cache to fall back on.
     useSystemFonts: false,
-    standardFontDataUrl: standardFontDataUrl(),
+    standardFontDataUrl: pdfjsAsset("standard_fonts"),
+    // CJK resumes reference predefined CMaps rather than embedding the
+    // encoding; without these the glyphs come out blank.
+    cMapUrl: pdfjsAsset("cmaps"),
+    cMapPacked: true,
   }).promise;
 
   try {

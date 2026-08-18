@@ -3,6 +3,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // A stray lockfile in the home directory makes Next infer the wrong workspace
+  // root, which is what the include globs below are resolved against. Pin it.
+  outputFileTracingRoot: __dirname,
   // @sparticuz/chromium ships the Chromium binary as files under its own
   // node_modules/bin directory and resolves them at runtime by path. Bundling
   // it relocates the JS away from those files, so on Vercel the launch fails
@@ -27,6 +30,10 @@ const nextConfig = {
     "/api/parse-resume": [
       "./node_modules/@sparticuz/chromium/bin/**",
       "./node_modules/pdfjs-dist/standard_fonts/**",
+      "./node_modules/pdfjs-dist/cmaps/**",
+      // pdf.js spawns a "fake worker" by dynamically importing this at run
+      // time, so nothing static points at it.
+      "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
       "./node_modules/@napi-rs/canvas-linux-x64-gnu/**",
     ],
     "/api/personalize": ["./node_modules/@sparticuz/chromium/bin/**"],

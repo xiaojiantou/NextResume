@@ -46,23 +46,28 @@ export type CheckoutSession = {
 export async function createCheckoutSession({
   origin,
   orderId,
+  priceId,
+  sku,
 }: {
   origin: string;
   orderId: string;
+  priceId: string;
+  sku: string;
 }): Promise<CheckoutSession> {
-  const price = process.env.STRIPE_PRICE_ID;
-  if (!price) throw new Error("Missing STRIPE_PRICE_ID");
+  if (!priceId) throw new Error("Missing Stripe price id");
 
   const body = new URLSearchParams({
     mode: "payment",
     success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/checkout`,
     client_reference_id: orderId,
-    "line_items[0][price]": price,
+    "line_items[0][price]": priceId,
     "line_items[0][quantity]": "1",
     "metadata[product]": "nextresume_optimized_resume",
+    "metadata[sku]": sku,
     "metadata[order_id]": orderId,
   });
+
 
   return stripeRequest<CheckoutSession>("/checkout/sessions", {
     method: "POST",
