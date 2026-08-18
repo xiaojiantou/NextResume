@@ -42,7 +42,7 @@ export type PersonalizedStatus = "idle" | "generating" | "ready" | "failed";
 
 type State = {
   fileName: string | null;
-  fileType: "pdf" | "docx" | null;
+  fileType: "pdf" | "docx" | "tex" | null;
   fileSize: number | null;
   fileFingerprint: string | null;
   /**
@@ -99,7 +99,7 @@ type State = {
 type Actions = {
   setFileMeta: (
     name: string,
-    type: "pdf" | "docx",
+    type: "pdf" | "docx" | "tex",
     size: number,
     fingerprint?: string | null,
   ) => void;
