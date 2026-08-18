@@ -5,6 +5,7 @@ import "server-only";
 import { transcribeImage } from "./ai";
 import { extractPdfPhoto } from "./pdfImage";
 import { extractPdfLayout } from "./pdfLayout";
+import { latexToText } from "./latex";
 import type { ResumeSourceLayout } from "./types";
 import type { ResumeLink } from "./resumeLinks";
 import { dedupeResumeLinks, linkifyText, normalizeLinkUrl } from "./resumeLinks";
@@ -91,6 +92,15 @@ export async function extractText(
       // reader can see is still a target worth keeping.
       links: dedupeResumeLinks([...data.links, ...linkifyText(text)]),
     };
+  }
+
+  if (ext === "tex" || ext === "latex") {
+    // A LaTeX source states its structure and its \href targets outright, so
+    // nothing has to be inferred from geometry or recovered from an
+    // annotation layer. linkifyText still runs for URLs written as plain
+    // text rather than wrapped in \href.
+    const { text, links } = latexToText(buffer.toString("utf8"));
+    return { text, links: dedupeResumeLinks([...links, ...linkifyText(text)]) };
   }
 
   if (ext === "docx") {

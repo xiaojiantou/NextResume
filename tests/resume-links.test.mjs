@@ -182,3 +182,12 @@ test("a link inside a sentence takes only the linked word", () => {
   );
   assert.equal(links[0].label, "thing");
 });
+
+test("an email domain is not a profile link", () => {
+  // Every resume has an email; "example.com" must not become a link.
+  assert.deepEqual(linkifyText("sharon@example.com · 555-0100"), []);
+  assert.deepEqual(
+    linkifyText("sharon@example.com · github.com/sharonli"),
+    [{ label: "github.com/sharonli", url: "https://github.com/sharonli" }],
+  );
+});

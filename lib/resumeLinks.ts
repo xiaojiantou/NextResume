@@ -146,6 +146,12 @@ export function mergeResumeLinks(
 export function linkifyText(text: string): ResumeLink[] {
   const links: ResumeLink[] = [];
   for (const match of text.matchAll(URL_PATTERN)) {
+    const index = match.index ?? 0;
+    // Every resume carries an email, and its domain is not a profile link:
+    // "sharon@example.com" must not surface as "example.com".
+    if (/[A-Za-z0-9._%+-]@$/.test(text.slice(Math.max(0, index - 64), index))) {
+      continue;
+    }
     const raw = match[0].replace(TRAILING_PUNCTUATION, "");
     const url = normalizeLinkUrl(raw);
     if (!url) continue;
