@@ -2,8 +2,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
-import { MAX_KEYWORD_REPEATS, detectStuffing, resumeToText } from "@/lib/atsScore";
-import { applyOptimizationToResume } from "@/lib/applyOptimization";
+import {
+  normalizeOptimization,
+  validateOptimization,
+} from "@/lib/optimizeContract";
 import { requirePaidOrder } from "@/lib/entitlement";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 
@@ -21,13 +23,10 @@ import {
 import type {
   AtsReport,
   ContentStructureMode,
-  CoreResumeSection,
   JobAnalysis,
   Optimization,
   OptimizedBullet,
   Resume,
-  ResumeSectionRef,
-  SkillEvidence,
 } from "@/lib/types";
 import { reviewSemanticGrounding } from "@/lib/semanticResumeValidation";
 
@@ -108,7 +107,12 @@ Hard rules — writing style:
 - Weave matched keywords into the factual claim itself — the tool used, the method applied, the thing built. NEVER append meta-commentary clauses such as "showcasing proficiency in X", "demonstrating expertise in Y", "highlighting Z", "proving ability to W". A bullet ends with a concrete outcome or fact, never with a comment about the candidate's skills.
 - Start bullets with verbs from this set first: Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered. Vary sentence structure across bullets.
 
-Hard rules — skills and summary:
+Hard rules — keyword coverage:
+- The ATS report lists missingKeywords. Walk that list. For each one, ask whether the resume ALREADY demonstrates the same thing under different wording — "K8s" for Kubernetes, "REST endpoints" for API development, "on-call" for production support. Where it does, say it in the posting's wording instead of the candidate's. That is a naming change, not a new claim, and it is where most of the real gain lives.
+- Where the resume genuinely does not demonstrate a missing keyword, LEAVE IT OUT. An honest gap costs the candidate far less than a fabricated match. Do not pad the summary or skills with terms nothing in the experience supports.
+
+Hard rules — headline, skills, and summary:
+- "title" is the headline that sits under the candidate's name. It is the field recruiters filter an ATS on, so it must speak to THIS posting, not to the candidate's last job. Set it to the posting's exact job title when the candidate's experience supports that role. If the posting's seniority would overstate them, keep the posting's role words and drop only the level ("Senior Backend Platform Engineer" -> "Backend Platform Engineer"). Never claim a specialization the resume does not evidence, and never put a company name in it.
 - "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
 - Return exactly one skillEvidence entry for every proposed skill. Use grounding "direct" when the skill or a standard alias appears explicitly in the source. Use grounding "indirect" only for a capability, domain, or soft skill strongly demonstrated by 1-3 cited source bullet IDs; explain the support in rationale. Tools, frameworks, platforms, credentials, and languages must be direct.
 - "summary": if the input resume has a summary, tailor it; if it has none, write a tight 2-3 line one grounded only in real experience.
@@ -185,94 +189,6 @@ Output ONLY valid JSON:
 
 Start with a strong ownership verb (Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered). Weave keywords into the factual claim itself — NEVER append meta-commentary like "showcasing proficiency in X" or "demonstrating expertise in Y". End with a concrete outcome, not a comment about the candidate's skills.`;
 
-// The meta-commentary tails weak models bolt on to satisfy matchedKeywords
-// ("..., showcasing proficiency in React"). Gerund-after-comma is the
-// signature; leading verbs like "Demonstrated X to stakeholders" stay legal.
-const SLOP_PATTERN =
-  /[,;–—]\s*(showcasing|demonstrating|highlighting|proving|underscoring|exemplifying|evidencing)\b|\b(showcasing|demonstrating)\s+(expertise|proficiency|strong|robust|deep)\b/i;
-
-function validateOptimization(
-  resume: Resume,
-  opt: Optimization,
-  job?: JobAnalysis,
-): string[] {
-  const problems: string[] = [];
-
-  const checkSection = (
-    label: "roles" | "projects",
-    originals: { id: string; bullets: { id: string }[] }[],
-    optimized: { id: string; bullets: OptimizedBullet[] }[],
-  ) => {
-    for (const original of originals) {
-      const match = optimized.find((o) => o.id === original.id);
-      if (!match) {
-        problems.push(`${label}: missing entry "${original.id}"`);
-        continue;
-      }
-      if (match.bullets.length !== original.bullets.length) {
-        problems.push(
-          `${label} "${original.id}": expected ${original.bullets.length} bullets (one-to-one rewrite), got ${match.bullets.length}`,
-        );
-      }
-      const originalIds = new Set(original.bullets.map((b) => b.id));
-      for (const bullet of match.bullets) {
-        if (!originalIds.has(bullet.id)) {
-          problems.push(
-            `${label} "${original.id}": bullet id "${bullet.id}" does not exist in the input resume`,
-          );
-        }
-      }
-    }
-  };
-
-  checkSection("roles", resume.experience, opt.roles);
-  checkSection("projects", resume.projects ?? [], opt.projects ?? []);
-
-  const allBullets = [
-    ...opt.roles.flatMap((r) => r.bullets),
-    ...(opt.projects ?? []).flatMap((p) => p.bullets),
-  ];
-  for (const bullet of allBullets) {
-    if (SLOP_PATTERN.test(bullet.text)) {
-      problems.push(
-        `bullet "${bullet.id}": remove the meta-commentary tail ("showcasing/demonstrating...") and weave the keyword into the factual claim instead`,
-      );
-    }
-  }
-  if (SLOP_PATTERN.test(opt.summary)) {
-    problems.push(
-      `summary: remove meta-commentary ("showcasing/demonstrating...")`,
-    );
-  }
-
-  const originalSkills = new Set(
-    resume.skills.map((s) => s.toLocaleLowerCase()),
-  );
-  const keptSkills = new Set(opt.skills.map((s) => s.toLocaleLowerCase()));
-  const dropped = [...originalSkills].filter((s) => !keptSkills.has(s));
-  if (dropped.length > 0) {
-    problems.push(
-      `skills: ${dropped.length} original skills were dropped (${dropped.slice(0, 5).join(", ")}...) — include every original skill, reordered by JD relevance`,
-    );
-  }
-
-  // Chasing matchedKeywords pushes the model to repeat the same term in every
-  // bullet. Scoring counts each keyword once, so that buys nothing, and
-  // Workday's 2026 filter flags the density as manipulation. Catch it here so
-  // the user never receives a resume that trips it.
-  if (job) {
-    const materialized = applyOptimizationToResume(resume, opt);
-    const { worst } = detectStuffing(resumeToText(materialized), job);
-    for (const { keyword, count } of worst) {
-      problems.push(
-        `keyword "${keyword}": repeated ${count} times — state it once or twice where it is load-bearing and rewrite the rest without it (max ${MAX_KEYWORD_REPEATS})`,
-      );
-    }
-  }
-
-  return problems;
-}
-
 function publicOptimizationIssue(issue: string): string {
   const skill = issue.match(/^Skill "([^"]+)"/i)?.[1];
   if (skill) {
@@ -325,149 +241,6 @@ function pickWeakestBullet(resume: Resume): {
     a.text.length <= b.text.length ? a : b,
   );
   return { bulletId: shortest.id, bulletText: shortest.text };
-}
-
-function normalizeOptimization(value: unknown): Optimization {
-  const object =
-    value && typeof value === "object"
-      ? (value as Record<string, unknown>)
-      : {};
-  const stringValue = (candidate: unknown) =>
-    typeof candidate === "string" ? candidate.trim() : "";
-  const sectionRefs = new Set<ResumeSectionRef>([
-    "summary",
-    "skills",
-    "experience",
-    "projects",
-    "education",
-  ]);
-  const sectionOrder = (Array.isArray(object.sectionOrder)
-    ? object.sectionOrder
-    : []
-  ).flatMap((candidate) => {
-    const ref = stringValue(candidate);
-    return sectionRefs.has(ref as ResumeSectionRef) ||
-      /^additional:[^\s:][^\s]*$/.test(ref)
-      ? [ref as ResumeSectionRef]
-      : [];
-  });
-  const rawSectionLabels =
-    object.sectionLabels && typeof object.sectionLabels === "object"
-      ? (object.sectionLabels as Record<string, unknown>)
-      : {};
-  const sectionLabels = Object.fromEntries(
-    (["summary", "skills", "experience", "projects", "education"] as CoreResumeSection[])
-      .map((section) => [section, stringValue(rawSectionLabels[section])] as const)
-      .filter(([, label]) => Boolean(label)),
-  ) as Partial<Record<CoreResumeSection, string>>;
-  const bullet = (candidate: unknown): OptimizedBullet => {
-    const item =
-      candidate && typeof candidate === "object"
-        ? (candidate as Record<string, unknown>)
-        : {};
-    return {
-      id: stringValue(item.id),
-      text: stringValue(item.text),
-      evidence: Array.isArray(item.evidence)
-        ? item.evidence.map(stringValue).filter(Boolean)
-        : [],
-      matchedKeywords: Array.isArray(item.matchedKeywords)
-        ? item.matchedKeywords.map(stringValue).filter(Boolean)
-        : [],
-      rationale: stringValue(item.rationale),
-    };
-  };
-  const owners = (candidate: unknown) =>
-    (Array.isArray(candidate) ? candidate : []).map((raw) => {
-      const item =
-        raw && typeof raw === "object"
-          ? (raw as Record<string, unknown>)
-          : {};
-      return {
-        id: stringValue(item.id),
-        bullets: (Array.isArray(item.bullets) ? item.bullets : []).map(bullet),
-      };
-    });
-  const skillEvidenceValues = new Set<SkillEvidence["grounding"]>([
-    "direct",
-    "indirect",
-  ]);
-  const skillTypes = new Set<SkillEvidence["skillType"]>([
-    "tool",
-    "capability",
-    "domain",
-    "soft",
-    "credential",
-    "language",
-  ]);
-  const skillEvidence: SkillEvidence[] = (
-    Array.isArray(object.skillEvidence) ? object.skillEvidence : []
-  ).flatMap((raw) => {
-    const item =
-      raw && typeof raw === "object"
-        ? (raw as Record<string, unknown>)
-        : {};
-    const skill = stringValue(item.skill);
-    const grounding = stringValue(item.grounding) as SkillEvidence["grounding"];
-    const skillType = stringValue(item.skillType) as SkillEvidence["skillType"];
-    if (
-      !skill ||
-      !skillEvidenceValues.has(grounding) ||
-      !skillTypes.has(skillType)
-    ) {
-      return [];
-    }
-    return [
-      {
-        skill,
-        grounding,
-        skillType,
-        evidence: Array.isArray(item.evidence)
-          ? item.evidence.map(stringValue).filter(Boolean)
-          : [],
-        rationale: stringValue(item.rationale),
-      },
-    ];
-  });
-  return {
-    summary: stringValue(object.summary),
-    title: stringValue(object.title),
-    skills: Array.isArray(object.skills)
-      ? object.skills.map(stringValue).filter(Boolean)
-      : [],
-    skillEvidence,
-    roles: owners(object.roles),
-    projects: owners(object.projects),
-    additionalSections: (Array.isArray(object.additionalSections)
-      ? object.additionalSections
-      : []
-    ).map((raw) => {
-      const section =
-        raw && typeof raw === "object"
-          ? (raw as Record<string, unknown>)
-          : {};
-      return {
-        id: stringValue(section.id),
-        items: (Array.isArray(section.items) ? section.items : []).map(
-          (itemRaw) => {
-            const item =
-              itemRaw && typeof itemRaw === "object"
-                ? (itemRaw as Record<string, unknown>)
-                : {};
-            return {
-              id: stringValue(item.id),
-              bullets: (Array.isArray(item.bullets)
-                ? item.bullets
-                : []
-              ).map(bullet),
-            };
-          },
-        ),
-      };
-    }),
-    sectionOrder,
-    sectionLabels,
-  };
 }
 
 export async function POST(req: NextRequest) {

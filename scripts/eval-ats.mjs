@@ -11,15 +11,33 @@
 //   node --experimental-strip-types scripts/eval-ats.mjs --jds ./eval/jds --out eval/baseline.jsonl
 //   node --experimental-strip-types scripts/eval-ats.mjs --jds ./eval/jds --compare eval/baseline.jsonl
 //   node --experimental-strip-types scripts/eval-ats.mjs --jds ./eval/jds --resumes ./eval/resumes
+//   node --experimental-strip-types scripts/eval-ats.mjs --resumes ./eval/resumes --rewrite
 //
 // Postings are .txt files. Resumes are .json files in parsed Resume shape (the
 // payload /api/parse-resume returns), so you can build a corpus by saving real
 // parses instead of hand-writing fixtures.
+//
+// --rewrite additionally runs the real optimize pipeline on every
+// resume x posting pair and re-scores the result, which is the only way to see
+// whether a change to the rewrite prompt moves the rubric. It is the expensive
+// mode: one 7000-token completion per pair, so a 5x5 corpus is 25 calls.
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import path from "node:path";
 import { countOccurrences, scoreResume } from "../lib/atsScore.ts";
 import { isNoiseKeyword, sanitizeJobKeywords } from "../lib/jobKeywords.ts";
+import { applyOptimizationToResume } from "../lib/applyOptimization.ts";
+import {
+  normalizeOptimization,
+  validateOptimization,
+} from "../lib/optimizeContract.ts";
+import {
+  constrainRoleOptimizedStructure,
+  enforceLockedOptimization,
+  reconcileGroundedSkills,
+  validateGroundedOptimization,
+  validateLockedOptimization,
+} from "../lib/resumeStructure.ts";
 
 // --- args ------------------------------------------------------------------
 const args = process.argv.slice(2);
@@ -32,6 +50,7 @@ const RESUMES_DIR = flag("resumes");
 const OUT = flag("out");
 const COMPARE = flag("compare");
 const LIMIT = Number(flag("limit", "0")) || Infinity;
+const REWRITE = args.includes("--rewrite");
 
 if (!existsSync(JDS_DIR)) {
   console.error(`No such directory: ${JDS_DIR}
@@ -48,26 +67,39 @@ for (const line of readFileSync(".env.local", "utf8").split("\n")) {
 const BASE = env.NOVITA_BASE_URL || "https://api.novita.ai/v3/openai";
 const MODEL = env.NOVITA_MODEL || "deepseek/deepseek-v3-0324";
 
-// Read the live prompt out of the route so this always evaluates what ships.
-const routeSrc = readFileSync("app/api/parse-job/route.ts", "utf8");
-const SYSTEM = routeSrc.slice(
-  routeSrc.indexOf("const SYSTEM = `") + "const SYSTEM = `".length,
-  routeSrc.indexOf("`;\n\nexport async function POST"),
+// Read the live prompts out of the routes so this always evaluates what ships.
+function sliceTemplate(src, decl, end) {
+  const from = src.indexOf(decl);
+  if (from < 0) throw new Error(`could not find ${decl}`);
+  const start = from + decl.length;
+  const stop = src.indexOf(end, start);
+  if (stop < 0) throw new Error(`could not find the end of ${decl}`);
+  return src.slice(start, stop);
+}
+
+const jobRouteSrc = readFileSync("app/api/parse-job/route.ts", "utf8");
+const SYSTEM = sliceTemplate(jobRouteSrc, "const SYSTEM = `", "`;\n\nexport async function POST");
+
+const optimizeRouteSrc = readFileSync("app/api/optimize/route.ts", "utf8");
+const OPTIMIZE_SYSTEM = sliceTemplate(
+  optimizeRouteSrc,
+  "const FULL_SYSTEM = `",
+  "`;\n\nconst PRESERVE_SYSTEM",
 );
 
-async function parseJob(text) {
+async function complete({ system, user, maxTokens }) {
   const res = await fetch(`${BASE}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.NOVITA_API_KEY}` },
     body: JSON.stringify({
       model: MODEL,
       messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: `Job description:\n\n${text.slice(0, 8000)}` },
+        { role: "system", content: system },
+        { role: "user", content: user },
       ],
       response_format: { type: "json_object" },
       temperature: 0.4,
-      max_tokens: 1500,
+      max_tokens: maxTokens,
     }),
   });
   const raw = (await res.json())?.choices?.[0]?.message?.content?.trim() ?? "";
@@ -77,6 +109,53 @@ async function parseJob(text) {
   } catch {
     return JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
   }
+}
+
+function parseJob(text) {
+  return complete({
+    system: SYSTEM,
+    user: `Job description:\n\n${text.slice(0, 8000)}`,
+    maxTokens: 1500,
+  });
+}
+
+// Mirrors POST /api/optimize in "optimize" structure mode with nothing locked.
+// The one deliberate omission is reviewSemanticGrounding, which is a second
+// model call per attempt; issue counts here are therefore a lower bound.
+async function rewriteOnce(resume, job, report) {
+  const raw = await complete({
+    system: OPTIMIZE_SYSTEM,
+    user: `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}\n\nUser-locked content ids (return their text verbatim):\n[]\n\nLocked wording baseline:\nnull`,
+    maxTokens: 7000,
+  });
+
+  const normalized = normalizeOptimization(raw);
+  const grounded = reconcileGroundedSkills(
+    resume,
+    normalized.skills,
+    normalized.skillEvidence,
+  );
+  normalized.skills = grounded.skills;
+  normalized.skillEvidence = grounded.skillEvidence;
+
+  const structured = constrainRoleOptimizedStructure({ resume, candidate: normalized });
+  const opt = enforceLockedOptimization({
+    resume,
+    candidate: structured,
+    baseline: null,
+    lockedContentIds: [],
+  });
+  const issues = [
+    ...validateOptimization(resume, opt, job),
+    ...validateGroundedOptimization(resume, opt),
+    ...validateLockedOptimization({
+      resume,
+      candidate: opt,
+      baseline: null,
+      lockedContentIds: [],
+    }),
+  ];
+  return { optimization: opt, issues };
 }
 
 // --- automatic suspicion flags --------------------------------------------
@@ -110,6 +189,11 @@ const resumes = RESUMES_DIR && existsSync(RESUMES_DIR)
       .map((f) => ({ name: f, resume: JSON.parse(readFileSync(path.join(RESUMES_DIR, f), "utf8")) }))
   : [];
 
+if (REWRITE && resumes.length === 0) {
+  console.error("--rewrite needs --resumes <dir> holding at least one .json resume.");
+  process.exit(1);
+}
+
 console.log(`model: ${MODEL}`);
 console.log(`postings: ${files.length}${resumes.length ? `   resumes: ${resumes.length}` : ""}\n`);
 
@@ -133,10 +217,41 @@ for (const [i, file] of files.entries()) {
     return f.length ? [{ keyword: k, flags: f }] : [];
   });
 
-  const scores = resumes.map(({ name, resume }) => ({
-    resume: name,
-    score: scoreResume(resume, clean).overall,
-  }));
+  const scores = [];
+  for (const { name, resume } of resumes) {
+    const before = scoreResume(resume, clean);
+    const entry = { resume: name, score: before.overall };
+    if (REWRITE) {
+      // /api/analyze projects an optimistic "after" here via a helper private
+      // to that route. The projection is only context for the model, never a
+      // measurement, so the eval passes the real before-scores for both.
+      const report = {
+        overallBefore: before.overall,
+        overallAfter: before.overall,
+        categoriesBefore: before.categories,
+        categoriesAfter: before.categories,
+        missingKeywords: before.missingKeywords,
+        presentKeywords: before.matchedKeywords,
+        stuffingWarnings: before.stuffing.warnings,
+      };
+      try {
+        const { optimization, issues } = await rewriteOnce(resume, clean, report);
+        const after = scoreResume(applyOptimizationToResume(resume, optimization), clean);
+        const byLabel = new Map(before.categories.map((c) => [c.label, c.score]));
+        entry.rewrite = {
+          after: after.overall,
+          issues: issues.length,
+          firstIssues: issues.slice(0, 3),
+          categories: Object.fromEntries(
+            after.categories.map((c) => [c.label, c.score - (byLabel.get(c.label) ?? 0)]),
+          ),
+        };
+      } catch (e) {
+        entry.rewrite = { error: String(e.message) };
+      }
+    }
+    scores.push(entry);
+  }
 
   rows.push({
     file,
@@ -156,6 +271,23 @@ for (const [i, file] of files.entries()) {
   if (cut.length) console.log(`      cut: ${cut.join(", ")}`);
   for (const s of surviving) console.log(`      ${s.flags.join("+")}: "${s.keyword}"`);
   if (scores.length) console.log(`      scores: ${scores.map((s) => `${s.resume.replace(/\.json$/, "")}=${s.score}`).join("  ")}`);
+  for (const s of scores) {
+    if (!s.rewrite) continue;
+    const who = s.resume.replace(/\.json$/, "");
+    if (s.rewrite.error) {
+      console.log(`      rewrite ${who}: FAILED: ${s.rewrite.error}`);
+      continue;
+    }
+    const moved = Object.entries(s.rewrite.categories)
+      .filter(([, d]) => d !== 0)
+      .map(([label, d]) => `${label} ${d > 0 ? "+" : ""}${d}`);
+    console.log(
+      `      rewrite ${who}: ${s.score} -> ${s.rewrite.after}` +
+        `   ${s.rewrite.issues} issue${s.rewrite.issues === 1 ? "" : "s"}` +
+        (moved.length ? `   ${moved.join(", ")}` : "   no category moved"),
+    );
+    for (const issue of s.rewrite.firstIssues) console.log(`         ! ${issue}`);
+  }
 }
 
 function rawCountLabel(raw, clean) {
@@ -180,6 +312,31 @@ if (resumes.length) {
     if (!vals.length) continue;
     const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
     console.log(`score ${name.replace(/\.json$/, "").padEnd(14)} min ${Math.min(...vals)}  avg ${avg.toFixed(1)}  max ${Math.max(...vals)}`);
+  }
+}
+
+if (REWRITE) {
+  const runs = ok.flatMap((r) => r.scores.filter((s) => s.rewrite && !s.rewrite.error));
+  const failed = ok.flatMap((r) => r.scores.filter((s) => s.rewrite?.error)).length;
+  if (runs.length) {
+    const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    const overall = mean(runs.map((s) => s.rewrite.after - s.score));
+    console.log(`rewrites            ${runs.length} scored, ${failed} failed`);
+    console.log(`overall delta       ${overall >= 0 ? "+" : ""}${overall.toFixed(1)} avg`);
+    // The per-category means are the actionable half: a prompt change that
+    // claims to fix Title match has to show up on this line or it did not work.
+    for (const label of Object.keys(runs[0].rewrite.categories)) {
+      const ds = runs.map((s) => s.rewrite.categories[label]);
+      const avg = mean(ds);
+      const gained = ds.filter((d) => d > 0).length;
+      const lost = ds.filter((d) => d < 0).length;
+      console.log(
+        `  ${label.padEnd(18)}${avg >= 0 ? "+" : ""}${avg.toFixed(1)} avg   ` +
+          `${gained} up, ${lost} down, ${ds.length - gained - lost} flat`,
+      );
+    }
+    const cleanRuns = runs.filter((s) => s.rewrite.issues === 0).length;
+    console.log(`passed validation   ${cleanRuns}/${runs.length} on the first attempt`);
   }
 }
 console.log("=".repeat(58));

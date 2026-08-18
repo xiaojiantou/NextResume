@@ -1,0 +1,3 @@
+# Real parses carry personal contact details; keep the corpus local.
+*.json
+!example-platform.json

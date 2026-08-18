@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   MAX_KEYWORD_REPEATS,
+  countOccurrences,
   detectStuffing,
   resumeToText,
   scoreResume,
   titleTokens,
 } from "../lib/atsScore.ts";
+import { sanitizeKeywords } from "../lib/jobKeywords.ts";
 
 const job = {
   title: "Intern: AI Engineering",
@@ -320,4 +322,54 @@ test("resumeToText reaches every section an ATS would index", () => {
   for (const needle of ["rust", "kubernetes operator", "vector database", "northeastern"]) {
     assert.ok(text.includes(needle), `resumeToText dropped: ${needle}`);
   }
+});
+
+test("keyword matching accepts registered spelling variants in both directions", () => {
+  // A spelling difference used to be indistinguishable from a missing skill:
+  // "K8s" on the resume scored zero against a posting saying "Kubernetes", and
+  // the advice then told the candidate to add a tool they already had.
+  assert.ok(countOccurrences("ran workloads on k8s", "Kubernetes") > 0);
+  assert.ok(countOccurrences("ran workloads on kubernetes", "K8s") > 0);
+  assert.ok(countOccurrences("tuned postgres replicas", "PostgreSQL") > 0);
+  assert.ok(countOccurrences("built services in nodejs", "Node.js") > 0);
+  assert.ok(countOccurrences("shipped ml pipelines", "machine learning") > 0);
+  assert.ok(countOccurrences("deployed on gcp", "Google Cloud Platform") > 0);
+});
+
+test("aliases never loosen word boundaries or admit mere similarity", () => {
+  // "ML" is a registered alias of machine learning, but it must not be found
+  // inside HTML or XML.
+  assert.equal(countOccurrences("wrote html and xml parsers", "machine learning"), 0);
+  assert.equal(countOccurrences("built a JavaScript runtime", "Java"), 0);
+  // The similarity case this table deliberately refuses: Tupperware is Meta's
+  // container orchestration platform, but a recruiter filtering on Kubernetes
+  // will not surface it, so scoring it as a match would inflate our number
+  // without moving the outcome the number exists to predict.
+  assert.equal(countOccurrences("scaled services on Tupperware", "Kubernetes"), 0);
+  // A term with no registered variants still matches only itself.
+  assert.equal(countOccurrences("used Terraform", "Terraform"), 1);
+  assert.equal(countOccurrences("used Terraform", "Pulumi"), 0);
+});
+
+test("alias expansion raises keyword match on a resume that already had the skill", () => {
+  const aliasJob = {
+    ...job,
+    requiredKeywords: ["Kubernetes", "PostgreSQL"],
+    niceToHaveKeywords: [],
+  };
+  const before = scoreResume(resume(), aliasJob).missingKeywords;
+  assert.deepEqual(before, ["Kubernetes", "PostgreSQL"]);
+
+  const withAliases = resume({
+    skills: ["K8s", "Postgres"],
+  });
+  const after = scoreResume(withAliases, aliasJob);
+  assert.deepEqual(after.missingKeywords, []);
+});
+
+test("heading detection still fires for a keyword that has aliases", () => {
+  // countOccurrences expands both sides of the heading comparison, so a
+  // posting whose only mention of a term is a bolded label stays filtered.
+  const posting = "Machine Learning:\nBuild models with PyTorch and deploy them.";
+  assert.deepEqual(sanitizeKeywords(["Machine Learning", "PyTorch"], posting), ["PyTorch"]);
 });
