@@ -1,36 +1,47 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
-// Format-preserving LaTeX export. The optimized wording is spliced into the
-// ranges of the user's own .tex; the preamble, custom macros, spacing, and
-// every untouched line stay byte-identical, so the file still compiles as the
-// document they wrote. We deliberately do not compile it here — that needs a
-// TeX distribution, which does not fit this deployment.
+// Compiles the user's own .tex — after the optimized wording has been written
+// into it — and returns the PDF. The edit step is shared with the .tex
+// download, so the compiled output is always the same document.
 import { NextRequest, NextResponse } from "next/server";
 import { requirePaidOrder } from "@/lib/entitlement";
 import { rateLimitGuard } from "@/lib/ratelimit";
 import { buildEditedTex, NoTexEditsError } from "@/lib/tex/export";
+import { compileLatex, isLatexCompilerConfigured } from "@/lib/latexCompiler";
 import type { Optimization, Resume } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const EXPORT_LIMIT = {
-  key: "export-tex",
-  limit: 10,
+// Compiling costs real CPU on a service we pay for, so it is metered harder
+// than handing back a text file.
+const COMPILE_LIMIT = {
+  key: "export-tex-pdf",
+  limit: 5,
   windowMs: 60_000,
 };
 
-const MAX_SOURCE_BYTES = 5 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
 
 function safeFilename(name: string, target: string): string {
   const base = (name || "resume").trim().replace(/[^\p{L}\p{N}\-_ ]/gu, "");
   const suffix = (target || "").trim().replace(/[^\p{L}\p{N}\-_ ]/gu, "");
-  return `${[base || "resume", suffix].filter(Boolean).join(" — ")}.tex`;
+  return `${[base || "resume", suffix].filter(Boolean).join(" — ")}.pdf`;
 }
 
 export async function POST(req: NextRequest) {
-  const rl = rateLimitGuard(req, EXPORT_LIMIT);
+  const rl = rateLimitGuard(req, COMPILE_LIMIT);
   if (rl) return rl;
+
+  if (!isLatexCompilerConfigured()) {
+    return NextResponse.json(
+      {
+        error:
+          "PDF compilation is not enabled here. Download the .tex and build it in Overleaf.",
+      },
+      { status: 501 },
+    );
+  }
 
   const entitlement = await requirePaidOrder(req);
   if (!entitlement.ok) return entitlement.response;
@@ -59,10 +70,7 @@ export async function POST(req: NextRequest) {
     }
     if (typeof sourceTex !== "string" || !sourceTex) {
       return NextResponse.json(
-        {
-          error:
-            "The original LaTeX source is no longer available. Paste it again to keep your formatting.",
-        },
+        { error: "The original LaTeX source is no longer available." },
         { status: 400 },
       );
     }
@@ -74,6 +82,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
     let edited;
     try {
       edited = buildEditedTex({
@@ -85,33 +94,43 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       if (error instanceof NoTexEditsError) {
         return NextResponse.json(
-          {
-            error: `${error.message} Download the rebuilt PDF instead.`,
-            unplaced: error.unplaced.slice(0, 12),
-          },
+          { error: error.message, unplaced: error.unplaced.slice(0, 12) },
           { status: 409 },
         );
       }
       throw error;
     }
 
+    const compiled = await compileLatex(edited.source);
+    if (!compiled.ok) {
+      return NextResponse.json(
+        {
+          error: compiled.error,
+          // The TeX log is the only thing that explains a template we cannot
+          // build, and it is the user's own document.
+          log: compiled.log,
+        },
+        { status: compiled.status },
+      );
+    }
+
     const filename = safeFilename(resume.name, targetTitle || "");
     const asciiName = filename.replace(/[^\x20-\x7E]/g, "_");
 
-    return new NextResponse(edited.source, {
+    return new NextResponse(compiled.pdf as unknown as BodyInit, {
       status: 200,
       headers: {
-        "Content-Type": "application/x-tex; charset=utf-8",
+        "Content-Type": "application/pdf",
+        "Content-Length": String(compiled.pdf.length),
         "Content-Disposition": `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "Cache-Control": "private, no-store",
         "X-Resume-Edits-Applied": String(edited.applied.length),
         "X-Resume-Edits-Skipped": String(edited.skipped.length),
         "X-Resume-Edits-Unplaced": String(edited.unplaced.length),
-        "X-Resume-Edit-Coverage": edited.coverage.toFixed(2),
       },
     });
   } catch (e) {
-    console.error("tex export failed", e);
+    console.error("tex pdf export failed", e);
     const message = e instanceof Error ? e.message : "LaTeX export failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

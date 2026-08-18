@@ -761,7 +761,7 @@ function ResultPageInner() {
   // user's own file, so nothing is re-laid-out and their original typography,
   // spacing, and hyperlinks survive untouched. Word and LaTeX differ only in
   // which endpoint reads the source.
-  const downloadSource = async () => {
+  const downloadSource = async (compiled = false) => {
     if (!resume || !optimization || !sourceDocument) return;
     const isTex = sourceDocument.kind === "tex";
     setExporting(true);
@@ -772,7 +772,11 @@ function ResultPageInner() {
         throw new Error("Regenerate before downloading.");
       }
       const res = await fetch(
-        isTex ? "/api/export/tex" : "/api/export/docx",
+        isTex
+          ? compiled
+            ? "/api/export/tex/pdf"
+            : "/api/export/tex"
+          : "/api/export/docx",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
@@ -789,9 +793,14 @@ function ResultPageInner() {
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        // A TeX log is the only thing that explains a template we cannot
+        // build, so it is shown rather than swallowed.
+        const detail =
+          typeof data.log === "string" && data.log.trim()
+            ? `\n\n${data.log.trim().split("\n").slice(0, 4).join("\n")}`
+            : "";
         throw new Error(
-          data.error ||
-            `${isTex ? "LaTeX" : "Word"} export failed (${res.status})`,
+          `${data.error || `${isTex ? "LaTeX" : "Word"} export failed (${res.status})`}${detail}`,
         );
       }
       // Some lines deliberately keep their original wording: anything carrying
@@ -807,7 +816,7 @@ function ResultPageInner() {
       }
       await saveResponseAsFile(
         res,
-        `${resume.name || "resume"}.${isTex ? "tex" : "docx"}`,
+        `${resume.name || "resume"}.${compiled ? "pdf" : isTex ? "tex" : "docx"}`,
       );
     } catch (downloadFailure) {
       setExportError(
@@ -1438,6 +1447,17 @@ function ResultPageInner() {
                 {sourceDocument.kind === "tex"
                   ? "Download .tex"
                   : "Download Word"}
+              </button>
+            ) : null}
+            {sourceDocument?.kind === "tex" &&
+            process.env.NEXT_PUBLIC_LATEX_COMPILER === "1" ? (
+              <button
+                className="btn btn-outline"
+                onClick={() => void downloadSource(true)}
+                disabled={exporting || generating || structureStale}
+                title="Compiles your own LaTeX, so the PDF is your template's typesetting rather than one of ours"
+              >
+                <FileDown size={14} /> PDF from your LaTeX
               </button>
             ) : null}
           </div>
