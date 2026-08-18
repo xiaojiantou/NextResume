@@ -46,14 +46,14 @@ type State = {
   fileSize: number | null;
   fileFingerprint: string | null;
   /**
-   * The uploaded .docx itself, base64, kept so the optimized wording can be
-   * written back into the user's own document instead of being re-laid-out
-   * in one of our templates. Deliberately excluded from localStorage: it is
-   * far larger than the rest of the flow state and would risk the storage
-   * quota. Losing it on reload only costs the format-preserving export, which
+   * The uploaded document itself, base64, kept so the optimized wording can be
+   * written back into the user's own file instead of being re-laid-out in one
+   * of our templates. Deliberately excluded from localStorage: it is far
+   * larger than the rest of the flow state and would risk the storage quota.
+   * Losing it on reload only costs the format-preserving export, which
    * degrades to the rebuilt PDF.
    */
-  sourceDocx: string | null;
+  sourceDocument: { kind: "docx" | "tex"; base64: string } | null;
   resume: Resume | null;
   resumeStyleSource: ResumeStyleSource | null;
   personalizedStyleProfile: ResumeStyleProfile | null;
@@ -107,7 +107,9 @@ type Actions = {
   setResumeStyleSource: (source: ResumeStyleSource | null) => void;
   setPersonalizedStyleProfile: (profile: ResumeStyleProfile | null) => void;
   setPersonalizedStatus: (s: PersonalizedStatus) => void;
-  setSourceDocx: (base64: string | null) => void;
+  setSourceDocument: (
+    document: { kind: "docx" | "tex"; base64: string } | null,
+  ) => void;
   clearFile: () => void;
 
   setJobDescription: (text: string) => void;
@@ -162,7 +164,7 @@ const initial: State = {
   fileType: null,
   fileSize: null,
   fileFingerprint: null,
-  sourceDocx: null,
+  sourceDocument: null,
   resume: null,
   resumeStyleSource: null,
   personalizedStyleProfile: null,
@@ -271,14 +273,14 @@ export const useFlow = create<State & Actions>()(
           personalizedStatus: profile ? "ready" : "idle",
         }),
       setPersonalizedStatus: (s) => set({ personalizedStatus: s }),
-      setSourceDocx: (base64) => set({ sourceDocx: base64 }),
+      setSourceDocument: (document) => set({ sourceDocument: document }),
       clearFile: () =>
         set({
           fileName: null,
           fileType: null,
           fileSize: null,
           fileFingerprint: null,
-          sourceDocx: null,
+          sourceDocument: null,
           resume: null,
           resumeStyleSource: null,
           personalizedStyleProfile: null,
@@ -522,7 +524,7 @@ export const useFlow = create<State & Actions>()(
       name: "nextresume-flow",
       storage: createJSONStorage(() => localStorage),
       // Everything except the raw source document, which is memory-only.
-      partialize: ({ sourceDocx: _sourceDocx, ...rest }) => rest,
+      partialize: ({ sourceDocument: _sourceDocument, ...rest }) => rest,
     },
   ),
 );

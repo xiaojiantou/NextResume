@@ -16,7 +16,7 @@ import {
   alignToParagraphs,
   normalizeParagraphText,
   similarity,
-} from "../lib/docx/align.ts";
+} from "../lib/alignParagraphs.ts";
 import { readDocxDocument, rewriteDocx } from "../lib/docx/file.ts";
 import {
   DOCUMENT_RELS,

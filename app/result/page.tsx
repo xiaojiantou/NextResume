@@ -154,7 +154,7 @@ async function saveResponseAsFile(res: Response, fallbackName: string) {
 function ResultPageInner() {
   const {
     resume,
-    sourceDocx,
+    sourceDocument,
     job,
     report,
     optimization,
@@ -740,10 +740,12 @@ function ResultPageInner() {
   };
 
   // Format-preserving export: the optimized wording is written back into the
-  // user's own .docx, so nothing is re-laid-out and their original typography,
-  // spacing, and hyperlinks survive untouched.
-  const downloadDocx = async () => {
-    if (!resume || !optimization || !sourceDocx) return;
+  // user's own file, so nothing is re-laid-out and their original typography,
+  // spacing, and hyperlinks survive untouched. Word and LaTeX differ only in
+  // which endpoint reads the source.
+  const downloadSource = async () => {
+    if (!resume || !optimization || !sourceDocument) return;
+    const isTex = sourceDocument.kind === "tex";
     setExporting(true);
     setExportError(null);
     setExportNotice(null);
@@ -751,24 +753,32 @@ function ResultPageInner() {
       if (structureStale) {
         throw new Error("Regenerate before downloading.");
       }
-      const res = await fetch("/api/export/docx", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
-        body: JSON.stringify({
-          resume,
-          optimization,
-          sourceDocx,
-          targetTitle: job?.title || "",
-          includeSummary: summaryEnabled,
-        }),
-      });
+      const res = await fetch(
+        isTex ? "/api/export/tex" : "/api/export/docx",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+          body: JSON.stringify({
+            resume,
+            optimization,
+            ...(isTex
+              ? { sourceTex: sourceDocument.base64 }
+              : { sourceDocx: sourceDocument.base64 }),
+            targetTitle: job?.title || "",
+            includeSummary: summaryEnabled,
+          }),
+        },
+      );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Word export failed (${res.status})`);
+        throw new Error(
+          data.error ||
+            `${isTex ? "LaTeX" : "Word"} export failed (${res.status})`,
+        );
       }
-      // Some paragraphs deliberately keep their original wording: any line
-      // carrying a hyperlink is never rewritten, and anything we could not
-      // locate with certainty is left alone rather than guessed at.
+      // Some lines deliberately keep their original wording: anything carrying
+      // a hyperlink is never rewritten, and anything we could not locate with
+      // certainty is left alone rather than guessed at.
       const kept =
         Number(res.headers.get("X-Resume-Edits-Skipped") || "0") +
         Number(res.headers.get("X-Resume-Edits-Unplaced") || "0");
@@ -777,12 +787,15 @@ function ResultPageInner() {
           `${kept} ${kept === 1 ? "line" : "lines"} kept the original wording so your formatting and links stayed intact. Everything else was updated in place.`,
         );
       }
-      await saveResponseAsFile(res, `${resume.name || "resume"}.docx`);
+      await saveResponseAsFile(
+        res,
+        `${resume.name || "resume"}.${isTex ? "tex" : "docx"}`,
+      );
     } catch (downloadFailure) {
       setExportError(
         downloadFailure instanceof Error
           ? downloadFailure.message
-          : "Word export failed.",
+          : "Export failed.",
       );
     } finally {
       setExporting(false);
@@ -1394,14 +1407,19 @@ function ResultPageInner() {
                 </>
               )}
             </button>
-            {sourceDocx ? (
+            {sourceDocument ? (
               <button
                 className="btn btn-outline"
-                onClick={() => void downloadDocx()}
+                onClick={() => void downloadSource()}
                 disabled={exporting || generating || structureStale}
-                title="Writes the new wording into your original Word file, keeping its exact formatting and links"
+                title={`Writes the new wording into your original ${
+                  sourceDocument.kind === "tex" ? "LaTeX source" : "Word file"
+                }, keeping its exact formatting and links`}
               >
-                <FileText size={14} /> Download Word
+                <FileText size={14} />{" "}
+                {sourceDocument.kind === "tex"
+                  ? "Download .tex"
+                  : "Download Word"}
               </button>
             ) : null}
           </div>

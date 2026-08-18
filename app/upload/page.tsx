@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Briefcase,
   CheckCircle2,
+  Code2,
   FileText,
   Globe,
   ImageUp,
@@ -173,7 +174,7 @@ export default function UploadPage() {
     fileSize,
     resume,
     setFileMeta,
-    setSourceDocx,
+    setSourceDocument,
     setResume,
     setResumeStyleSource,
     clearFile,
@@ -193,6 +194,8 @@ export default function UploadPage() {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [mode, setMode] = useState<"paste" | "url" | "image">("paste");
+  const [resumeMode, setResumeMode] = useState<"file" | "latex">("file");
+  const [latexSource, setLatexSource] = useState("");
   const [importing, setImporting] = useState(false);
   const [importingImage, setImportingImage] = useState(false);
   const [jobError, setJobError] = useState<string | null>(null);
@@ -233,9 +236,14 @@ export default function UploadPage() {
       try {
         const fingerprint = await fingerprintFile(f);
         setFileMeta(f.name, t, f.size, fingerprint);
-        // Hold on to the original Word file so the optimized wording can be
-        // written back into it later, preserving the user's own formatting.
-        setSourceDocx(t === "docx" ? await encodeFileBase64(f) : null);
+        // Hold on to the original file so the optimized wording can be written
+        // back into it later, preserving the user's own formatting. Only the
+        // editable formats can be rewritten in place; a PDF cannot.
+        setSourceDocument(
+          t === "docx" || t === "tex"
+            ? { kind: t, base64: await encodeFileBase64(f) }
+            : null,
+        );
         const data = await uploadResume(f, (pct, ph) => {
           setProgress(pct);
           setPhase(ph);
@@ -251,7 +259,13 @@ export default function UploadPage() {
         setParsing(false);
       }
     },
-    [setFileMeta, setSourceDocx, setResume, setResumeStyleSource, clearFile],
+    [
+      setFileMeta,
+      setSourceDocument,
+      setResume,
+      setResumeStyleSource,
+      clearFile,
+    ],
   );
 
   const importFromUrl = async () => {
@@ -376,6 +390,76 @@ export default function UploadPage() {
             />
 
             {!fileName ? (
+              <div className="mt-4 inline-flex bg-ink-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setResumeMode("file")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                    resumeMode === "file"
+                      ? "bg-white text-ink-900 shadow-soft"
+                      : "text-ink-500"
+                  }`}
+                >
+                  <Upload size={13} className="inline mr-1.5 -mt-0.5" />
+                  Upload file
+                </button>
+                <button
+                  onClick={() => setResumeMode("latex")}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
+                    resumeMode === "latex"
+                      ? "bg-white text-ink-900 shadow-soft"
+                      : "text-ink-500"
+                  }`}
+                >
+                  <Code2 size={13} className="inline mr-1.5 -mt-0.5" />
+                  Paste LaTeX
+                </button>
+              </div>
+            ) : null}
+
+            {!fileName && resumeMode === "latex" ? (
+              <div className="mt-4 card overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-ink-100 flex items-center justify-between bg-ink-50/50">
+                  <span className="text-xs text-ink-500">
+                    LaTeX source ·{" "}
+                    <span className="tabular-nums">
+                      {latexSource.length.toLocaleString()}
+                    </span>{" "}
+                    characters
+                  </span>
+                  <span className="text-xs text-ink-400">
+                    Overleaf: select all in the editor and copy
+                  </span>
+                </div>
+                <textarea
+                  value={latexSource}
+                  onChange={(e) => setLatexSource(e.target.value)}
+                  spellCheck={false}
+                  placeholder={"\\documentclass[letterpaper,11pt]{article}\n..."}
+                  className="w-full h-64 px-4 py-3 text-[13px] font-mono resize-none outline-none"
+                />
+                <div className="px-4 py-3 border-t border-ink-100 flex items-center justify-between gap-3">
+                  <span className="text-xs text-ink-400">
+                    We keep your source so the optimized wording can be written
+                    back into it, preamble untouched.
+                  </span>
+                  <button
+                    className="btn btn-primary shrink-0"
+                    disabled={latexSource.trim().length < 50 || parsing}
+                    onClick={() =>
+                      handle(
+                        new File([latexSource], "pasted-resume.tex", {
+                          type: "text/x-tex",
+                        }),
+                      )
+                    }
+                  >
+                    Use this LaTeX
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {!fileName && resumeMode === "file" ? (
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -418,7 +502,7 @@ export default function UploadPage() {
                   PDF, DOCX or .tex · Max 10MB
                 </div>
               </div>
-            ) : (
+            ) : fileName ? (
               <div className="mt-4 card p-5 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-ink-100 text-ink-700 inline-flex items-center justify-center shrink-0">
                   {parsing ? (
@@ -476,7 +560,7 @@ export default function UploadPage() {
                   <X size={16} />
                 </button>
               </div>
-            )}
+            ) : null}
 
             {resumeError && (
               <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
