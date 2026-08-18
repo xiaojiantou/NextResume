@@ -52,6 +52,17 @@ async function fingerprintFile(file: File): Promise<string> {
     .join("");
 }
 
+// btoa needs a binary string, and spreading a whole resume into
+// String.fromCharCode overflows the call stack, so convert in chunks.
+async function encodeFileBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
+}
+
 type ParseResponse = {
   resume: Resume;
   styleSource?: ResumeStyleSource | null;
@@ -162,6 +173,7 @@ export default function UploadPage() {
     fileSize,
     resume,
     setFileMeta,
+    setSourceDocx,
     setResume,
     setResumeStyleSource,
     clearFile,
@@ -214,6 +226,9 @@ export default function UploadPage() {
       try {
         const fingerprint = await fingerprintFile(f);
         setFileMeta(f.name, t, f.size, fingerprint);
+        // Hold on to the original Word file so the optimized wording can be
+        // written back into it later, preserving the user's own formatting.
+        setSourceDocx(t === "docx" ? await encodeFileBase64(f) : null);
         const data = await uploadResume(f, (pct, ph) => {
           setProgress(pct);
           setPhase(ph);
@@ -229,7 +244,7 @@ export default function UploadPage() {
         setParsing(false);
       }
     },
-    [setFileMeta, setResume, setResumeStyleSource, clearFile],
+    [setFileMeta, setSourceDocx, setResume, setResumeStyleSource, clearFile],
   );
 
   const importFromUrl = async () => {
