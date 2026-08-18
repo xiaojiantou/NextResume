@@ -32,7 +32,16 @@ import type {
 import { reviewSemanticGrounding } from "@/lib/semanticResumeValidation";
 
 export const runtime = "nodejs";
-export const maxDuration = 90;
+export const maxDuration = 300;
+
+// A 7000-token rewrite on a slow model runs 60-90s, and we allow 3 correction
+// rounds — 90s of platform budget guaranteed a FUNCTION_INVOCATION_TIMEOUT,
+// which Vercel answers with an HTML 504 the client cannot parse. Budget the
+// loop ourselves and leave headroom to serialize a real JSON error.
+const TOTAL_BUDGET_MS = 270_000;
+const ATTEMPT_TIMEOUT_MS = 110_000;
+// Below this there is no point starting another generation; report instead.
+const MIN_ATTEMPT_MS = 25_000;
 
 const FULL_SYSTEM = `You rewrite a resume to be tailored to a specific job description. This is the most important rule:
 
@@ -531,19 +540,45 @@ export async function POST(req: NextRequest) {
 
     let feedback = "";
     let lastIssues: string[] = [];
+    let ranOutOfTime = false;
     const attempts = 3;
+    const deadline = Date.now() + TOTAL_BUDGET_MS;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      const raw = await jsonCompletion<unknown>({
-        system:
-          structureMode === "preserve" ? PRESERVE_SYSTEM : FULL_SYSTEM,
-        user: `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}\n\nUser-locked content ids (return their text verbatim):\n${JSON.stringify(lockedContentIds)}\n\nLocked wording baseline:\n${JSON.stringify(baselineOptimization)}${
-          feedback
-            ? `\n\nYour previous response violated these constraints. Correct every issue without inventing or dropping source content:\n${feedback}`
-            : ""
-        }`,
-        model,
-        maxTokens: 7000,
-      });
+      const budgetLeft = deadline - Date.now();
+      if (budgetLeft < MIN_ATTEMPT_MS) {
+        ranOutOfTime = true;
+        break;
+      }
+      const controller = new AbortController();
+      const attemptTimer = setTimeout(
+        () => controller.abort(),
+        Math.min(budgetLeft, ATTEMPT_TIMEOUT_MS),
+      );
+      let raw: unknown;
+      try {
+        raw = await jsonCompletion<unknown>({
+          system:
+            structureMode === "preserve" ? PRESERVE_SYSTEM : FULL_SYSTEM,
+          user: `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}\n\nUser-locked content ids (return their text verbatim):\n${JSON.stringify(lockedContentIds)}\n\nLocked wording baseline:\n${JSON.stringify(baselineOptimization)}${
+            feedback
+              ? `\n\nYour previous response violated these constraints. Correct every issue without inventing or dropping source content:\n${feedback}`
+              : ""
+          }`,
+          model,
+          maxTokens: 7000,
+          signal: controller.signal,
+        });
+      } catch (attemptFailure) {
+        // A retry of a generation that already blew the per-attempt ceiling
+        // just burns the rest of the budget, so stop and say so.
+        if (controller.signal.aborted) {
+          ranOutOfTime = true;
+          break;
+        }
+        throw attemptFailure;
+      } finally {
+        clearTimeout(attemptTimer);
+      }
       const normalized = normalizeOptimization(raw);
       if (structureMode === "optimize") {
         const grounded = reconcileGroundedSkills(
@@ -606,12 +641,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ optimization: opt });
     }
 
+    // Concrete safety issues beat a generic timeout notice: if we collected
+    // any, the user gets something actionable even though we stopped early.
+    if (ranOutOfTime && lastIssues.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "The model took too long to rewrite this resume. Nothing was changed — retry, or pick a faster model.",
+          code: "model_timeout",
+        },
+        { status: 504 },
+      );
+    }
+
     return NextResponse.json(
       {
         error:
           structureMode === "preserve"
             ? "The rewrite could not pass the factual safety checks while keeping the original structure."
-            : "The rewrite could not pass the factual safety checks after 3 attempts.",
+            : "The rewrite could not pass the factual safety checks.",
         issues: [...new Set(lastIssues.map(publicOptimizationIssue))].slice(
           0,
           12,

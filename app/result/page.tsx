@@ -84,6 +84,38 @@ import {
 type View = "split" | "optimized" | "original" | "edit";
 type ContentVersion = "full" | "fitted";
 
+// The rewrite is one non-streaming request, so there is no real completion
+// percentage to report. These name the work /api/optimize actually does, in
+// the order it does it, and the bar tracks the stage — it never claims to
+// know how much is left, and it never reaches 100% before the response lands.
+const REWRITE_PROGRESS_STAGES = [
+  "Reading your experience",
+  "Matching against the job description",
+  "Rewriting bullets with evidence",
+  "Checking every claim against your resume",
+  "Reordering for the target role",
+  "Scoring the result",
+] as const;
+
+const REWRITE_STAGE_MS = 5_000;
+
+// A platform-level failure (gateway timeout, crashed function) answers with an
+// HTML body, so `data.error` is undefined and the user used to get a bare
+// "Optimization failed" with nothing to act on. Name the failure by status.
+function describeFailure(status: number): string {
+  if (status === 504 || status === 408) {
+    return "The optimizer timed out. Retry, or pick a faster model.";
+  }
+  if (status === 502 || status === 503) {
+    return "The optimizer is temporarily unavailable. Try again in a moment.";
+  }
+  if (status === 413) {
+    return "This resume is too large to optimize in one request.";
+  }
+  return `Optimization failed (HTTP ${status}).`;
+}
+
+
 export default function ResultPage() {
   return (
     <Suspense
@@ -163,6 +195,8 @@ function ResultPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [hydrating, setHydrating] = useState(false);
+  const [rewriteStage, setRewriteStage] = useState(0);
+
   const ran = useRef(false);
   const personalizeRan = useRef(false);
   const fitAbortRef = useRef<AbortController | null>(null);
@@ -182,6 +216,10 @@ function ResultPageInner() {
   // Auto default: keep the AI summary only when the source resume already
   // had a summary section. Users whose resume had none opt in explicitly.
   const summaryEnabled = includeSummary ?? Boolean(resume?.summary);
+
+  // The rewrite screen is up whenever there is no optimization to show yet.
+  const rewriting = generating || !optimization;
+
 
   // Re-score the rewritten resume with the same rubric the original was
   // scored with, so the "after" number the user sees is measured, not the
@@ -261,7 +299,7 @@ function ResultPageInner() {
               )
             : [],
         );
-        throw new Error(data.error || "Optimization failed");
+        throw new Error(data.error || describeFailure(res.status));
       }
       setOptimization(data.optimization, modelId, structureMode);
       void rescoreOptimized(
@@ -758,9 +796,25 @@ function ResultPageInner() {
   // Runs alongside runOptimize (not blocking it) — the personalized style
   // takes far longer than the fixed templates, so it shouldn't hold up the
   // rest of the page. Only fires once per resume, at most.
+  // Advance the rewrite stages while that screen is up, holding on the last
+  // one until the request resolves.
+  useEffect(() => {
+    if (!rewriting) {
+      setRewriteStage(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setRewriteStage((stage) =>
+        Math.min(stage + 1, REWRITE_PROGRESS_STAGES.length - 1),
+      );
+    }, REWRITE_STAGE_MS);
+    return () => window.clearInterval(timer);
+  }, [rewriting]);
+
   useEffect(() => {
     if (!paid || !resume) return;
     if (pdfStyle !== "personalized") return;
+
     if (personalizedStyleProfile || personalizedStatus !== "idle") return;
     if (personalizeRan.current) return;
     personalizeRan.current = true;
@@ -1021,8 +1075,9 @@ function ResultPageInner() {
               </ul>
             ) : null}
             <p className="text-ink-400 text-xs mt-3">
-              Nothing unsafe was applied. Review the exact source/output
-              mismatch above, then retry or switch structure mode.
+              {errorDetails.length > 0
+                ? "Nothing unsafe was applied. Review the exact source/output mismatch above, then retry or switch structure mode."
+                : "Your resume was left untouched. Retry, pick a different model, or switch structure mode."}
             </p>
             <div className="mt-3 flex justify-center">
               <ModelPicker
@@ -1078,8 +1133,9 @@ function ResultPageInner() {
     );
   }
 
-  if (generating || !optimization) {
+  if (rewriting) {
     return (
+
       <AppShell step="result">
         <div className="container-x py-16 max-w-2xl">
           <div className="card p-10 text-center">
@@ -1093,11 +1149,33 @@ function ResultPageInner() {
               Tailoring every bullet to the job description. Each rewrite is
               cited back to your original experience.
             </p>
-            <div className="mt-6 max-w-xs mx-auto">
-              <div className="h-1.5 bg-ink-100 rounded-full overflow-hidden">
-                <div className="h-full w-1/3 bg-ink-900 shimmer" />
+            <div className="mt-7 max-w-xs mx-auto">
+              <div
+                className="h-1.5 bg-ink-100 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuemin={1}
+                aria-valuemax={REWRITE_PROGRESS_STAGES.length}
+                aria-valuenow={rewriteStage + 1}
+                aria-valuetext={REWRITE_PROGRESS_STAGES[rewriteStage]}
+              >
+                <div
+                  className="h-full bg-ink-900 rounded-full transition-[width] duration-700 ease-out"
+                  style={{
+                    // Denominator is stage count + 1 so the bar tops out short
+                    // of full — it fills only when the rewrite actually lands.
+                    width: `${((rewriteStage + 1) / (REWRITE_PROGRESS_STAGES.length + 1)) * 100}%`,
+                  }}
+                />
+              </div>
+              <div className="mt-3 text-xs text-ink-500" aria-live="polite">
+                {REWRITE_PROGRESS_STAGES[rewriteStage]}
+                <span className="text-ink-300 tabular-nums">
+                  {" · "}
+                  {rewriteStage + 1}/{REWRITE_PROGRESS_STAGES.length}
+                </span>
               </div>
             </div>
+
           </div>
         </div>
       </AppShell>
