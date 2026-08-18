@@ -24,6 +24,18 @@ type LayoutPage = ResumeSourceLayout["pages"][number] & {
   readingOrderText: string;
 };
 
+/**
+ * A null split means "no second column", but that answer is only worth acting
+ * on when the geometry was legible. Too little text, or a file that emits one
+ * positioned item per character, is "cannot tell" — and the two must not be
+ * confused, because the expensive visual check exists precisely for the
+ * cases we cannot decide here.
+ */
+type ColumnDetection = {
+  split: number | null;
+  confident: boolean;
+};
+
 export type PdfLayoutExtraction = {
   text: string;
   layout: ResumeSourceLayout;
@@ -97,9 +109,9 @@ function detectColumnSplit(
   items: PositionedText[],
   width: number,
   height: number,
-): number | null {
+): ColumnDetection {
   const body = items.filter((item) => item.y < height * 0.83);
-  if (body.length < 20) return null;
+  if (body.length < 20) return { split: null, confident: false };
   const bands = new Map<number, PositionedText[]>();
   for (const item of body) {
     const key = Math.round(item.y / 6);
@@ -108,7 +120,9 @@ function detectColumnSplit(
   // Some PDFs emit one positioned item per character. Geometry from those
   // files is too fragmented for a trustworthy column decision; the visual
   // screenshot analysis can still override this conservative fallback.
-  if (body.length / Math.max(1, bands.size) > 18) return null;
+  if (body.length / Math.max(1, bands.size) > 18) {
+    return { split: null, confident: false };
+  }
 
   let best: {
     split: number;
@@ -139,13 +153,14 @@ function detectColumnSplit(
       best = { split, score, left, right, dual: dualBands };
     }
   }
-  if (!best) return null;
+  if (!best) return { split: null, confident: false };
   const minimumDualBands = Math.max(6, Math.round(bands.size * 0.22));
   const minimumSideBands = Math.max(8, Math.round(bands.size * 0.3));
-  return best.dual >= minimumDualBands &&
-    Math.min(best.left, best.right) >= minimumSideBands
-    ? best.split
-    : null;
+  const isTwoColumn =
+    best.dual >= minimumDualBands &&
+    Math.min(best.left, best.right) >= minimumSideBands;
+  // Legible geometry that simply shows no second column: a confident answer.
+  return { split: isTwoColumn ? best.split : null, confident: true };
 }
 
 export function analyzePdfPageLayout(
@@ -169,13 +184,16 @@ export function analyzePdfPageLayout(
       },
     ];
   });
-  const detectedSplit = detectColumnSplit(items, widthPt, heightPt);
+  const detection = detectColumnSplit(items, widthPt, heightPt);
+  const detectedSplit = detection.split;
   if (forcedColumns === 1 || (!detectedSplit && forcedColumns !== 2)) {
     return {
       page,
       widthPt,
       heightPt,
       columns: 1,
+      // A forced value came from the visual check, which is authoritative.
+      columnsConfident: forcedColumns !== undefined || detection.confident,
       readingOrderText: `[PAGE ${page}]\n${groupLines(items).join("\n")}`,
     };
   }
@@ -193,6 +211,7 @@ export function analyzePdfPageLayout(
     widthPt,
     heightPt,
     columns: 2,
+    columnsConfident: forcedColumns !== undefined || detection.confident,
     readingOrderText: [
       `[PAGE ${page} HEADER]`,
       ...groupLines(header),
@@ -202,6 +221,21 @@ export function analyzePdfPageLayout(
       ...groupLines(right),
     ].join("\n"),
   };
+}
+
+/**
+ * Whether the visual model still has something to decide. Rasterising pages
+ * and sending them to a vision model is by far the slowest step of an upload,
+ * and for a single-column resume whose geometry read cleanly it cannot change
+ * the outcome — the coordinate pass already answered the only question it is
+ * asked. Anything unresolved, or any hint of a second column, still goes.
+ */
+export function needsVisualColumnCheck(
+  layout: ResumeSourceLayout | undefined | null,
+): boolean {
+  if (!layout || layout.pages.length === 0) return true;
+  if (layout.maxColumns === 2) return true;
+  return layout.pages.some((page) => page.columnsConfident !== true);
 }
 
 export async function extractPdfLayout(

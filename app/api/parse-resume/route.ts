@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzeResumeVisualLayout, jsonCompletion } from "@/lib/ai";
 import { extractText } from "@/lib/extract";
 import { screenshotResume } from "@/lib/resumeScreenshot";
-import { extractPdfLayout } from "@/lib/pdfLayout";
+import { extractPdfLayout, needsVisualColumnCheck } from "@/lib/pdfLayout";
 import {
   mergeParsedResumes,
   normalizeParsedResume,
@@ -157,10 +157,18 @@ export async function POST(req: NextRequest) {
     const recoveredLinks = initialExtraction.links ?? [];
 
     // Coordinates are only a candidate signal: right-aligned dates, scores,
-    // and contact rows can look like a second column. For every PDF, let the
-    // page screenshots arbitrate single-column vs sidebar/mixed structure.
+    // and contact rows can look like a second column, so the page screenshots
+    // arbitrate single-column vs sidebar/mixed structure.
+    //
+    // That arbitration is the slowest step of an upload, and it is skipped
+    // when the coordinate pass already read the geometry cleanly and found a
+    // single column — there is nothing left for it to decide. Every ambiguous
+    // or multi-column document still goes through it.
+    const needsVisualArbitration = needsVisualColumnCheck(layout);
     const visualGuide =
-      file.name.toLowerCase().endsWith(".pdf") && styleSource
+      file.name.toLowerCase().endsWith(".pdf") &&
+      styleSource &&
+      needsVisualArbitration
         ? await analyzeResumeVisualLayout(styleSource).catch((error) => {
             console.warn("[parse-resume] visual layout analysis failed", error);
             return null;

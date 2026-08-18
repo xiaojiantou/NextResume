@@ -91,6 +91,12 @@ export type ResumeSourceLayout = {
     widthPt: number;
     heightPt: number;
     columns: 1 | 2;
+    /**
+     * Whether the coordinate pass could actually decide the column count.
+     * Optional for resumes parsed before this was recorded; absent is read
+     * as "not confident", which keeps the old always-verify behaviour.
+     */
+    columnsConfident?: boolean;
   }>;
   issues: string[];
 };

@@ -10,6 +10,7 @@ import {
   findModel,
   type ModelProvider,
 } from "./models";
+import { downscaleDataUri } from "./imageDownscale";
 
 // Lazy-init: SDK constructors throw without a key, which breaks Next.js
 // "collecting page data" at build time on Vercel. Construct on first use.
@@ -193,6 +194,9 @@ async function anthropicJson({
 // back "model not available" on this account; verified against GET /models
 // that qwen3-vl-235b-a22b-instruct is actually servable.
 const VISION_MODEL = "qwen/qwen3-vl-235b-a22b-instruct";
+// Wide enough for a sidebar to be unmistakable, far below the ~1700px the
+// personalized style needs to read type and colour.
+const LAYOUT_IMAGE_WIDTH = 700;
 
 export async function transcribeImage({
   base64,
@@ -252,6 +256,14 @@ export async function analyzeResumeVisualLayout(
   source: ResumeStyleSource,
 ): Promise<ResumeVisualLayoutGuide> {
   const client = openaiCompatClient("novita");
+  // Column layout is a coarse, whole-page question, so the pages go over at
+  // thumbnail width and low detail. Image tokens scale with area, and this is
+  // the slowest call in an upload.
+  const pages = await Promise.all(
+    source.screenshots
+      .slice(0, 4)
+      .map((url) => downscaleDataUri(url, LAYOUT_IMAGE_WIDTH)),
+  );
   const res = await client.chat.completions.create({
     model: VISION_MODEL,
     messages: [
@@ -259,9 +271,9 @@ export async function analyzeResumeVisualLayout(
         role: "user",
         content: [
           { type: "text", text: STRUCTURE_LAYOUT_PROMPT },
-          ...source.screenshots.slice(0, 4).map((url) => ({
+          ...pages.map((url) => ({
             type: "image_url" as const,
-            image_url: { url, detail: "high" as const },
+            image_url: { url, detail: "low" as const },
           })),
         ],
       },
