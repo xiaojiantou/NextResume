@@ -59,6 +59,7 @@ import {
   Download,
   Eye,
   FileDown,
+  FileText,
   Info,
   Layers,
   Lock,
@@ -134,9 +135,26 @@ export default function ResultPage() {
   );
 }
 
+// Streams an export response to disk, honouring the filename the server set.
+async function saveResponseAsFile(res: Response, fallbackName: string) {
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match ? decodeURIComponent(match[1]) : fallbackName;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+}
+
 function ResultPageInner() {
   const {
     resume,
+    sourceDocx,
     job,
     report,
     optimization,
@@ -709,27 +727,62 @@ function ResultPageInner() {
           `The complete resume needs ${actualPages} pages at the safe readability limit, so it exceeds the ${desiredPages}-page target.`,
         );
       }
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") || "";
-      const match = disposition.match(
-        /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i,
-      );
-      const filename = match
-        ? decodeURIComponent(match[1])
-        : `${resume.name || "resume"}.pdf`;
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      await saveResponseAsFile(res, `${resume.name || "resume"}.pdf`);
     } catch (downloadFailure) {
       setExportError(
         downloadFailure instanceof Error
           ? downloadFailure.message
           : "PDF export failed.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Format-preserving export: the optimized wording is written back into the
+  // user's own .docx, so nothing is re-laid-out and their original typography,
+  // spacing, and hyperlinks survive untouched.
+  const downloadDocx = async () => {
+    if (!resume || !optimization || !sourceDocx) return;
+    setExporting(true);
+    setExportError(null);
+    setExportNotice(null);
+    try {
+      if (structureStale) {
+        throw new Error("Regenerate before downloading.");
+      }
+      const res = await fetch("/api/export/docx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+        body: JSON.stringify({
+          resume,
+          optimization,
+          sourceDocx,
+          targetTitle: job?.title || "",
+          includeSummary: summaryEnabled,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Word export failed (${res.status})`);
+      }
+      // Some paragraphs deliberately keep their original wording: any line
+      // carrying a hyperlink is never rewritten, and anything we could not
+      // locate with certainty is left alone rather than guessed at.
+      const kept =
+        Number(res.headers.get("X-Resume-Edits-Skipped") || "0") +
+        Number(res.headers.get("X-Resume-Edits-Unplaced") || "0");
+      if (kept > 0) {
+        setExportNotice(
+          `${kept} ${kept === 1 ? "line" : "lines"} kept the original wording so your formatting and links stayed intact. Everything else was updated in place.`,
+        );
+      }
+      await saveResponseAsFile(res, `${resume.name || "resume"}.docx`);
+    } catch (downloadFailure) {
+      setExportError(
+        downloadFailure instanceof Error
+          ? downloadFailure.message
+          : "Word export failed.",
       );
     } finally {
       setExporting(false);
@@ -1341,6 +1394,16 @@ function ResultPageInner() {
                 </>
               )}
             </button>
+            {sourceDocx ? (
+              <button
+                className="btn btn-outline"
+                onClick={() => void downloadDocx()}
+                disabled={exporting || generating || structureStale}
+                title="Writes the new wording into your original Word file, keeping its exact formatting and links"
+              >
+                <FileText size={14} /> Download Word
+              </button>
+            ) : null}
           </div>
         </div>
 
