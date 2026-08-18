@@ -134,6 +134,21 @@ function contentLeaf(
   return `<${tag} class="${className}" data-content-id="${escapeHtml(id)}">${escapeHtml(value)}</${tag}>`;
 }
 
+/**
+ * Like contentLeaf, but for a value that is already safe markup. Only used
+ * for the contact line, whose links must render as real anchors so the
+ * printed PDF carries clickable annotations.
+ */
+function contentLeafHtml(
+  tag: string,
+  id: string,
+  html: string,
+  className = "",
+): string {
+  if (!html) return "";
+  return `<${tag} class="${className}" data-content-id="${escapeHtml(id)}">${html}</${tag}>`;
+}
+
 function dateRange(start: string, end: string): string {
   return [start, end].filter(Boolean).join(" — ");
 }
@@ -355,14 +370,25 @@ export function buildPersonalizedHtml({
     8,
   );
   const blueprint = profile.layoutBlueprint;
-  const contact = [
+  const contactParts = [
     content.email,
     content.phone,
     content.location,
-    ...content.links,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter(Boolean);
+  const contact = [
+    ...contactParts,
+    ...content.links.map((link) => link.label),
+  ].join(" · ");
+  // The visible text is identical either way, so the PDF text-integrity check
+  // still compares like for like; only the anchors differ.
+  const contactHtml = [
+    ...contactParts.map(escapeHtml),
+    ...content.links.map((link) =>
+      link.url
+        ? `<a href="${escapeHtml(link.url)}">${escapeHtml(link.label)}</a>`
+        : escapeHtml(link.label),
+    ),
+  ].join(" · ");
   const photoPosition =
     content.photo && profile.header.photoPosition === "none"
       ? "right"
@@ -380,7 +406,7 @@ export function buildPersonalizedHtml({
   const headerPhoto = photoRegionId ? "" : photo;
   const headerContact = contactRegionId
     ? ""
-    : contentLeaf("div", "contact", contact, "contact");
+    : contentLeafHtml("div", "contact", contactHtml, "contact");
 
   const margins = {
     top: Math.max(
@@ -461,7 +487,7 @@ export function buildPersonalizedHtml({
         .join("");
       const regionContact =
         contactRegionId === region.id && contact
-          ? `<section class="resume-section contact-section"><h2>Contact</h2>${contentLeaf("div", "contact", contact, "region-contact")}</section>`
+          ? `<section class="resume-section contact-section"><h2>Contact</h2>${contentLeafHtml("div", "contact", contactHtml, "region-contact")}</section>`
           : "";
       const regionPhoto = photoRegionId === region.id ? photo : "";
       const primaryHeader =
@@ -538,6 +564,7 @@ export function buildPersonalizedHtml({
     font-size: ${fontSize(profile.typography.titlePt, fit.fontScale, 9)}pt;
     font-weight: 600;
   }
+  .contact a, .region-contact a { color: inherit; text-decoration: none; }
   .contact, .region-contact {
     margin-top: ${4 * fit.spacingScale}pt;
     color: ${profile.colors.muted};
@@ -634,7 +661,12 @@ function createContentManifest(
 ): ManifestItem[] {
   const items: ManifestItem[] = [{ id: "name", value: content.name }];
   if (content.title) items.push({ id: "title", value: content.title });
-  const contact = [content.email, content.phone, content.location, ...content.links]
+  const contact = [
+    content.email,
+    content.phone,
+    content.location,
+    ...content.links.map((link) => link.label),
+  ]
     .filter(Boolean)
     .join(" · ");
   if (contact) items.push({ id: "contact", value: contact });

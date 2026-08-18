@@ -8,6 +8,7 @@ import {
   Image,
   StyleSheet,
 } from "@react-pdf/renderer";
+import { ContactText, contactEntries } from "./ContactLine";
 import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { ResumePalette } from "./config";
 import {
@@ -87,6 +88,9 @@ function createStyles(
       marginTop: px(5),
       fontFamily: "Helvetica",
     },
+    // A link keeps the contact line's colour: the default blue underline
+    // would restyle a header the user never asked us to change.
+    contactLink: { color: palette.muted, textDecoration: "none" },
     sectionLabel: {
       fontSize: fs(8.5),
       fontFamily: "Helvetica-Bold",
@@ -417,22 +421,30 @@ export function ResumePdf({
             <View style={styles.headerTextBlock}>
               <Text style={styles.name}>{resume.name}</Text>
               {title ? <Text style={styles.title}>{title}</Text> : null}
-              <Text style={styles.contact}>
-                {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
-                  .filter(Boolean)
-                  .join("  ·  ")}
-              </Text>
+              <ContactText
+                entries={contactEntries(
+                  [resume.email, resume.phone, resume.location],
+                  resume.links,
+                )}
+                separator="  ·  "
+                style={styles.contact}
+                linkStyle={styles.contactLink}
+              />
             </View>
           </View>
         ) : (
           <View style={styles.header}>
             <Text style={styles.name}>{resume.name}</Text>
             {title ? <Text style={styles.title}>{title}</Text> : null}
-            <Text style={styles.contact}>
-              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
-                .filter(Boolean)
-                .join("  ·  ")}
-            </Text>
+            <ContactText
+              entries={contactEntries(
+                [resume.email, resume.phone, resume.location],
+                resume.links,
+              )}
+              separator="  ·  "
+              style={styles.contact}
+              linkStyle={styles.contactLink}
+            />
           </View>
         )}
 

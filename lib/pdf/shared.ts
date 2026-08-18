@@ -13,6 +13,10 @@ import type {
   ResumeSectionRef,
   ResumeSkillGroup,
 } from "@/lib/types";
+// Relative with an explicit extension: this is a value import, and the "@/"
+// alias only resolves under the bundler, not the node test runner.
+import type { ResumeLink } from "../resumeLinks.ts";
+import { normalizeResumeLinks } from "../resumeLinks.ts";
 
 export type ResolvedBlock = {
   id: string;
@@ -30,7 +34,7 @@ export type ResolvedResumeDocument = {
   email: string;
   phone: string;
   location: string;
-  links: string[];
+  links: ResumeLink[];
   photo?: string;
   language: ResumeLanguage;
   summary: string;
@@ -501,7 +505,7 @@ export function resolveResumeContent(
     email: resume.email,
     phone: resume.phone,
     location: resume.location,
-    links: resume.links ?? [],
+    links: normalizeResumeLinks(resume.links),
     photo: resume.photo,
     language: detectResumeLanguage(resume),
     ...base,

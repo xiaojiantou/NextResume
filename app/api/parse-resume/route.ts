@@ -13,6 +13,7 @@ import {
 } from "@/lib/resumeParser";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { Resume } from "@/lib/types";
+import { mergeResumeLinks } from "@/lib/resumeLinks";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -25,7 +26,14 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
   "email": string,
   "phone": string,
   "location": string,
-  "links": string[],          // profile links from the header (LinkedIn, GitHub, portfolio, website) in short display form, e.g. "linkedin.com/in/jane" or "LinkedIn" if the URL is not visible; [] if none
+  "links": [
+    // Profile links from the header (LinkedIn, GitHub, portfolio, website).
+    // "label" is the short display form the resume actually shows, e.g.
+    // "linkedin.com/in/jane" or "LinkedIn". "url" is the full target when it
+    // is visible in the text or supplied in the recovered-hyperlink list
+    // below; omit "url" when no target is known. [] if there are no links.
+    { "label": string, "url": string }
+  ],
   "summary": string,          // verbatim from resume; "" if absent
   "skills": string[],         // flat deduplicated list of every individual skill
   "skillGroups": [
@@ -105,7 +113,7 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
 Rules:
 - Preserve ALL source content VERBATIM. Do not rewrite, summarize, or omit.
 - Role/company lines often carry a tech-stack suffix (e.g. "Acme Corp | FastAPI, Redis, GCS"). Put that suffix in the role's "techStack" verbatim — never discard it, and never mix it into company/title.
-- Header links (LinkedIn, GitHub, portfolio) go in "links" — these matter to recruiters; never drop them.
+- Header links (LinkedIn, GitHub, portfolio) go in "links" — these matter to recruiters; never drop them. Never invent a "url" that was not given to you.
 - This product uses English resume labels. Set language to "en".
 - Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across all roles AND projects.
 - A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".
@@ -145,6 +153,8 @@ export async function POST(req: NextRequest) {
     ]);
 
     let { text, photo, layout } = initialExtraction;
+    // Recovered from the file's own link layer, not from the visible text.
+    const recoveredLinks = initialExtraction.links ?? [];
 
     // Coordinates are only a candidate signal: right-aligned dates, scores,
     // and contact rows can look like a second column. For every PDF, let the
@@ -181,6 +191,14 @@ export async function POST(req: NextRequest) {
       ? `\n\nVisual layout guide for the complete document (use only for headings, regions, and reading order):\n${JSON.stringify(visualGuide)}`
       : "";
 
+    // The link layer is ground truth the visible text cannot express: a header
+    // may display only "LinkedIn" while the URL lives in the file's annotation
+    // or relationship data. Giving the model the recovered pairs stops it from
+    // inventing a display form or dropping the link altogether.
+    const linkContext = recoveredLinks.length
+      ? `\n\nHyperlink targets recovered from the source file. When one of these appears in the header, reproduce it in "links" using the same label and url:\n${JSON.stringify(recoveredLinks)}`
+      : "";
+
     const chunks = splitResumeText(text);
     const parsed: Resume[] = [];
     // A small concurrency cap keeps long resumes inside the route duration
@@ -192,7 +210,7 @@ export async function POST(req: NextRequest) {
           const chunkIndex = start + batchIndex;
           const value = await jsonCompletion<Resume>({
             system: SYSTEM,
-            user: `Resume text chunk ${chunkIndex + 1} of ${chunks.length}. Parse only content actually present in this chunk; do not invent missing sections.${visualGuideContext}\n\nCoordinate-ordered source text:\n${chunk}`,
+            user: `Resume text chunk ${chunkIndex + 1} of ${chunks.length}. Parse only content actually present in this chunk; do not invent missing sections.${visualGuideContext}${linkContext}\n\nCoordinate-ordered source text:\n${chunk}`,
             maxTokens: 6000,
           });
           return normalizeParsedResume(value);
@@ -207,6 +225,11 @@ export async function POST(req: NextRequest) {
       visualGuide,
     });
     if (photo) resume.photo = photo;
+    // Targets recovered from the file outrank the model's reading of the page,
+    // while labels the resume actually displays are preserved.
+    if (recoveredLinks.length) {
+      resume.links = mergeResumeLinks(resume.links ?? [], recoveredLinks);
+    }
 
     return NextResponse.json({
       resume,

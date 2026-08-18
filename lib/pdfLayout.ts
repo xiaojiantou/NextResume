@@ -1,6 +1,9 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import type { ResumeSourceLayout } from "./types";
+import type { ResumeLink } from "./resumeLinks.ts";
+import { dedupeResumeLinks } from "./resumeLinks.ts";
+import { pairLinkAnnotations, type PdfLinkAnnotation } from "./pdfLinks.ts";
 
 export type PdfTextItem = {
   str?: string;
@@ -24,6 +27,8 @@ type LayoutPage = ResumeSourceLayout["pages"][number] & {
 export type PdfLayoutExtraction = {
   text: string;
   layout: ResumeSourceLayout;
+  /** Hyperlink targets recovered from the annotation layer, in page order. */
+  links: ResumeLink[];
 };
 
 const PRIVATE_FONT_WARNING = "Warning: Ran out of space in font private use area.";
@@ -221,10 +226,12 @@ export async function extractPdfLayout(
         getTextContent: (options: Record<string, boolean>) => Promise<{
           items: PdfTextItem[];
         }>;
+        getAnnotations?: () => Promise<PdfLinkAnnotation[]>;
       }) => Promise<string>;
     },
   ) => Promise<{ numpages: number; text: string }>;
   const pages: LayoutPage[] = [];
+  const links: ResumeLink[] = [];
   let pageIndex = 0;
   const releaseWarningFilter = acquirePdfWarningFilter();
   let result: { numpages: number; text: string };
@@ -245,6 +252,18 @@ export async function extractPdfLayout(
           pageColumns[pageData.pageNumber ?? pageIndex],
         );
         pages.push(page);
+        // Annotations come from the page we already have open, so recovering
+        // link targets costs no extra parse. A document without an annotation
+        // layer simply yields none.
+        if (typeof pageData.getAnnotations === "function") {
+          try {
+            links.push(
+              ...pairLinkAnnotations(await pageData.getAnnotations(), content.items),
+            );
+          } catch {
+            // A malformed annotation layer must never fail the upload.
+          }
+        }
         return page.readingOrderText;
       },
     });
@@ -260,6 +279,7 @@ export async function extractPdfLayout(
       : [];
   return {
     text: pages.map((page) => page.readingOrderText).join("\n\n").trim(),
+    links: dedupeResumeLinks(links),
     layout: {
       parser: "pdfjs-coordinates",
       pageCount: result.numpages || pages.length || 1,
