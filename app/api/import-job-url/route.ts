@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
 import { NextRequest, NextResponse } from "next/server";
+import { extractJobPageText } from "@/lib/jobPageText";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
@@ -14,25 +15,6 @@ function normalizeUrl(raw: string): URL | null {
   } catch {
     return null;
   }
-}
-
-function htmlToText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<\/(p|div|li|h[1-6]|section|article|br)>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n\s+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -74,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     const html = await res.text();
-    const text = htmlToText(html).slice(0, 20000);
+    const text = extractJobPageText(html).slice(0, 20000);
 
     if (text.length < 200) {
       return NextResponse.json(
