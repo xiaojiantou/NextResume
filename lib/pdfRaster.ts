@@ -30,8 +30,12 @@ function pageSpec(widthPt: number, heightPt: number): ResumePageSpec {
 
 // pdf.js loads these asset directories from disk at render time, concatenating
 // a filename onto whatever it is given — so the trailing separator matters.
+// It validates the value as a URL and demands a literal "/", so this cannot be
+// path.sep: on Windows that yields a backslash and pdf.js rejects the document
+// with `Invalid factory url ... must include trailing slash` before rendering
+// a single page.
 function pdfjsAsset(dir: string): string {
-  return `${path.join(process.cwd(), "node_modules", "pdfjs-dist", dir)}${path.sep}`;
+  return `${path.join(process.cwd(), "node_modules", "pdfjs-dist", dir)}/`;
 }
 
 export async function rasterizePdf(
