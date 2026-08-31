@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeResumeVisualLayout, jsonCompletion } from "@/lib/ai";
 import { extractText } from "@/lib/extract";
+import { UnprocessableFileError } from "@/lib/fileErrors";
 import { screenshotResume } from "@/lib/resumeScreenshot";
 import { extractPdfLayout } from "@/lib/pdfLayout";
 import {
@@ -223,6 +224,11 @@ export async function POST(req: NextRequest) {
       screenshot: styleSource?.screenshots[0] ?? null,
     });
   } catch (e) {
+    // A file we cannot process is the user's to fix, not an outage. Keeping it
+    // out of the 5xx rate is what makes that rate worth alerting on.
+    if (e instanceof UnprocessableFileError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
     console.error("parse-resume failed", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Parse failed" },

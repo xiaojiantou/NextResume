@@ -193,9 +193,10 @@ export default function UploadPage() {
     async (f: File) => {
       setResumeError(null);
       const ext = f.name.split(".").pop()?.toLowerCase();
-      const t = ext === "pdf" ? "pdf" : ext === "docx" ? "docx" : null;
+      const t =
+        ext === "pdf" ? "pdf" : ext === "docx" ? "docx" : ext === "tex" ? "latex" : null;
       if (!t) {
-        setResumeError("Please upload a PDF or DOCX file.");
+        setResumeError("Please upload a PDF, DOCX or .tex file.");
         return;
       }
       if (f.size > 10 * 1024 * 1024) {
@@ -349,7 +350,7 @@ export default function UploadPage() {
             <SectionHeading
               n={1}
               title="Upload your resume"
-              hint="PDF or DOCX, up to 10MB. We'll extract the structure automatically."
+              hint="PDF, DOCX or LaTeX, up to 10MB. We'll extract the structure automatically."
               done={!!resume && !parsing}
             />
 
@@ -380,7 +381,7 @@ export default function UploadPage() {
                   ref={inputRef}
                   type="file"
                   hidden
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  accept=".pdf,.docx,.tex,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/x-tex,text/x-tex"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) handle(f);
@@ -393,7 +394,7 @@ export default function UploadPage() {
                   Drop your resume here, or click to browse
                 </div>
                 <div className="text-sm text-ink-400 mt-1">
-                  PDF or DOCX · Max 10MB
+                  PDF, DOCX or .tex · Max 10MB
                 </div>
               </div>
             ) : (

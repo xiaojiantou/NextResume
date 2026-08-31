@@ -81,7 +81,12 @@ export type ResumeSectionRef =
   | `additional:${string}`;
 
 export type ResumeSourceLayout = {
-  parser: "pdfjs-coordinates" | "linear-text" | "vision-image";
+  parser:
+    | "pdfjs-coordinates"
+    | "linear-text"
+    | "vision-image"
+    | "docx-ooxml"
+    | "latex-source";
   pageCount: number;
   maxColumns: 1 | 2;
   pages: Array<{
