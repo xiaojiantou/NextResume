@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --test tests/resume-content.test.mjs tests/ats-score.test.mjs tests/job-keywords.test.mjs tests/credits.test.mjs tests/docx-inplace.test.mjs tests/resume-links.test.mjs tests/latex.test.mjs tests/tex-inplace.test.mjs",
+    "test": "node --experimental-strip-types --test tests/resume-content.test.mjs tests/ats-score.test.mjs tests/job-keywords.test.mjs tests/credits.test.mjs tests/job-page-text.test.mjs tests/pdf-layout.test.mjs tests/docx-inplace.test.mjs tests/resume-links.test.mjs tests/latex.test.mjs tests/tex-inplace.test.mjs",
     "test:content": "node --experimental-strip-types --test tests/resume-content.test.mjs",
     "test:pdf": "node --experimental-strip-types tests/pdf-export-smoke.mjs",
     "test:ats": "node --experimental-strip-types --test tests/ats-score.test.mjs",

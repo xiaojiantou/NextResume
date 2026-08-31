@@ -34,3 +34,9 @@ next-env.d.ts
 
 # eval baselines (model output drifts; corpus itself is committed)
 eval/*.jsonl
+
+# real resumes used for local diagnosis — these carry personal contact details,
+# so keep them out of history. Test fixtures are synthesised instead.
+/*.pdf
+/*.docx
+/*.tex
