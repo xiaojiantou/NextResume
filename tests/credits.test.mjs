@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, unlinkSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   claimCreditGrant,
   consumeCredit,
@@ -15,10 +16,17 @@ import {
 
 // These exercise the file-backed dev store, which is what runs whenever no
 // Redis credentials are configured.
-const STORE = new URL("../.nextresume-orders.json", import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: on Windows the latter yields
+// "/D:/NextResume/..." with a leading slash, which no fs call can open. Cleanup
+// silently did nothing there, so balances accumulated across tests and across
+// runs and four assertions failed with numbers that only ever grew.
+const STORE = fileURLToPath(new URL("../.nextresume-orders.json", import.meta.url));
 const cleanup = () => {
   if (existsSync(STORE)) unlinkSync(STORE);
 };
+
+// A store left over from an earlier run would poison the first test.
+cleanup();
 
 test("credits: grant, spend down to zero, then refuse to go negative", async (t) => {
   t.after(cleanup);
