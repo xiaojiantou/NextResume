@@ -24,8 +24,11 @@ export const PROVIDER_LABEL: Record<ModelProvider, string> = {
 export const MODELS: ModelInfo[] = [
   // --- Novita (default / cheapest tier) --------------------------------
   {
-    id: "deepseek/deepseek-v3-0324",
-    name: "DeepSeek V3",
+    // deepseek-v3-0324 still appears in Novita's GET /models but completions
+    // return MODEL_NOT_AVAILABLE (verified 2026-08-31) — the catalog lists
+    // models it no longer serves, so a listing is not proof of servability.
+    id: "deepseek/deepseek-v3.2",
+    name: "DeepSeek V3.2",
     tagline: "Balanced quality + speed",
     provider: "novita",
     badge: "Default",

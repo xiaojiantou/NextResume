@@ -8,6 +8,7 @@ import type {
 import {
   DEFAULT_MODEL_ID,
   findModel,
+  MODELS,
   type ModelProvider,
 } from "./models";
 import { downscaleDataUri } from "./imageDownscale";
@@ -461,7 +462,13 @@ export async function jsonCompletion<T>({
   maxTokens?: number;
   signal?: AbortSignal;
 }): Promise<T> {
-  const chosen = model || ENV_MODEL;
+  // The client's model choice persists in localStorage, so it can outlive the
+  // registry — a delisted id would ride along until the provider 500s. Unknown
+  // ids fall back to the env default; ENV_MODEL itself stays unvalidated so an
+  // operator can still point at any Novita id via NOVITA_MODEL.
+  const requested =
+    model && MODELS.some((m) => m.id === model) ? model : undefined;
+  const chosen = requested || ENV_MODEL;
   const info = findModel(chosen);
 
   const raw =
