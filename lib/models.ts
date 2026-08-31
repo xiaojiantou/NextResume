@@ -2,6 +2,12 @@
 
 // Curated model registry. Routed via provider adapters in lib/ai.ts.
 // To add/remove, edit this file — the picker UI reads from here automatically.
+//
+// Verify an id by calling it, not by looking it up. Novita's /models endpoint
+// went on listing deepseek/deepseek-v3-0324 long after completions for it
+// started returning MODEL_NOT_AVAILABLE — and since that id was the default,
+// every parse failed with a bare 500 for anyone who had not overridden
+// NOVITA_MODEL.
 
 export type ModelProvider = "novita" | "openai" | "anthropic" | "gemini";
 
@@ -24,8 +30,8 @@ export const PROVIDER_LABEL: Record<ModelProvider, string> = {
 export const MODELS: ModelInfo[] = [
   // --- Novita (default / cheapest tier) --------------------------------
   {
-    id: "deepseek/deepseek-v3-0324",
-    name: "DeepSeek V3",
+    id: "deepseek/deepseek-v3.2",
+    name: "DeepSeek V3.2",
     tagline: "Balanced quality + speed",
     provider: "novita",
     badge: "Default",
