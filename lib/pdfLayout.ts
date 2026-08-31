@@ -13,6 +13,14 @@ type PositionedText = {
   y: number;
   width: number;
   height: number;
+  /**
+   * Whether the source run carried whitespace at that edge. pdf.js includes a
+   * run's trailing space in its advance width, so once the character is dropped
+   * the geometry alone cannot tell "platform in Python" from "platform inPython"
+   * — the gap between the runs is zero either way.
+   */
+  spaceBefore: boolean;
+  spaceAfter: boolean;
 };
 
 type LayoutPage = ResumeSourceLayout["pages"][number] & {
@@ -57,17 +65,28 @@ function lineText(items: PositionedText[]): string {
   const sorted = [...items].sort((left, right) => left.x - right.x);
   let output = "";
   let rightEdge = 0;
+  let previous: PositionedText | null = null;
   for (const item of sorted) {
     const gap = item.x - rightEdge;
-    output += output && gap > Math.max(2, item.height * 0.18) ? " " : "";
+    // Either side remembering a space is enough. Falling back to the gap alone
+    // glued every bold keyword to the word before it — "inPython", "andFastAPI"
+    // — which also made those keywords invisible to JD matching.
+    const separated =
+      previous?.spaceAfter ||
+      item.spaceBefore ||
+      gap > Math.max(2, item.height * 0.18);
+    output += output && separated ? " " : "";
     output += item.text;
     rightEdge = Math.max(rightEdge, item.x + item.width);
+    previous = item;
   }
   return output.replace(/\s+/g, " ").trim();
 }
 
-function groupLines(items: PositionedText[]): string[] {
-  const lines: Array<{ y: number; height: number; items: PositionedText[] }> = [];
+type LineGroup = { y: number; height: number; items: PositionedText[] };
+
+function groupLineItems(items: PositionedText[]): LineGroup[] {
+  const lines: LineGroup[] = [];
   for (const item of [...items].sort((left, right) => right.y - left.y || left.x - right.x)) {
     const line = lines.find(
       (candidate) =>
@@ -80,11 +99,44 @@ function groupLines(items: PositionedText[]): string[] {
       lines.push({ y: item.y, height: item.height, items: [item] });
     }
   }
-  return lines
-    .sort((left, right) => right.y - left.y)
+  return lines.sort((left, right) => right.y - left.y);
+}
+
+function groupLines(items: PositionedText[]): string[] {
+  return groupLineItems(items)
     .map((line) => lineText(line.items))
     .filter(Boolean);
 }
+
+/** Horizontal ink extent of a line, used to find a gutter nothing crosses. */
+function lineSpan(line: LineGroup): { start: number; end: number } {
+  let start = Infinity;
+  let end = -Infinity;
+  for (const item of line.items) {
+    start = Math.min(start, item.x);
+    end = Math.max(end, item.x + item.width);
+  }
+  return { start, end };
+}
+
+// A column boundary is a vertical corridor of whitespace: a real sidebar layout
+// has an x that essentially no line of text crosses.
+//
+// The previous heuristic asked whether *item origins* appeared on both sides of
+// a candidate x, on the theory that a long single-column sentence is one item
+// and so cannot straddle. Inline formatting breaks that: pdf.js emits a
+// separate run per bold span, so an ordinary single-column bullet peppered with
+// bold keywords produces origins scattered across the full width and scores as
+// two columns. A measured single-column resume was misread as two, and the
+// centre-based split below then tore each line in half.
+//
+// Working from whole-line ink extents removes the dependency on how a line
+// happens to be chunked into runs.
+const COLUMN_RATIOS = [0.28, 0.32, 0.36, 0.4, 0.44, 0.48] as const;
+/** A gutter may be nicked by this share of bands — rules, glyph overhang. */
+const MAX_INKED_SHARE = 0.06;
+/** Bands with text on both sides of the corridor, or it is not a column pair. */
+const MIN_PAIRED_SHARE = 0.25;
 
 function detectColumnSplit(
   items: PositionedText[],
@@ -93,52 +145,43 @@ function detectColumnSplit(
 ): number | null {
   const body = items.filter((item) => item.y < height * 0.83);
   if (body.length < 20) return null;
-  const bands = new Map<number, PositionedText[]>();
-  for (const item of body) {
-    const key = Math.round(item.y / 6);
-    bands.set(key, [...(bands.get(key) ?? []), item]);
-  }
-  // Some PDFs emit one positioned item per character. Geometry from those
-  // files is too fragmented for a trustworthy column decision; the visual
-  // screenshot analysis can still override this conservative fallback.
-  if (body.length / Math.max(1, bands.size) > 18) return null;
 
-  let best: {
-    split: number;
-    score: number;
-    left: number;
-    right: number;
-    dual: number;
-  } | null = null;
-  for (const ratio of [0.28, 0.32, 0.36, 0.4, 0.44, 0.48]) {
+  // Bands, not lines: at a given height a sidebar layout has text in both
+  // columns, so a band's overall extent crosses the gutter even though the
+  // corridor between the runs is empty. What matters is the hole, not the span.
+  const bands = groupLineItems(body);
+  if (bands.length < 8) return null;
+
+  const gutter = Math.max(8, width * 0.018);
+  let best: { split: number; paired: number } | null = null;
+
+  for (const ratio of COLUMN_RATIOS) {
     const split = width * ratio;
-    const gutter = Math.max(8, width * 0.018);
-    let dualBands = 0;
-    let left = 0;
-    let right = 0;
-    for (const band of bands.values()) {
-      // Use text origins, not item centres. A long single-column sentence may
-      // cross every candidate split, while a real main column repeatedly
-      // starts to the right of a stable gutter.
-      const hasLeft = band.some((item) => item.x < split - gutter);
-      const hasRight = band.some((item) => item.x > split + gutter);
-      if (hasLeft) left += 1;
-      if (hasRight) right += 1;
-      if (hasLeft && hasRight) dualBands += 1;
+    const low = split - gutter;
+    const high = split + gutter;
+    let clear = 0;
+    let paired = 0;
+    for (const band of bands) {
+      // Runs on a single-column line tile it end to end, so one of them always
+      // covers the corridor. Bold splitting a line into many runs does not
+      // open a hole; a real gutter does.
+      const inked = band.items.some(
+        (item) => item.x < high && item.x + item.width > low,
+      );
+      if (inked) continue;
+      clear += 1;
+      const hasLeft = band.items.some((item) => item.x + item.width <= low);
+      const hasRight = band.items.some((item) => item.x >= high);
+      if (hasLeft && hasRight) paired += 1;
     }
-    const balance = Math.min(left, right) / Math.max(1, Math.max(left, right));
-    const score = dualBands * balance;
-    if (!best || score > best.score) {
-      best = { split, score, left, right, dual: dualBands };
-    }
+    const clearShare = clear / bands.length;
+    const pairedShare = paired / bands.length;
+    if (clearShare < 1 - MAX_INKED_SHARE) continue;
+    if (pairedShare < MIN_PAIRED_SHARE) continue;
+    if (!best || pairedShare > best.paired) best = { split, paired: pairedShare };
   }
-  if (!best) return null;
-  const minimumDualBands = Math.max(6, Math.round(bands.size * 0.22));
-  const minimumSideBands = Math.max(8, Math.round(bands.size * 0.3));
-  return best.dual >= minimumDualBands &&
-    Math.min(best.left, best.right) >= minimumSideBands
-    ? best.split
-    : null;
+
+  return best?.split ?? null;
 }
 
 export function analyzePdfPageLayout(
@@ -148,20 +191,30 @@ export function analyzePdfPageLayout(
   rawItems: PdfTextItem[],
   forcedColumns?: 1 | 2,
 ): LayoutPage {
-  const items: PositionedText[] = rawItems.flatMap((item) => {
-    const text = item.str?.replace(/\s+/g, " ").trim();
+  const items: PositionedText[] = [];
+  // A run that is nothing but whitespace still carries a word boundary, so it
+  // hands its space to whichever run comes next instead of vanishing.
+  let pendingSpace = false;
+  for (const item of rawItems) {
+    const collapsed = item.str?.replace(/\s+/g, " ") ?? "";
+    const text = collapsed.trim();
     const transform = item.transform;
-    if (!text || !transform || transform.length < 6) return [];
-    return [
-      {
-        text,
-        x: transform[4] ?? 0,
-        y: transform[5] ?? 0,
-        width: Math.max(0, item.width ?? 0),
-        height: Math.max(6, item.height ?? Math.abs(transform[3] ?? 8)),
-      },
-    ];
-  });
+    if (!text) {
+      if (collapsed) pendingSpace = true;
+      continue;
+    }
+    if (!transform || transform.length < 6) continue;
+    items.push({
+      text,
+      x: transform[4] ?? 0,
+      y: transform[5] ?? 0,
+      width: Math.max(0, item.width ?? 0),
+      height: Math.max(6, item.height ?? Math.abs(transform[3] ?? 8)),
+      spaceBefore: pendingSpace || /^\s/.test(collapsed),
+      spaceAfter: /\s$/.test(collapsed),
+    });
+    pendingSpace = false;
+  }
   const detectedSplit = detectColumnSplit(items, widthPt, heightPt);
   if (forcedColumns === 1 || (!detectedSplit && forcedColumns !== 2)) {
     return {
@@ -179,8 +232,26 @@ export function analyzePdfPageLayout(
   const headerCutoff = heightPt * 0.83;
   const header = items.filter((item) => item.y >= headerCutoff);
   const body = items.filter((item) => item.y < headerCutoff);
-  const left = body.filter((item) => item.x + item.width * 0.5 < split);
-  const right = body.filter((item) => item.x + item.width * 0.5 >= split);
+
+  // Assign whole lines, never individual runs. Splitting by run centre used to
+  // cut a line that crossed the gutter into two fragments filed hundreds of
+  // lines apart, which is how "…platform in" ended up adjacent to "pooling cut
+  // p95 API latency ~40%." and the middle of the sentence disappeared. Keeping
+  // lines intact degrades a wrong column call to imperfect ordering rather than
+  // destroyed content. A line that does cross the gutter is treated as
+  // full-width and read with the first column.
+  const gutter = Math.max(8, widthPt * 0.018);
+  const leftLines: string[] = [];
+  const rightLines: string[] = [];
+  for (const line of groupLineItems(body)) {
+    const text = lineText(line.items);
+    if (!text) continue;
+    const { start, end } = lineSpan(line);
+    const spansGutter = start < split - gutter && end > split + gutter;
+    if (spansGutter || end <= split + gutter) leftLines.push(text);
+    else rightLines.push(text);
+  }
+
   return {
     page,
     widthPt,
@@ -190,9 +261,9 @@ export function analyzePdfPageLayout(
       `[PAGE ${page} HEADER]`,
       ...groupLines(header),
       `[PAGE ${page} LEFT COLUMN]`,
-      ...groupLines(left),
+      ...leftLines,
       `[PAGE ${page} RIGHT COLUMN]`,
-      ...groupLines(right),
+      ...rightLines,
     ].join("\n"),
   };
 }
