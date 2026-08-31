@@ -373,3 +373,98 @@ test("heading detection still fires for a keyword that has aliases", () => {
   const posting = "Machine Learning:\nBuild models with PyTorch and deploy them.";
   assert.deepEqual(sanitizeKeywords(["Machine Learning", "PyTorch"], posting), ["PyTorch"]);
 });
+
+// --- rewrite stuffing validation (lib/optimizeContract.ts) -----------------
+// Regression for the 2026-08-31 failure: a source resume that already used a
+// JD keyword more than MAX_KEYWORD_REPEATS times (skills line + tech stacks
+// are kept verbatim) made every preserve-mode rewrite fail validation — three
+// attempts, then a 422 the user could not fix. Pre-existing density belongs in
+// the analysis warnings, not in the rewrite's rejection criteria.
+
+const { validateOptimization } = await import("../lib/optimizeContract.ts");
+
+function optimizationWith(r, texts) {
+  return {
+    summary: r.summary,
+    title: r.title,
+    skills: [...r.skills],
+    roles: [
+      {
+        id: "r1",
+        bullets: r.experience[0].bullets.map((b, i) => ({
+          id: b.id,
+          text: texts[i] ?? b.text,
+          evidence: [b.id],
+          matchedKeywords: [],
+          rationale: "",
+        })),
+      },
+    ],
+    projects: [],
+  };
+}
+
+const denseSource = () =>
+  resume({
+    skills: ["Python", "Java"],
+    experience: [
+      {
+        id: "r1",
+        company: "TechCorp",
+        title: "Software Engineering Intern",
+        location: "Boston, MA",
+        start: "2025-06",
+        end: "2025-09",
+        bullets: [
+          { id: "b1", text: "Built Python services; wrote Python tooling and Python tests." },
+          { id: "b2", text: "Automated Python deploys with a Python CLI." },
+        ],
+      },
+    ],
+  });
+
+test("source-resume keyword density does not fail the rewrite", () => {
+  const r = denseSource();
+  assert.ok(
+    countOccurrences(resumeToText(r), "Python") > MAX_KEYWORD_REPEATS,
+    "fixture must already exceed the cap on its own",
+  );
+  // A rewrite that keeps density exactly where the source had it.
+  const issues = validateOptimization(
+    r,
+    optimizationWith(r, [
+      "Shipped Python services; wrote Python tooling and Python tests.",
+      "Automated Python deploys with a Python CLI.",
+    ]),
+    job,
+  ).filter((i) => i.startsWith("keyword"));
+  assert.deepEqual(issues, []);
+});
+
+test("a rewrite that adds density beyond the source still fails", () => {
+  const r = denseSource();
+  const issues = validateOptimization(
+    r,
+    optimizationWith(r, [
+      "Shipped Python services in Python; wrote Python tooling and Python tests in Python.",
+      "Automated Python deploys with a Python CLI for Python jobs.",
+    ]),
+    job,
+  ).filter((i) => i.startsWith("keyword"));
+  assert.equal(issues.length, 1);
+  assert.match(issues[0], /"Python"/);
+});
+
+test("a clean source still gets the absolute stuffing cap", () => {
+  const r = resume(); // one "Python" in skills, none in bullets
+  const issues = validateOptimization(
+    r,
+    optimizationWith(r, [
+      "Built Python dashboards with Python and Python pipelines.",
+      "Wrote Python scripts and Python data jobs.",
+    ]),
+    job,
+  ).filter((i) => i.startsWith("keyword"));
+  assert.equal(issues.length, 1);
+  assert.match(issues[0], /"Python"/);
+});

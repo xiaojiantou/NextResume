@@ -9,7 +9,12 @@
 // and validation measures the reimplementation, and the two drift silently.
 // The prompts stay in the route; the eval reads those out of the source.
 
-import { MAX_KEYWORD_REPEATS, detectStuffing, resumeToText } from "./atsScore.ts";
+import {
+  MAX_KEYWORD_REPEATS,
+  countOccurrences,
+  detectStuffing,
+  resumeToText,
+} from "./atsScore.ts";
 import { applyOptimizationToResume } from "./applyOptimization.ts";
 import type {
   CoreResumeSection,
@@ -98,10 +103,21 @@ export function validateOptimization(
   // the user never receives a resume that trips it.
   if (job) {
     const materialized = applyOptimizationToResume(resume, opt);
+    const sourceText = resumeToText(resume);
     const { worst } = detectStuffing(resumeToText(materialized), job);
     for (const { keyword, count } of worst) {
+      // The source resume can legitimately exceed the cap on its own — the
+      // skills list and tech-stack lines must be kept verbatim, so in
+      // preserve mode no rewrite can get under it. Only reject density the
+      // rewrite itself added; pre-existing density is the user's to see in
+      // the analysis report, not a reason to fail their paid rewrite.
+      const allowed = Math.max(
+        MAX_KEYWORD_REPEATS,
+        countOccurrences(sourceText, keyword),
+      );
+      if (count <= allowed) continue;
       problems.push(
-        `keyword "${keyword}": repeated ${count} times — state it once or twice where it is load-bearing and rewrite the rest without it (max ${MAX_KEYWORD_REPEATS})`,
+        `keyword "${keyword}": repeated ${count} times (the source resume has ${countOccurrences(sourceText, keyword)}) — state it once or twice where it is load-bearing and rewrite the rest without it (max ${allowed})`,
       );
     }
   }
