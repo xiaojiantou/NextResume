@@ -17,10 +17,10 @@ import {
 } from "@/components/ResumeFitPanel";
 import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
-import { VoiceRefine } from "@/components/VoiceRefine";
+import { BulletRefine } from "@/components/BulletRefine";
 import { findModel } from "@/lib/models";
 import { applyOptimizationToResume } from "@/lib/applyOptimization";
-import { VOICE_QUOTA, orderAuthHeaders, useFlow } from "@/lib/store";
+import { REFINE_QUOTA, orderAuthHeaders, useFlow } from "@/lib/store";
 
 import { cn } from "@/lib/cn";
 import {
@@ -2275,6 +2275,185 @@ function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
   );
 }
 
+// One before/after pair. The "after" side is a live input: typing here is the
+// fastest way to fix a single word, and the preview beside it reflows as you
+// go, which is the thing pasting into a chat window can never do.
+function BulletDiffRow({
+  ownerId,
+  bullet,
+  evidence,
+  source,
+  job,
+  model,
+  quotaRemaining,
+  locked,
+  focused,
+  onFocus,
+  onToggleLock,
+  onReplace,
+  onQuotaConsume,
+}: {
+  ownerId: string;
+  bullet: OptimizedBullet;
+  evidence: ResumeBullet[];
+  source: ResumeBullet | null;
+  job: JobAnalysis | null;
+  model: string;
+  quotaRemaining: number;
+  locked: boolean;
+  focused: boolean;
+  onFocus: () => void;
+  onToggleLock: () => void;
+  onReplace: (next: OptimizedBullet) => void;
+  onQuotaConsume: () => void;
+}) {
+  const [refining, setRefining] = useState(false);
+  const quotaExhausted = quotaRemaining <= 0;
+
+  // Focus is deliberately not driven by hover: the preview scrolls itself to
+  // the focused bullet, and doing that every time the pointer crosses a row is
+  // motion sickness. Clicking or tabbing in is the intent signal.
+  return (
+    <div
+      onClick={onFocus}
+      onFocusCapture={onFocus}
+      className={cn(
+        "p-5 text-sm transition-colors",
+        focused && "bg-accent-50/30",
+      )}
+    >
+      <div className="grid gap-0 md:grid-cols-2 md:gap-4">
+        <div>
+          <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-ink-400">
+            Before
+          </div>
+          <div className="text-ink-500">
+            {evidence.length
+              ? evidence.map((o) => o.text).join(" / ")
+              : "Inferred from context"}
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <div className="text-[10px] font-medium uppercase tracking-widest text-accent-600">
+              After
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-1">
+              <button
+                type="button"
+                onClick={onToggleLock}
+                className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10"
+                aria-label={`${locked ? "Unlock" : "Lock"} rewritten bullet`}
+                title={
+                  locked
+                    ? "Allow future regeneration and Fit to change this bullet"
+                    : "Keep this wording during future regeneration and Fit"
+                }
+              >
+                {locked ? <Lock size={13} /> : <Unlock size={13} />}
+                {locked ? "Locked" : "Lock"}
+              </button>
+              <button
+                type="button"
+                disabled={!source || bullet.text === source.text}
+                onClick={() => {
+                  if (!source) return;
+                  onReplace({
+                    ...bullet,
+                    text: source.text,
+                    evidence: [source.id],
+                    matchedKeywords: [],
+                    rationale: "Restored from the original resume by the user.",
+                  });
+                }}
+                className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Restore the source wording and lock it"
+              >
+                <RotateCcw size={13} /> Restore original
+              </button>
+              <button
+                type="button"
+                onClick={() => setRefining((v) => !v)}
+                disabled={quotaExhausted && !refining}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition",
+                  quotaExhausted && !refining
+                    ? "cursor-not-allowed border-ink-100 bg-ink-50 text-ink-400"
+                    : refining
+                      ? "border-accent-300 bg-accent-50 text-accent-700"
+                      : "border-accent-200 bg-white text-accent-700 hover:bg-accent-50",
+                )}
+                title={
+                  quotaExhausted
+                    ? "Refinements used up for this resume"
+                    : "Rewrite this bullet — type or speak what to change"
+                }
+              >
+                <Sparkles size={11} />
+                Refine
+              </button>
+            </div>
+          </div>
+          <textarea
+            value={bullet.text}
+            onChange={(e) => onReplace({ ...bullet, text: e.target.value })}
+            rows={2}
+            aria-label="Rewritten bullet"
+            className="w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-1.5 -mx-2 text-sm leading-relaxed text-ink-900 transition hover:border-ink-100 focus:border-accent-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-100"
+          />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {bullet.matchedKeywords.map((k) => (
+              <span
+                key={k}
+                className="rounded-md border border-accent-100 bg-accent-50 px-2 py-0.5 text-[11px] text-accent-700"
+              >
+                +{k}
+              </span>
+            ))}
+            {bullet.evidence.includes("voice-transcript") && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                <Mic size={11} /> you confirmed this
+              </span>
+            )}
+            {(bullet.suggestion === "cut" || bullet.suggestion === "trim") && (
+              <span
+                className={cn(
+                  "rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                  bullet.suggestion === "cut"
+                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                    : "border-amber-200 bg-amber-50 text-amber-700",
+                )}
+                title={bullet.rationale || undefined}
+              >
+                {bullet.suggestion === "cut"
+                  ? "Low relevance — consider cutting"
+                  : "Consider trimming"}
+                {typeof bullet.relevance === "number"
+                  ? ` · ${bullet.relevance}/100`
+                  : ""}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {refining && (
+        <BulletRefine
+          roleId={ownerId}
+          bullet={bullet}
+          sourceText={source?.text ?? evidence[0]?.text ?? bullet.text}
+          job={job}
+          model={model}
+          quotaRemaining={quotaRemaining}
+          onAccept={(rid, bid, next) => onReplace({ ...next, id: bid })}
+          onQuotaConsume={onQuotaConsume}
+          onClose={() => setRefining(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 function BulletDiff() {
   const {
     resume,
@@ -2282,65 +2461,38 @@ function BulletDiff() {
     job,
     selectedModel,
     voiceCount,
+    includeSummary,
     lockedContentIds,
     replaceOptimizedBullet,
     toggleLockedContentId,
     incrementVoiceCount,
   } = useFlow();
+  const [focusedBulletId, setFocusedBulletId] = useState<string | null>(null);
+  const [previewHoverId, setPreviewHoverId] = useState<string | null>(null);
   if (!resume || !optimization) return null;
-  const quotaRemaining = Math.max(0, VOICE_QUOTA - voiceCount);
-  const renderActions = (
+  const quotaRemaining = Math.max(0, REFINE_QUOTA - voiceCount);
+
+  const rowProps = (
     ownerId: string,
     bullet: OptimizedBullet,
+    evidence: ResumeBullet[],
     source: ResumeBullet | null,
-  ) => {
-    const locked = lockedContentIds.includes(bullet.id);
-    return (
-      <div className="flex flex-wrap items-center justify-end gap-1">
-        <button
-          type="button"
-          onClick={() => toggleLockedContentId(bullet.id)}
-          className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10"
-          aria-label={`${locked ? "Unlock" : "Lock"} rewritten bullet`}
-          title={
-            locked
-              ? "Allow future regeneration and Fit to change this bullet"
-              : "Keep this wording during future regeneration and Fit"
-          }
-        >
-          {locked ? <Lock size={13} /> : <Unlock size={13} />}
-          {locked ? "Locked" : "Lock"}
-        </button>
-        <button
-          type="button"
-          disabled={!source || bullet.text === source.text}
-          onClick={() => {
-            if (!source) return;
-            replaceOptimizedBullet(ownerId, bullet.id, {
-              ...bullet,
-              text: source.text,
-              evidence: [source.id],
-              matchedKeywords: [],
-              rationale: "Restored from the original resume by the user.",
-            });
-          }}
-          className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10 disabled:cursor-not-allowed disabled:opacity-40"
-          title="Restore the source wording and lock it"
-        >
-          <RotateCcw size={13} /> Restore original
-        </button>
-        <VoiceRefine
-          roleId={ownerId}
-          bullet={bullet}
-          job={job}
-          model={selectedModel}
-          quotaRemaining={quotaRemaining}
-          onAccept={replaceOptimizedBullet}
-          onQuotaConsume={incrementVoiceCount}
-        />
-      </div>
-    );
-  };
+  ) => ({
+    ownerId,
+    bullet,
+    evidence,
+    source,
+    job,
+    model: selectedModel,
+    quotaRemaining,
+    locked: lockedContentIds.includes(bullet.id),
+    focused: focusedBulletId === bullet.id,
+    onFocus: () => setFocusedBulletId(bullet.id),
+    onToggleLock: () => toggleLockedContentId(bullet.id),
+    onReplace: (next: OptimizedBullet) =>
+      replaceOptimizedBullet(ownerId, bullet.id, next),
+    onQuotaConsume: incrementVoiceCount,
+  });
 
   return (
     <div className="mt-10">
@@ -2364,12 +2516,30 @@ function BulletDiff() {
               quotaRemaining === 0 && "text-rose-500",
             )}
           >
-            <Mic size={12} /> {quotaRemaining}/{VOICE_QUOTA} voice refinements
+            <Sparkles size={12} /> {quotaRemaining}/{REFINE_QUOTA} refinements
           </span>
         </div>
       </div>
 
-      <div className="mt-4 card overflow-hidden">
+      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="card hidden max-h-[calc(100vh-7rem)] overflow-y-auto p-5 lg:sticky lg:top-6 lg:block">
+          <div className="mb-3 text-[10px] font-medium uppercase tracking-widest text-ink-400">
+            Live preview
+          </div>
+          <ResumeView
+            mode="optimized"
+            resume={resume}
+            optimization={optimization}
+            hoveredEvidence={[]}
+            hoveredOptimizedId={previewHoverId}
+            setHoveredOptimizedId={setPreviewHoverId}
+            evidenceMode={false}
+            includeSummary={includeSummary ?? true}
+            focusedBulletId={focusedBulletId}
+          />
+        </div>
+
+        <div className="card overflow-hidden">
         {optimization.roles.map((role) => {
           const original = resume.experience.find((r) => r.id === role.id);
           if (!original) return null;
@@ -2387,70 +2557,17 @@ function BulletDiff() {
                     b.evidence.includes(o.id),
                   );
                   return (
-                    <div
+                    <BulletDiffRow
                       key={`${role.id}:${b.id}:${bulletIndex}`}
-                      className="grid md:grid-cols-2 gap-0 md:gap-4 p-5 text-sm"
-                    >
-                      <div>
-                        <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
-                          Before
-                        </div>
-                        <div className="text-ink-500">
-                          {orig.length
-                            ? orig.map((o) => o.text).join(" / ")
-                            : "Inferred from context"}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium">
-                            After
-                          </div>
-                          {renderActions(
-                            role.id,
-                            b,
-                            original.bullets.find(
-                              (source) => source.id === b.id,
-                            ) ?? orig[0] ?? null,
-                          )}
-                        </div>
-                        <div className="text-ink-900">{b.text}</div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {b.matchedKeywords.map((k) => (
-                            <span
-                              key={k}
-                              className="text-[11px] px-2 py-0.5 rounded-md bg-accent-50 text-accent-700 border border-accent-100"
-                            >
-                              +{k}
-                            </span>
-                          ))}
-                          {b.evidence.includes("voice-transcript") && (
-                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
-                              <Mic size={11} /> voice-attested
-                            </span>
-                          )}
-                          {(b.suggestion === "cut" ||
-                            b.suggestion === "trim") && (
-                            <span
-                              className={cn(
-                                "text-[11px] px-2 py-0.5 rounded-md border font-medium",
-                                b.suggestion === "cut"
-                                  ? "bg-rose-50 text-rose-700 border-rose-200"
-                                  : "bg-amber-50 text-amber-700 border-amber-200",
-                              )}
-                              title={b.rationale || undefined}
-                            >
-                              {b.suggestion === "cut"
-                                ? "Low relevance — consider cutting"
-                                : "Consider trimming"}
-                              {typeof b.relevance === "number"
-                                ? ` · ${b.relevance}/100`
-                                : ""}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      {...rowProps(
+                        role.id,
+                        b,
+                        orig,
+                        original.bullets.find((source) => source.id === b.id) ??
+                          orig[0] ??
+                          null,
+                      )}
+                    />
                   );
                 })}
               </div>
@@ -2474,70 +2591,17 @@ function BulletDiff() {
                     b.evidence.includes(o.id),
                   );
                   return (
-                    <div
+                    <BulletDiffRow
                       key={`${project.id}:${b.id}:${bulletIndex}`}
-                      className="grid md:grid-cols-2 gap-0 md:gap-4 p-5 text-sm"
-                    >
-                      <div>
-                        <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
-                          Before
-                        </div>
-                        <div className="text-ink-500">
-                          {orig.length
-                            ? orig.map((o) => o.text).join(" / ")
-                            : "Inferred from context"}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium">
-                            After
-                          </div>
-                          {renderActions(
-                            project.id,
-                            b,
-                            original.bullets.find(
-                              (source) => source.id === b.id,
-                            ) ?? orig[0] ?? null,
-                          )}
-                        </div>
-                        <div className="text-ink-900">{b.text}</div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {b.matchedKeywords.map((k) => (
-                            <span
-                              key={k}
-                              className="text-[11px] px-2 py-0.5 rounded-md bg-accent-50 text-accent-700 border border-accent-100"
-                            >
-                              +{k}
-                            </span>
-                          ))}
-                          {b.evidence.includes("voice-transcript") && (
-                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-medium">
-                              <Mic size={11} /> voice-attested
-                            </span>
-                          )}
-                          {(b.suggestion === "cut" ||
-                            b.suggestion === "trim") && (
-                            <span
-                              className={cn(
-                                "text-[11px] px-2 py-0.5 rounded-md border font-medium",
-                                b.suggestion === "cut"
-                                  ? "bg-rose-50 text-rose-700 border-rose-200"
-                                  : "bg-amber-50 text-amber-700 border-amber-200",
-                              )}
-                              title={b.rationale || undefined}
-                            >
-                              {b.suggestion === "cut"
-                                ? "Low relevance — consider cutting"
-                                : "Consider trimming"}
-                              {typeof b.relevance === "number"
-                                ? ` · ${b.relevance}/100`
-                                : ""}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      {...rowProps(
+                        project.id,
+                        b,
+                        orig,
+                        original.bullets.find((source) => source.id === b.id) ??
+                          orig[0] ??
+                          null,
+                      )}
+                    />
                   );
                 })}
               </div>
@@ -2574,30 +2638,10 @@ function BulletDiff() {
                         (candidate) => candidate.id === bullet.id,
                       ) ?? evidence[0] ?? null;
                     return (
-                      <div
+                      <BulletDiffRow
                         key={`${section.id}:${item.id}:${bullet.id}:${bulletIndex}`}
-                        className="grid gap-4 p-5 text-sm md:grid-cols-2"
-                      >
-                        <div>
-                          <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-ink-400">
-                            Before
-                          </div>
-                          <div className="text-ink-500">
-                            {evidence.length
-                              ? evidence.map((candidate) => candidate.text).join(" / ")
-                              : "Inferred from context"}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="mb-1.5 flex items-center justify-between gap-2">
-                            <div className="text-[10px] font-medium uppercase tracking-widest text-accent-600">
-                              After
-                            </div>
-                            {renderActions(item.id, bullet, source)}
-                          </div>
-                          <div className="text-ink-900">{bullet.text}</div>
-                        </div>
-                      </div>
+                        {...rowProps(item.id, bullet, evidence, source)}
+                      />
                     );
                   })}
                 </div>
@@ -2605,6 +2649,7 @@ function BulletDiff() {
             );
           });
         })}
+        </div>
       </div>
     </div>
   );

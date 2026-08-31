@@ -35,7 +35,10 @@ import type {
   ResumeStyleSource,
 } from "./types";
 
-export const VOICE_QUOTA = 10;
+// Refinements per resume. The persisted counter is still called voiceCount:
+// renaming it would reset the allowance for anyone mid-session, and the value
+// it tracks has not changed — only that a refinement can now be typed.
+export const REFINE_QUOTA = 10;
 
 type Step = "upload" | "analysis" | "checkout" | "result";
 export type { PdfStyle, TargetPages } from "./pdf/config";

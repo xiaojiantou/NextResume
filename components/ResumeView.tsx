@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Optimization, Resume } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { normalizeResumeLinks } from "@/lib/resumeLinks";
@@ -57,6 +58,7 @@ export function ResumeView({
   hoveredOptimizedId,
   evidenceMode,
   includeSummary = true,
+  focusedBulletId = null,
 }: {
   mode: Mode;
   resume: Resume;
@@ -66,8 +68,20 @@ export function ResumeView({
   hoveredOptimizedId: string | null;
   evidenceMode: boolean;
   includeSummary?: boolean;
+  /**
+   * Bullet the reader is currently working on elsewhere on the page. Unlike
+   * hover, this highlights without evidenceMode and scrolls itself into view,
+   * so a refine panel can keep the preview pointed at the right line.
+   */
+  focusedBulletId?: string | null;
 }) {
   const evidenceActive = evidenceMode && hoveredEvidence.length > 0;
+  const focusedRef = useRef<HTMLLIElement | null>(null);
+
+  useEffect(() => {
+    if (!focusedBulletId) return;
+    focusedRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focusedBulletId]);
 
   const summary =
     mode === "optimized"
@@ -210,14 +224,17 @@ export function ResumeView({
                       })
                     : (optRole?.bullets ?? []).map((b, index) => {
                         const isActive = hoveredOptimizedId === b.id;
+                        const isFocused = focusedBulletId === b.id;
                         return (
                           <li
                             key={`${role.id}:${b.id}:${index}`}
+                            ref={isFocused ? focusedRef : undefined}
                             onMouseEnter={() => setHoveredOptimizedId(b.id)}
                             onMouseLeave={() => setHoveredOptimizedId(null)}
                             className={cn(
                               "transition-all rounded-md px-1 -mx-1 cursor-default",
-                              evidenceMode && isActive && "evidence-active",
+                              (isFocused || (evidenceMode && isActive)) &&
+                                "evidence-active",
                             )}
                           >
                             {b.text}
@@ -279,14 +296,17 @@ export function ResumeView({
                         })
                       : (optProject?.bullets ?? []).map((b, index) => {
                           const isActive = hoveredOptimizedId === b.id;
+                          const isFocused = focusedBulletId === b.id;
                           return (
                             <li
                               key={`${project.id}:${b.id}:${index}`}
+                              ref={isFocused ? focusedRef : undefined}
                               onMouseEnter={() => setHoveredOptimizedId(b.id)}
                               onMouseLeave={() => setHoveredOptimizedId(null)}
                               className={cn(
                                 "transition-all rounded-md px-1 -mx-1 cursor-default",
-                                evidenceMode && isActive && "evidence-active",
+                                (isFocused || (evidenceMode && isActive)) &&
+                                  "evidence-active",
                               )}
                             >
                               {b.text}
