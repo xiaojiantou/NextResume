@@ -93,6 +93,58 @@ export async function sendOrderReadyEmail({
   }
 }
 
+/**
+ * Plain operational alert to the site operator (model watch, cron failures).
+ * Same fail-safe contract as the order email: missing config logs and no-ops.
+ */
+export async function sendAlertEmail({
+  to,
+  subject,
+  text,
+}: {
+  to: string;
+  subject: string;
+  text: string;
+}): Promise<SendResult> {
+  if (!API_KEY) {
+    console.warn("[email] MAILERSEND_API_KEY not set — skipping alert:", subject);
+    return { ok: false, reason: "email_disabled" };
+  }
+  if (!FROM_EMAIL) {
+    console.warn("[email] EMAIL_FROM_EMAIL not set — skipping alert:", subject);
+    return { ok: false, reason: "email_from_missing" };
+  }
+
+  const body = {
+    from: { email: FROM_EMAIL, name: FROM_NAME },
+    to: [{ email: to }],
+    subject,
+    text,
+    html: `<pre style="font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.6;color:#18181b;white-space:pre-wrap;">${escapeHtml(text)}</pre>`,
+  };
+
+  try {
+    const res = await fetch("https://api.mailersend.com/v1/email", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${API_KEY}`,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error("[email] mailersend error", res.status, errText.slice(0, 500));
+      return { ok: false, reason: `mailersend_${res.status}` };
+    }
+    return { ok: true, id: res.headers.get("x-message-id") || "" };
+  } catch (e) {
+    console.error("[email] alert send failed", e);
+    return { ok: false, reason: e instanceof Error ? e.message : "unknown_error" };
+  }
+}
+
 function renderText({
   displayName,
   resultUrl,

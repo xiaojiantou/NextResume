@@ -20,6 +20,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/import-job-url(.*)",
   "/api/import-job-image(.*)",
   "/api/analyze(.*)",
+  "/api/fit-brief(.*)",
   // Public to Clerk, but not open: everything below except the free
   // `mode: "preview"` branch of /api/optimize gates itself on a paid order
   // via requirePaidOrder(). They can't require a session — buyers returning
@@ -36,6 +37,8 @@ const isPublicRoute = createRouteMatcher([
   // Stripe calls this server-to-server with no Clerk session; it verifies
   // itself via the webhook signature instead.
   "/api/stripe/webhook(.*)",
+  // Vercel cron, no Clerk session; the route verifies CRON_SECRET itself.
+  "/api/cron/model-watch(.*)",
 ]);
 
 const isApiRoute = createRouteMatcher(["/api(.*)", "/trpc(.*)"]);
