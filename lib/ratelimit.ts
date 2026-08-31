@@ -80,6 +80,7 @@ export const LIMITS = {
   parseResume: { key: "parse-resume", limit: 5, windowMs: 60_000 },
   parseJob:    { key: "parse-job",    limit: 20, windowMs: 60_000 },
   analyze:     { key: "analyze",      limit: 10, windowMs: 60_000 },
+  fitBrief:    { key: "fit-brief",    limit: 6,  windowMs: 60_000 },
   optimize:    { key: "optimize",     limit: 6,  windowMs: 60_000 },
   redeem:      { key: "redeem",       limit: 10, windowMs: 60_000 },
   importJobUrl:{ key: "import-job-url", limit: 10, windowMs: 60_000 },

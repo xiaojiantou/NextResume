@@ -339,6 +339,27 @@ export type AtsReport = {
   stuffingWarnings?: string[];
 };
 
+export type FitVerdict = "strong" | "good" | "stretch" | "weak";
+
+/**
+ * The qualitative counterpart to AtsReport: what this employer is actually
+ * hiring for beneath the JD's wording, and the story this resume should tell
+ * for it. Written by a model; anchored to real resume lines by prompt contract.
+ */
+export type FitBrief = {
+  verdict: FitVerdict;
+  /** One-sentence conclusion, stated first — never a hedge. */
+  headline: string;
+  /** What the employer really needs, read between the JD's lines. */
+  whatTheyWant: string;
+  /** The role's real workflow as 3-6 short steps, e.g. "define the problem with the customer". */
+  workflow: string[];
+  /** The narrative the tailored resume should lead with. */
+  yourStory: string;
+  strengths: Array<{ point: string; evidence: string }>;
+  gaps: Array<{ point: string; mitigation: string }>;
+};
+
 export type BulletSuggestion = "keep" | "trim" | "cut";
 
 export type OptimizedBullet = {

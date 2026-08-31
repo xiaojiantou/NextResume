@@ -24,6 +24,7 @@ import type {
   AtsCategory,
   AtsReport,
   ContentStructureMode,
+  FitBrief,
   JobAnalysis,
   Optimization,
   OptimizationVariant,
@@ -64,6 +65,7 @@ type State = {
   job: JobAnalysis | null;
 
   report: AtsReport | null;
+  fitBrief: FitBrief | null;
   preview: PreviewBullet | null;
   optimization: Optimization | null;
   optimizationModel: string | null;
@@ -117,6 +119,7 @@ type Actions = {
   setJob: (j: JobAnalysis) => void;
 
   setReport: (r: AtsReport) => void;
+  setFitBrief: (b: FitBrief | null) => void;
   setMeasuredScore: (
     measuredAfter: number,
     measuredCategories: AtsCategory[],
@@ -173,6 +176,7 @@ const initial: State = {
   jobUrl: "",
   job: null,
   report: null,
+  fitBrief: null,
   preview: null,
   optimization: null,
   optimizationModel: null,
@@ -286,6 +290,7 @@ export const useFlow = create<State & Actions>()(
           personalizedStyleProfile: null,
           personalizedStatus: "idle",
           report: null,
+          fitBrief: null,
           preview: null,
           optimization: null,
           optimizationModel: null,
@@ -302,6 +307,7 @@ export const useFlow = create<State & Actions>()(
           jobDescription: text,
           job: null,
           report: null,
+          fitBrief: null,
           preview: null,
           optimization: null,
           optimizationModel: null,
@@ -312,6 +318,7 @@ export const useFlow = create<State & Actions>()(
       setJobUrl: (url) => set({ jobUrl: url }),
       setJob: (j) => set({ job: j }),
       setReport: (r) => set({ report: r }),
+      setFitBrief: (b) => set({ fitBrief: b }),
       setMeasuredScore: (measuredAfter, measuredCategories) =>
         set((s) =>
           s.report
