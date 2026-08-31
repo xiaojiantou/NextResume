@@ -4,74 +4,44 @@
 // analysis. Text parsing remains independent and always processes the entire
 // document.
 import "server-only";
-import { launchBrowser } from "./browser";
 import { rasterizePdf } from "./pdfRaster";
 import type { ResumePageSpec, ResumeStyleSource } from "./types";
 
 const MAX_STYLE_PAGES = 3;
-const VIEWPORT = { width: 850, height: 1100 };
 const LETTER_PAGE: ResumePageSpec = {
   widthPt: 612,
   heightPt: 792,
   orientation: "portrait",
 };
 
-function asDataUri(buffer: Buffer): string {
-  return `data:image/jpeg;base64,${buffer.toString("base64")}`;
-}
-
-async function screenshotHtmlPages(
-  html: string,
-): Promise<Pick<ResumeStyleSource, "screenshots" | "pageCount">> {
-  const browser = await launchBrowser();
-  try {
-    const page = await browser.newPage();
-    await page.emulateMediaFeatures([
-      { name: "prefers-color-scheme", value: "light" },
-    ]);
-    await page.setViewport(VIEWPORT);
-    await page.setContent(html, { waitUntil: "load", timeout: 15_000 });
-    const scrollHeight = await page.evaluate(
-      () => document.documentElement.scrollHeight,
-    );
-    const pageCount = Math.max(1, Math.ceil(scrollHeight / VIEWPORT.height));
-    const screenshots: string[] = [];
-    for (let index = 0; index < Math.min(pageCount, MAX_STYLE_PAGES); index++) {
-      await page.evaluate((top) => window.scrollTo(0, top), index * VIEWPORT.height);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      const shot = await page.screenshot({
-        type: "jpeg",
-        quality: 78,
-      });
-      screenshots.push(asDataUri(Buffer.from(shot)));
-    }
-    return { screenshots, pageCount };
-  } finally {
-    await browser.close();
-  }
-}
-
+/**
+ * Pictures of the ORIGINAL document, or null when no faithful picture exists.
+ *
+ * Null is a real answer, not a failure. Everything downstream treats these
+ * images as evidence of what the author actually designed: the result page
+ * labels the pane "Original PDF", and the "personalized" style has a vision
+ * model read their visual system out of them.
+ *
+ * DOCX used to be rendered by converting it with mammoth and screenshotting
+ * the result. mammoth extracts semantics, not layout — columns, tables,
+ * margins, fonts and spacing are all discarded — so the picture was the
+ * author's words reflowed into hardcoded Arial on white, a document they had
+ * never seen. It was then shown to them as "Original PDF" and used to derive a
+ * style advertised as rebuilding their resume's visual language. Rendering
+ * DOCX faithfully needs a real Word-compatible renderer; until there is one,
+ * no picture is the honest answer.
+ */
 export async function screenshotResume(
   buffer: Buffer,
   filename: string,
-): Promise<ResumeStyleSource> {
+): Promise<ResumeStyleSource | null> {
   const ext = filename.split(".").pop()?.toLowerCase();
 
   // pdf.js renders the pages itself — no browser, so this behaves the same
   // locally and on Vercel, where headless Chromium has no PDF viewer at all.
   if (ext === "pdf") return rasterizePdf(buffer, MAX_STYLE_PAGES);
 
-  if (ext === "docx") {
-    const mammoth = await import("mammoth");
-    const { value: bodyHtml } = await mammoth.convertToHtml({ buffer });
-    const html = `<!doctype html><html><head><meta name="color-scheme" content="light"><style>
-      html,body{background:#fff;color:#000;margin:0}
-      body{box-sizing:border-box;width:${VIEWPORT.width}px;padding:48px;font-family:Arial,sans-serif}
-      img{max-width:100%}
-    </style></head><body>${bodyHtml}</body></html>`;
-    const captured = await screenshotHtmlPages(html);
-    return { ...captured, page: LETTER_PAGE };
-  }
+  if (ext === "docx") return null;
 
   if (ext === "png" || ext === "jpg" || ext === "jpeg") {
     const mime = ext === "png" ? "image/png" : "image/jpeg";
