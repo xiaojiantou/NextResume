@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import {
   Document,
   Image,
@@ -6,6 +8,7 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
+import { ContactText, contactEntries } from "./ContactLine";
 import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { FixedPdfStyle, ResumePalette } from "./config";
 import {
@@ -122,6 +125,9 @@ function createStyles(
       fontSize: fs(8.7),
       lineHeight: lh(1.3),
     },
+    // A link keeps the contact line's colour: the default blue underline
+    // would restyle a header the user never asked us to change.
+    contactLink: { color: palette.muted, textDecoration: "none" },
     section: {
       marginTop: px(isExecutive ? 17 : isElegant ? 19 : 16),
     },
@@ -456,11 +462,15 @@ export function ResumePdfDistinctive({
             <View style={styles.identity}>
               <Text style={styles.name}>{resume.name}</Text>
               {title ? <Text style={styles.title}>{title}</Text> : null}
-              <Text style={styles.contact}>
-                {[resume.email, resume.phone, resume.location]
-                  .filter(Boolean)
-                  .join("  ·  ")}
-              </Text>
+              <ContactText
+                entries={contactEntries(
+                  [resume.email, resume.phone, resume.location],
+                  resume.links,
+                )}
+                separator="  ·  "
+                style={styles.contact}
+                linkStyle={styles.contactLink}
+              />
             </View>
             {resume.photo ? <Image src={resume.photo} style={styles.photo} /> : null}
           </View>

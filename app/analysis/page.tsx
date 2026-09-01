@@ -4,14 +4,16 @@
 
 import { AppShell } from "@/components/AppShell";
 import { useFlow } from "@/lib/store";
-import type { PreviewBullet } from "@/lib/types";
+import type { FitBrief, FitVerdict, PreviewBullet } from "@/lib/types";
 import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
+  Compass,
   Lock,
+  MoveRight,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -31,17 +33,51 @@ export default function AnalysisPage() {
   const {
     resume,
     job,
+    jobDescription,
     report,
+    fitBrief,
     preview,
+    selectedModel,
     setReport,
+    setFitBrief,
     setPreview,
   } = useFlow();
   const [stage, setStage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [briefLoading, setBriefLoading] = useState(false);
   const router = useRouter();
   const ran = useRef(false);
   const previewRan = useRef(false);
+  const briefRan = useRef(false);
+
+  // The strategic read doesn't depend on the ATS arithmetic, so it starts
+  // immediately — it is the slowest call on the page.
+  useEffect(() => {
+    if (!resume || !job || fitBrief || briefRan.current) return;
+    briefRan.current = true;
+    setBriefLoading(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/fit-brief", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resume,
+            job,
+            jobDescription,
+            model: selectedModel,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.brief) setFitBrief(data.brief);
+      } catch {
+        // Non-fatal — the scored report stands on its own.
+      } finally {
+        setBriefLoading(false);
+      }
+    })();
+  }, [resume, job, jobDescription, fitBrief, selectedModel, setFitBrief]);
 
   // Kick off the free preview bullet rewrite as soon as report is ready.
   useEffect(() => {
@@ -131,6 +167,8 @@ export default function AnalysisPage() {
           <Analyzing stage={stage} />
         ) : (
           <Report
+            fitBrief={fitBrief}
+            briefLoading={briefLoading}
             preview={preview}
             previewLoading={previewLoading}
             totalBullets={totalBullets}
@@ -201,10 +239,14 @@ function Analyzing({ stage }: { stage: number }) {
 }
 
 function Report({
+  fitBrief,
+  briefLoading,
   preview,
   previewLoading,
   totalBullets,
 }: {
+  fitBrief: FitBrief | null;
+  briefLoading: boolean;
   preview: PreviewBullet | null;
   previewLoading: boolean;
   totalBullets: number;
@@ -250,6 +292,8 @@ function Report({
           </p>
         </div>
       </div>
+
+      <FitBriefBlock brief={fitBrief} loading={briefLoading} />
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="card p-5">
@@ -357,6 +401,167 @@ function Report({
           Unlock optimized resume
           <ArrowRight size={14} />
         </Link>
+      </div>
+    </div>
+  );
+}
+
+const VERDICT_STYLE: Record<
+  FitVerdict,
+  { label: string; className: string }
+> = {
+  strong: {
+    label: "Strong fit",
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  good: {
+    label: "Good fit",
+    className: "bg-accent-50 text-accent-700 border-accent-200",
+  },
+  stretch: {
+    label: "Stretch — worth a tailored shot",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  weak: {
+    label: "Long shot",
+    className: "bg-rose-50 text-rose-700 border-rose-200",
+  },
+};
+
+function FitBriefBlock({
+  brief,
+  loading,
+}: {
+  brief: FitBrief | null;
+  loading: boolean;
+}) {
+  if (!brief && !loading) return null;
+
+  if (loading || !brief) {
+    return (
+      <div className="card p-6">
+        <div className="flex items-center gap-2 text-xs text-ink-400">
+          <Compass size={13} className="animate-pulse" />
+          Reading between the lines of this posting…
+        </div>
+        <div className="mt-4 space-y-2">
+          <div className="h-4 rounded shimmer bg-ink-100 w-3/4" />
+          <div className="h-3 rounded shimmer bg-ink-100" />
+          <div className="h-3 rounded shimmer bg-ink-100 w-5/6" />
+        </div>
+      </div>
+    );
+  }
+
+  const verdict = VERDICT_STYLE[brief.verdict];
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-5 py-3 bg-gradient-to-r from-ink-50/70 to-white border-b border-ink-100 flex items-center justify-between gap-3">
+        <span className="pill">
+          <Compass size={11} />
+          Strategic read
+        </span>
+        <span
+          className={`text-xs font-medium px-2.5 py-1 rounded-md border ${verdict.className}`}
+        >
+          {verdict.label}
+        </span>
+      </div>
+
+      <div className="p-6 space-y-5">
+        <p className="text-lg font-semibold text-ink-900 leading-snug">
+          {brief.headline}
+        </p>
+
+        <div>
+          <h4 className="text-sm font-semibold text-ink-900">
+            What they&apos;re actually hiring for
+          </h4>
+          <p className="text-sm text-ink-600 mt-1.5">{brief.whatTheyWant}</p>
+          {brief.workflow.length > 1 && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {brief.workflow.map((step, i) => (
+                <span key={step} className="inline-flex items-center gap-1.5">
+                  <span className="text-xs px-2 py-1 rounded-md bg-ink-50 text-ink-700 border border-ink-100">
+                    {step}
+                  </span>
+                  {i < brief.workflow.length - 1 && (
+                    <MoveRight size={12} className="text-ink-300 shrink-0" />
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {(brief.strengths.length > 0 || brief.gaps.length > 0) && (
+          <div className="grid md:grid-cols-2 gap-4">
+            {brief.strengths.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-ink-900">
+                  Why you match
+                </h4>
+                <ul className="mt-2 space-y-2.5">
+                  {brief.strengths.map((s) => (
+                    <li key={s.point} className="text-sm">
+                      <div className="flex gap-2">
+                        <Check
+                          size={14}
+                          className="text-emerald-600 mt-0.5 shrink-0"
+                        />
+                        <div>
+                          <span className="text-ink-800">{s.point}</span>
+                          {s.evidence && (
+                            <p className="text-xs text-ink-500 mt-0.5">
+                              {s.evidence}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {brief.gaps.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-ink-900">
+                  Gaps to defuse
+                </h4>
+                <ul className="mt-2 space-y-2.5">
+                  {brief.gaps.map((g) => (
+                    <li key={g.point} className="text-sm">
+                      <div className="flex gap-2">
+                        <AlertTriangle
+                          size={14}
+                          className="text-amber-600 mt-0.5 shrink-0"
+                        />
+                        <div>
+                          <span className="text-ink-800">{g.point}</span>
+                          {g.mitigation && (
+                            <p className="text-xs text-ink-500 mt-0.5">
+                              {g.mitigation}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {brief.yourStory && (
+          <div className="rounded-xl bg-accent-50/50 border border-accent-100 p-4">
+            <h4 className="text-sm font-semibold text-accent-700">
+              The story your resume should tell
+            </h4>
+            <p className="text-sm text-ink-700 mt-1.5">{brief.yourStory}</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   MAX_KEYWORD_REPEATS,
+  countOccurrences,
   detectStuffing,
   resumeToText,
   scoreResume,
   titleTokens,
 } from "../lib/atsScore.ts";
+import { sanitizeKeywords } from "../lib/jobKeywords.ts";
 
 const job = {
   title: "Intern: AI Engineering",
@@ -320,4 +322,149 @@ test("resumeToText reaches every section an ATS would index", () => {
   for (const needle of ["rust", "kubernetes operator", "vector database", "northeastern"]) {
     assert.ok(text.includes(needle), `resumeToText dropped: ${needle}`);
   }
+});
+
+test("keyword matching accepts registered spelling variants in both directions", () => {
+  // A spelling difference used to be indistinguishable from a missing skill:
+  // "K8s" on the resume scored zero against a posting saying "Kubernetes", and
+  // the advice then told the candidate to add a tool they already had.
+  assert.ok(countOccurrences("ran workloads on k8s", "Kubernetes") > 0);
+  assert.ok(countOccurrences("ran workloads on kubernetes", "K8s") > 0);
+  assert.ok(countOccurrences("tuned postgres replicas", "PostgreSQL") > 0);
+  assert.ok(countOccurrences("built services in nodejs", "Node.js") > 0);
+  assert.ok(countOccurrences("shipped ml pipelines", "machine learning") > 0);
+  assert.ok(countOccurrences("deployed on gcp", "Google Cloud Platform") > 0);
+});
+
+test("aliases never loosen word boundaries or admit mere similarity", () => {
+  // "ML" is a registered alias of machine learning, but it must not be found
+  // inside HTML or XML.
+  assert.equal(countOccurrences("wrote html and xml parsers", "machine learning"), 0);
+  assert.equal(countOccurrences("built a JavaScript runtime", "Java"), 0);
+  // The similarity case this table deliberately refuses: Tupperware is Meta's
+  // container orchestration platform, but a recruiter filtering on Kubernetes
+  // will not surface it, so scoring it as a match would inflate our number
+  // without moving the outcome the number exists to predict.
+  assert.equal(countOccurrences("scaled services on Tupperware", "Kubernetes"), 0);
+  // A term with no registered variants still matches only itself.
+  assert.equal(countOccurrences("used Terraform", "Terraform"), 1);
+  assert.equal(countOccurrences("used Terraform", "Pulumi"), 0);
+});
+
+test("alias expansion raises keyword match on a resume that already had the skill", () => {
+  const aliasJob = {
+    ...job,
+    requiredKeywords: ["Kubernetes", "PostgreSQL"],
+    niceToHaveKeywords: [],
+  };
+  const before = scoreResume(resume(), aliasJob).missingKeywords;
+  assert.deepEqual(before, ["Kubernetes", "PostgreSQL"]);
+
+  const withAliases = resume({
+    skills: ["K8s", "Postgres"],
+  });
+  const after = scoreResume(withAliases, aliasJob);
+  assert.deepEqual(after.missingKeywords, []);
+});
+
+test("heading detection still fires for a keyword that has aliases", () => {
+  // countOccurrences expands both sides of the heading comparison, so a
+  // posting whose only mention of a term is a bolded label stays filtered.
+  const posting = "Machine Learning:\nBuild models with PyTorch and deploy them.";
+  assert.deepEqual(sanitizeKeywords(["Machine Learning", "PyTorch"], posting), ["PyTorch"]);
+});
+
+// --- rewrite stuffing validation (lib/optimizeContract.ts) -----------------
+// Regression for the 2026-08-31 failure: a source resume that already used a
+// JD keyword more than MAX_KEYWORD_REPEATS times (skills line + tech stacks
+// are kept verbatim) made every preserve-mode rewrite fail validation — three
+// attempts, then a 422 the user could not fix. Pre-existing density belongs in
+// the analysis warnings, not in the rewrite's rejection criteria.
+
+const { validateOptimization } = await import("../lib/optimizeContract.ts");
+
+function optimizationWith(r, texts) {
+  return {
+    summary: r.summary,
+    title: r.title,
+    skills: [...r.skills],
+    roles: [
+      {
+        id: "r1",
+        bullets: r.experience[0].bullets.map((b, i) => ({
+          id: b.id,
+          text: texts[i] ?? b.text,
+          evidence: [b.id],
+          matchedKeywords: [],
+          rationale: "",
+        })),
+      },
+    ],
+    projects: [],
+  };
+}
+
+const denseSource = () =>
+  resume({
+    skills: ["Python", "Java"],
+    experience: [
+      {
+        id: "r1",
+        company: "TechCorp",
+        title: "Software Engineering Intern",
+        location: "Boston, MA",
+        start: "2025-06",
+        end: "2025-09",
+        bullets: [
+          { id: "b1", text: "Built Python services; wrote Python tooling and Python tests." },
+          { id: "b2", text: "Automated Python deploys with a Python CLI." },
+        ],
+      },
+    ],
+  });
+
+test("source-resume keyword density does not fail the rewrite", () => {
+  const r = denseSource();
+  assert.ok(
+    countOccurrences(resumeToText(r), "Python") > MAX_KEYWORD_REPEATS,
+    "fixture must already exceed the cap on its own",
+  );
+  // A rewrite that keeps density exactly where the source had it.
+  const issues = validateOptimization(
+    r,
+    optimizationWith(r, [
+      "Shipped Python services; wrote Python tooling and Python tests.",
+      "Automated Python deploys with a Python CLI.",
+    ]),
+    job,
+  ).filter((i) => i.startsWith("keyword"));
+  assert.deepEqual(issues, []);
+});
+
+test("a rewrite that adds density beyond the source still fails", () => {
+  const r = denseSource();
+  const issues = validateOptimization(
+    r,
+    optimizationWith(r, [
+      "Shipped Python services in Python; wrote Python tooling and Python tests in Python.",
+      "Automated Python deploys with a Python CLI for Python jobs.",
+    ]),
+    job,
+  ).filter((i) => i.startsWith("keyword"));
+  assert.equal(issues.length, 1);
+  assert.match(issues[0], /"Python"/);
+});
+
+test("a clean source still gets the absolute stuffing cap", () => {
+  const r = resume(); // one "Python" in skills, none in bullets
+  const issues = validateOptimization(
+    r,
+    optimizationWith(r, [
+      "Built Python dashboards with Python and Python pipelines.",
+      "Wrote Python scripts and Python data jobs.",
+    ]),
+    job,
+  ).filter((i) => i.startsWith("keyword"));
+  assert.equal(issues.length, 1);
+  assert.match(issues[0], /"Python"/);
 });

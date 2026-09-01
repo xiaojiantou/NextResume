@@ -4,12 +4,49 @@
 
 import type { Optimization, Resume } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { normalizeResumeLinks } from "@/lib/resumeLinks";
 import {
   detectResumeLanguage,
   getResumeSectionLabels,
 } from "@/lib/pdf/shared";
 
 type Mode = "original" | "optimized";
+
+// Mirrors the exported PDF: recovered targets are real links on screen too,
+// so what the user previews is what they download.
+function ContactLine({ resume }: { resume: Resume }) {
+  const entries = [
+    ...[resume.email, resume.phone, resume.location]
+      .filter(Boolean)
+      .map((label) => ({ key: `v:${label}`, label, url: undefined })),
+    ...normalizeResumeLinks(resume.links).map((link) => ({
+      key: `l:${link.label}`,
+      label: link.label,
+      url: link.url,
+    })),
+  ];
+  return (
+    <>
+      {entries.map((entry, index) => (
+        <span key={entry.key}>
+          {index > 0 ? " · " : ""}
+          {entry.url ? (
+            <a
+              href={entry.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline decoration-ink-300 underline-offset-2 hover:text-ink-700"
+            >
+              {entry.label}
+            </a>
+          ) : (
+            entry.label
+          )}
+        </span>
+      ))}
+    </>
+  );
+}
 
 export function ResumeView({
   mode,
@@ -73,9 +110,7 @@ export function ResumeView({
             </h1>
             <div className="text-sm text-ink-600 mt-0.5">{title}</div>
             <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
-                .filter(Boolean)
-                .join(" · ")}
+              <ContactLine resume={resume} />
             </div>
           </div>
         </header>
@@ -86,9 +121,7 @@ export function ResumeView({
           </h1>
           <div className="text-sm text-ink-600 mt-0.5">{title}</div>
           <div className="text-[11px] text-ink-500 mt-1.5 font-sans">
-            {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
-              .filter(Boolean)
-              .join(" · ")}
+            <ContactLine resume={resume} />
           </div>
         </header>
       )}

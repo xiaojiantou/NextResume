@@ -1,5 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import type { ResumeLink } from "./resumeLinks";
+
 export type ResumeBullet = {
   id: string;
   text: string;
@@ -89,6 +91,12 @@ export type ResumeSourceLayout = {
     widthPt: number;
     heightPt: number;
     columns: 1 | 2;
+    /**
+     * Whether the coordinate pass could actually decide the column count.
+     * Optional for resumes parsed before this was recorded; absent is read
+     * as "not confident", which keeps the old always-verify behaviour.
+     */
+    columnsConfident?: boolean;
   }>;
   issues: string[];
 };
@@ -149,8 +157,14 @@ export type Resume = {
   experience: ResumeRole[];
   projects: ResumeProject[];
   education: ResumeEducation[];
-  /** Profile links from the header (LinkedIn, GitHub, portfolio) in display form. */
-  links?: string[];
+  /**
+   * Profile links from the header (LinkedIn, GitHub, portfolio). Each carries
+   * the label the resume displays and, when recoverable, the target behind it
+   * — a header often shows only "LinkedIn" while the URL lives in the source
+   * file's annotation layer. Legacy resumes stored plain strings, so readers
+   * normalize through normalizeResumeLinks rather than trusting the shape.
+   */
+  links?: ResumeLink[];
   photo?: string; // base64 data URI, extracted from the uploaded PDF/DOCX
   /** Optional for backwards compatibility with previously persisted resumes. */
   language?: ResumeLanguage;
@@ -323,6 +337,27 @@ export type AtsReport = {
    * user because Workday's 2026 filter flags unnatural density.
    */
   stuffingWarnings?: string[];
+};
+
+export type FitVerdict = "strong" | "good" | "stretch" | "weak";
+
+/**
+ * The qualitative counterpart to AtsReport: what this employer is actually
+ * hiring for beneath the JD's wording, and the story this resume should tell
+ * for it. Written by a model; anchored to real resume lines by prompt contract.
+ */
+export type FitBrief = {
+  verdict: FitVerdict;
+  /** One-sentence conclusion, stated first — never a hedge. */
+  headline: string;
+  /** What the employer really needs, read between the JD's lines. */
+  whatTheyWant: string;
+  /** The role's real workflow as 3-6 short steps, e.g. "define the problem with the customer". */
+  workflow: string[];
+  /** The narrative the tailored resume should lead with. */
+  yourStory: string;
+  strengths: Array<{ point: string; evidence: string }>;
+  gaps: Array<{ point: string; mitigation: string }>;
 };
 
 export type BulletSuggestion = "keep" | "trim" | "cut";

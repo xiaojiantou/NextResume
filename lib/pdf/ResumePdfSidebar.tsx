@@ -1,6 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
-import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { Document, Link, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { contactEntries } from "./ContactLine";
 import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
 import type { ResumePalette } from "./config";
 import {
@@ -71,6 +72,9 @@ function createStyles(
       color: palette.sidebarText,
       lineHeight: lh(1.5),
     },
+    // A link keeps the contact line's colour: the default blue underline
+    // would restyle a header the user never asked us to change.
+    sideLink: { color: palette.sidebarText, textDecoration: "none" },
     skillPill: {
       fontSize: fs(8.5),
       color: palette.sidebarText,
@@ -368,17 +372,26 @@ export function ResumePdfSidebar({
         <View style={styles.sidebar}>
           {resume.photo ? <Image src={resume.photo} style={styles.photo} /> : null}
 
-          {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])].filter(Boolean)
-            .length > 0 ? (
+          {contactEntries(
+            [resume.email, resume.phone, resume.location],
+            resume.links,
+          ).length > 0 ? (
             <>
               <Text style={styles.sideLabel}>Contact</Text>
-              {[resume.email, resume.phone, resume.location, ...(resume.links ?? [])]
-                .filter(Boolean)
-                .map((line) => (
-                  <Text key={line} style={styles.sideText}>
-                    {line}
-                  </Text>
-                ))}
+              {contactEntries(
+                [resume.email, resume.phone, resume.location],
+                resume.links,
+              ).map((entry) => (
+                <Text key={entry.key} style={styles.sideText}>
+                  {entry.url ? (
+                    <Link src={entry.url} style={styles.sideLink}>
+                      {entry.label}
+                    </Link>
+                  ) : (
+                    entry.label
+                  )}
+                </Text>
+              ))}
             </>
           ) : null}
 

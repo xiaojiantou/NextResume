@@ -6,7 +6,10 @@ import {
   normalizeParsedResume,
   splitResumeText,
 } from "../lib/resumeParser.ts";
-import { analyzePdfPageLayout } from "../lib/pdfLayout.ts";
+import {
+  analyzePdfPageLayout,
+  needsVisualColumnCheck,
+} from "../lib/pdfLayout.ts";
 import {
   compactAdditionalItemLabel,
   isCompactAdditionalSection,
@@ -1415,6 +1418,27 @@ test("number grounding accepts safe formatting and lower-bound weakening", () =>
   assert.deepEqual(unsupportedNumberClaims("Reached 80+ users.", "Reached 80 users."), ["80+"]);
 });
 
+test("digits inside product names are matched as names, not magnitudes", () => {
+  // Scoring "S3" as the magnitude 3 rejected grounded rewrites with repair
+  // feedback the model could not act on ('unsupported "3,"'), and it let an
+  // invented count pass whenever the source happened to name an S3 or EC2.
+  assert.equal(numbersAreGrounded("Archived logs to S3.", "Nightly archive to S3 buckets."), true);
+  assert.equal(numbersAreGrounded("Scaled to 3 regions.", "Nightly archive to S3 buckets."), false);
+  assert.equal(numbersAreGrounded("Owned p95 latency.", "Cut p95 latency by 18%."), true);
+  assert.equal(numbersAreGrounded("Owned p99 latency.", "Cut p95 latency by 18%."), false);
+  assert.deepEqual(unsupportedNumberClaims("Shipped GPT-4 search.", "Shipped LLM search."), ["GPT-4"]);
+});
+
+test("number grounding tolerates sentence punctuation and spelled-out counts", () => {
+  // Number("1.5.") is NaN, which used to fall back to the raw string as the
+  // key, so the same figure stopped matching itself across a sentence end.
+  assert.equal(numbersAreGrounded("Cut spend by 1.5.", "Cut spend by 1.5 overall"), true);
+  assert.equal(numbersAreGrounded("Led a team of 3 engineers.", "Led a team of three engineers."), true);
+  // Words only widen what the source supports; prose in a rewrite is not a claim.
+  assert.equal(numbersAreGrounded("Owned one of the largest queues.", "Owned the largest queue."), true);
+  assert.equal(numbersAreGrounded("Led 7 engineers.", "Led a team of three engineers."), false);
+});
+
 test("grounding accepts skills containing PDF whitespace and Unicode separators", () => {
   const resume = structuredClone(preservedResume);
   resume.skills = [
@@ -1591,4 +1615,82 @@ test("optimization caches are isolated by structure mode and model", () => {
     createOptimizationCacheKey(base),
     createOptimizationCacheKey({ ...base, modelId: "model-b" }),
   );
+});
+
+test("clean single-column geometry is a confident answer", () => {
+  // One item per line, well separated: the coordinate pass can decide this
+  // without the visual model, which is what lets the slow check be skipped.
+  const items = Array.from({ length: 40 }, (_, index) => ({
+    str: `Cut p99 checkout latency by ${index}% in the pricing path`,
+    width: 320,
+    height: 10,
+    transform: [10, 0, 0, 10, 72, 700 - index * 14],
+  }));
+  const page = analyzePdfPageLayout(1, 612, 792, items);
+  assert.equal(page.columns, 1);
+  assert.equal(page.columnsConfident, true);
+  assert.equal(
+    needsVisualColumnCheck({
+      parser: "pdfjs-coordinates",
+      pageCount: 1,
+      maxColumns: 1,
+      pages: [{ ...page, readingOrderText: undefined }],
+      issues: [],
+    }),
+    false,
+  );
+});
+
+test("illegible geometry still asks the visual model", () => {
+  // One positioned item per character — too fragmented to trust.
+  const items = "Cut p99 checkout latency by 43 percent in Go".split("").map(
+    (character, index) => ({
+      str: character,
+      width: 5,
+      height: 10,
+      transform: [10, 0, 0, 10, 72 + index * 5, 700],
+    }),
+  );
+  const page = analyzePdfPageLayout(1, 612, 792, items);
+  assert.equal(page.columnsConfident, false);
+  assert.equal(
+    needsVisualColumnCheck({
+      parser: "pdfjs-coordinates",
+      pageCount: 1,
+      maxColumns: 1,
+      pages: [page],
+      issues: [],
+    }),
+    true,
+  );
+});
+
+test("a two-column document always goes to the visual model", () => {
+  assert.equal(
+    needsVisualColumnCheck({
+      parser: "pdfjs-coordinates",
+      pageCount: 1,
+      maxColumns: 2,
+      pages: [
+        { page: 1, widthPt: 612, heightPt: 792, columns: 2, columnsConfident: true },
+      ],
+      issues: [],
+    }),
+    true,
+  );
+});
+
+test("a resume parsed before confidence was recorded still verifies", () => {
+  // Absent must read as "not confident", preserving the old behaviour.
+  assert.equal(
+    needsVisualColumnCheck({
+      parser: "pdfjs-coordinates",
+      pageCount: 1,
+      maxColumns: 1,
+      pages: [{ page: 1, widthPt: 612, heightPt: 792, columns: 1 }],
+      issues: [],
+    }),
+    true,
+  );
+  assert.equal(needsVisualColumnCheck(null), true);
 });

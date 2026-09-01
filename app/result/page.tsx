@@ -9,6 +9,7 @@ import { PdfPalettePicker } from "@/components/PdfPalettePicker";
 import { TargetPagesPicker } from "@/components/TargetPagesPicker";
 import { ContentStructurePicker } from "@/components/ContentStructurePicker";
 import { OriginalDocumentPreview } from "@/components/OriginalDocumentPreview";
+import { LatexSourcePreview } from "@/components/LatexSourcePreview";
 import {
   FIT_PROGRESS_STAGES,
   ResumeFitPanel,
@@ -59,6 +60,7 @@ import {
   Download,
   Eye,
   FileDown,
+  FileText,
   Info,
   Layers,
   Lock,
@@ -134,9 +136,34 @@ export default function ResultPage() {
   );
 }
 
+// atob yields a binary string, so a resume with any non-ASCII character —
+// an accented name, a CJK school — needs decoding rather than a cast.
+function decodeBase64Utf8(value: string): string {
+  const binary = atob(value);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+// Streams an export response to disk, honouring the filename the server set.
+async function saveResponseAsFile(res: Response, fallbackName: string) {
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  const filename = match ? decodeURIComponent(match[1]) : fallbackName;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+}
+
 function ResultPageInner() {
   const {
     resume,
+    sourceDocument,
     job,
     report,
     optimization,
@@ -183,6 +210,15 @@ function ResultPageInner() {
     markPaid,
     setOrderAccess,
   } = useFlow();
+
+  // Decoding is cheap but not free, and the pane re-renders on every hover.
+  const latexSource = useMemo(
+    () =>
+      sourceDocument?.kind === "tex"
+        ? decodeBase64Utf8(sourceDocument.base64)
+        : null,
+    [sourceDocument],
+  );
 
   const [view, setView] = useState<View>("split");
   const [contentVersion, setContentVersion] =
@@ -709,27 +745,84 @@ function ResultPageInner() {
           `The complete resume needs ${actualPages} pages at the safe readability limit, so it exceeds the ${desiredPages}-page target.`,
         );
       }
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") || "";
-      const match = disposition.match(
-        /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i,
-      );
-      const filename = match
-        ? decodeURIComponent(match[1])
-        : `${resume.name || "resume"}.pdf`;
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      await saveResponseAsFile(res, `${resume.name || "resume"}.pdf`);
     } catch (downloadFailure) {
       setExportError(
         downloadFailure instanceof Error
           ? downloadFailure.message
           : "PDF export failed.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Format-preserving export: the optimized wording is written back into the
+  // user's own file, so nothing is re-laid-out and their original typography,
+  // spacing, and hyperlinks survive untouched. Word and LaTeX differ only in
+  // which endpoint reads the source.
+  const downloadSource = async (compiled = false) => {
+    if (!resume || !optimization || !sourceDocument) return;
+    const isTex = sourceDocument.kind === "tex";
+    setExporting(true);
+    setExportError(null);
+    setExportNotice(null);
+    try {
+      if (structureStale) {
+        throw new Error("Regenerate before downloading.");
+      }
+      const res = await fetch(
+        isTex
+          ? compiled
+            ? "/api/export/tex/pdf"
+            : "/api/export/tex"
+          : "/api/export/docx",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
+          body: JSON.stringify({
+            resume,
+            optimization,
+            ...(isTex
+              ? { sourceTex: sourceDocument.base64 }
+              : { sourceDocx: sourceDocument.base64 }),
+            targetTitle: job?.title || "",
+            includeSummary: summaryEnabled,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        // A TeX log is the only thing that explains a template we cannot
+        // build, so it is shown rather than swallowed.
+        const detail =
+          typeof data.log === "string" && data.log.trim()
+            ? `\n\n${data.log.trim().split("\n").slice(0, 4).join("\n")}`
+            : "";
+        throw new Error(
+          `${data.error || `${isTex ? "LaTeX" : "Word"} export failed (${res.status})`}${detail}`,
+        );
+      }
+      // Some lines deliberately keep their original wording: anything carrying
+      // a hyperlink is never rewritten, and anything we could not locate with
+      // certainty is left alone rather than guessed at.
+      const kept =
+        Number(res.headers.get("X-Resume-Edits-Skipped") || "0") +
+        Number(res.headers.get("X-Resume-Edits-Unplaced") || "0");
+      if (kept > 0) {
+        setExportNotice(
+          `${kept} ${kept === 1 ? "line" : "lines"} kept the original wording so your formatting and links stayed intact. Everything else was updated in place.`,
+        );
+      }
+      await saveResponseAsFile(
+        res,
+        `${resume.name || "resume"}.${compiled ? "pdf" : isTex ? "tex" : "docx"}`,
+      );
+    } catch (downloadFailure) {
+      setExportError(
+        downloadFailure instanceof Error
+          ? downloadFailure.message
+          : "Export failed.",
       );
     } finally {
       setExporting(false);
@@ -1341,6 +1434,32 @@ function ResultPageInner() {
                 </>
               )}
             </button>
+            {sourceDocument ? (
+              <button
+                className="btn btn-outline"
+                onClick={() => void downloadSource()}
+                disabled={exporting || generating || structureStale}
+                title={`Writes the new wording into your original ${
+                  sourceDocument.kind === "tex" ? "LaTeX source" : "Word file"
+                }, keeping its exact formatting and links`}
+              >
+                <FileText size={14} />{" "}
+                {sourceDocument.kind === "tex"
+                  ? "Download .tex"
+                  : "Download Word"}
+              </button>
+            ) : null}
+            {sourceDocument?.kind === "tex" &&
+            process.env.NEXT_PUBLIC_LATEX_COMPILER === "1" ? (
+              <button
+                className="btn btn-outline"
+                onClick={() => void downloadSource(true)}
+                disabled={exporting || generating || structureStale}
+                title="Compiles your own LaTeX, so the PDF is your template's typesetting rather than one of ours"
+              >
+                <FileDown size={14} /> PDF from your LaTeX
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -1790,7 +1909,9 @@ function ResultPageInner() {
                 title={
                   resumeStyleSource?.screenshots.length
                     ? "Original PDF"
-                    : "Original content (reconstructed)"
+                    : latexSource
+                      ? "Original LaTeX source"
+                      : "Original content (reconstructed)"
                 }
                 tone="muted"
                 meta={
@@ -1802,11 +1923,20 @@ function ResultPageInner() {
                           ? "Multi-column"
                           : "Single-column"
                       }`
-                    : `${pageLabel} · Source content`
+                    : latexSource
+                      ? "LaTeX · rewritten in place"
+                      : `${pageLabel} · Source content`
                 }
               >
                 {resumeStyleSource?.screenshots.length ? (
                   <OriginalDocumentPreview source={resumeStyleSource} />
+                ) : latexSource ? (
+                  <LatexSourcePreview
+                    source={latexSource}
+                    resume={resume}
+                    optimization={optimization}
+                    includeSummary={summaryEnabled}
+                  />
                 ) : (
                   <ResumeView
                     mode="original"

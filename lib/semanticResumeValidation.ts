@@ -1,3 +1,5 @@
+// Copyright (c) 2026 HowBe LLC. All rights reserved.
+
 import { jsonCompletion } from "./ai";
 import type { Optimization, Resume } from "./types";
 

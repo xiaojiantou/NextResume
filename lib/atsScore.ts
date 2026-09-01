@@ -24,6 +24,7 @@
 // https://www.jobscan.co/state-of-the-job-search
 
 import type { AtsCategory, JobAnalysis, Resume } from "./types";
+import { keywordSurfaceForms } from "./keywordAliases.ts";
 
 export const WEIGHTS = {
   keyword: 0.45,
@@ -105,14 +106,23 @@ function keywordRegex(keyword: string): RegExp | null {
 }
 
 /**
- * Occurrences of `keyword` in `haystack`, tolerant of separators and plurals
- * but strict on word boundaries. Exported so the JD keyword sanitizer matches
- * text exactly the way scoring does.
+ * Occurrences of `keyword` in `haystack`, tolerant of separators, plurals, and
+ * registered spelling variants ("K8s" counts as "Kubernetes"), but strict on
+ * word boundaries. Exported so the JD keyword sanitizer matches text exactly
+ * the way scoring does.
+ *
+ * Variants are summed, so a resume naming both forms ("Google Cloud Platform
+ * (GCP)") counts twice here. That is deliberate for detectStuffing — a density
+ * filter sees the same term twice too — and irrelevant to scoreKeywordMatch,
+ * which only asks whether the count is above zero.
  */
 export function countOccurrences(haystack: string, keyword: string): number {
-  const re = keywordRegex(keyword);
-  if (!re) return 0;
-  return (haystack.match(re) ?? []).length;
+  let total = 0;
+  for (const form of keywordSurfaceForms(keyword)) {
+    const re = keywordRegex(form);
+    if (re) total += (haystack.match(re) ?? []).length;
+  }
+  return total;
 }
 
 export type ResumeBulletRef = { id: string; text: string };

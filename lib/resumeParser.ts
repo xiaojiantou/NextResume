@@ -1,5 +1,9 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import {
+  mergeResumeLinks,
+  normalizeResumeLinks,
+} from "./resumeLinks.ts";
 import type {
   Resume,
   ResumeAdditionalItem,
@@ -174,7 +178,7 @@ export function normalizeParsedResume(value: unknown): Resume {
     email: text(input.email),
     phone: text(input.phone),
     location: text(input.location),
-    links: array(input.links).map(text).filter(Boolean),
+    links: normalizeResumeLinks(input.links),
     summary: text(input.summary),
     skills: array(input.skills).map(text).filter(Boolean),
     skillGroups: skillGroups(input.skillGroups),
@@ -249,16 +253,9 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       }
     }
 
-    const linkKeys = new Set(
-      merged.links!.map((link) => link.toLocaleLowerCase()),
-    );
-    for (const link of part.links ?? []) {
-      const key = link.toLocaleLowerCase();
-      if (!linkKeys.has(key)) {
-        merged.links!.push(link);
-        linkKeys.add(key);
-      }
-    }
+    // A later chunk may carry the target for a label an earlier chunk saw
+    // without one, so merging is by link identity rather than by string.
+    merged.links = mergeResumeLinks(merged.links ?? [], part.links ?? []);
 
     const skillKeys = new Set(
       merged.skills.map((skill) => skill.toLocaleLowerCase()),

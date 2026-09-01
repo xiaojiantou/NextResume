@@ -89,7 +89,7 @@ const GRANT_KEY = (orderId: string) => `nextresume:grant:${orderId}`;
 
 
 
-function hasRedis() {
+export function hasRedis() {
   return Boolean(
     (process.env.UPSTASH_REDIS_REST_URL &&
       process.env.UPSTASH_REDIS_REST_TOKEN) ||
@@ -98,7 +98,7 @@ function hasRedis() {
 }
 
 let _redis: Redis | null = null;
-function getRedis(): Redis {
+export function getRedis(): Redis {
   if (_redis) return _redis;
   // The SDK reads either UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN.
   // If neither is set, alias KV_* → UPSTASH_* so fromEnv() finds them.

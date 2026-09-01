@@ -1,0 +1,59 @@
+{
+  "name": "Jordan Avery",
+  "title": "Software Engineer",
+  "email": "jordan.avery@example.com",
+  "phone": "555-0147",
+  "location": "Austin, TX",
+  "summary": "Software engineer with five years building and running backend services for high-traffic consumer products.",
+  "skills": [
+    "Python", "Go", "K8s", "Postgres", "Redis", "Terraform",
+    "gRPC", "CI/CD", "Datadog", "Linux"
+  ],
+  "experience": [
+    {
+      "id": "role-1",
+      "company": "Northwind Retail",
+      "title": "Software Engineer",
+      "location": "Austin, TX",
+      "start": "2022",
+      "end": "Present",
+      "techStack": "Go, Postgres, K8s",
+      "bullets": [
+        { "id": "role-1-b1", "text": "Built an order-routing service in Go that replaced a legacy PHP monolith, cutting p95 checkout latency by 42%." },
+        { "id": "role-1-b2", "text": "Worked on the migration of 30 services onto K8s alongside the platform team." },
+        { "id": "role-1-b3", "text": "Owned the on-call rotation for the payments domain and reduced pages per week from 14 to 3." },
+        { "id": "role-1-b4", "text": "Helped improve observability by adding structured logging and Datadog dashboards across the fleet." }
+      ]
+    },
+    {
+      "id": "role-2",
+      "company": "Fathom Analytics",
+      "title": "Backend Developer",
+      "location": "Remote",
+      "start": "2020",
+      "end": "2022",
+      "techStack": "Python, Postgres",
+      "bullets": [
+        { "id": "role-2-b1", "text": "Designed a batch ingestion pipeline in Python that processed 8M events per day." },
+        { "id": "role-2-b2", "text": "Responsible for schema design and query tuning on the primary Postgres cluster." },
+        { "id": "role-2-b3", "text": "Wrote the internal client library other teams used to publish events." }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-1",
+      "name": "shardwatch",
+      "role": "Author",
+      "location": "",
+      "start": "2023",
+      "end": "2023",
+      "bullets": [
+        { "id": "proj-1-b1", "text": "Open-source CLI that reports replication lag across Postgres shards; used by three other teams internally." }
+      ]
+    }
+  ],
+  "education": [
+    { "school": "University of Texas at Austin", "degree": "B.S. Computer Science", "year": "2020" }
+  ]
+}

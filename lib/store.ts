@@ -24,6 +24,7 @@ import type {
   AtsCategory,
   AtsReport,
   ContentStructureMode,
+  FitBrief,
   JobAnalysis,
   Optimization,
   OptimizationVariant,
@@ -42,9 +43,18 @@ export type PersonalizedStatus = "idle" | "generating" | "ready" | "failed";
 
 type State = {
   fileName: string | null;
-  fileType: "pdf" | "docx" | null;
+  fileType: "pdf" | "docx" | "tex" | null;
   fileSize: number | null;
   fileFingerprint: string | null;
+  /**
+   * The uploaded document itself, base64, kept so the optimized wording can be
+   * written back into the user's own file instead of being re-laid-out in one
+   * of our templates. Deliberately excluded from localStorage: it is far
+   * larger than the rest of the flow state and would risk the storage quota.
+   * Losing it on reload only costs the format-preserving export, which
+   * degrades to the rebuilt PDF.
+   */
+  sourceDocument: { kind: "docx" | "tex"; base64: string } | null;
   resume: Resume | null;
   resumeStyleSource: ResumeStyleSource | null;
   personalizedStyleProfile: ResumeStyleProfile | null;
@@ -55,6 +65,7 @@ type State = {
   job: JobAnalysis | null;
 
   report: AtsReport | null;
+  fitBrief: FitBrief | null;
   preview: PreviewBullet | null;
   optimization: Optimization | null;
   optimizationModel: string | null;
@@ -90,7 +101,7 @@ type State = {
 type Actions = {
   setFileMeta: (
     name: string,
-    type: "pdf" | "docx",
+    type: "pdf" | "docx" | "tex",
     size: number,
     fingerprint?: string | null,
   ) => void;
@@ -98,6 +109,9 @@ type Actions = {
   setResumeStyleSource: (source: ResumeStyleSource | null) => void;
   setPersonalizedStyleProfile: (profile: ResumeStyleProfile | null) => void;
   setPersonalizedStatus: (s: PersonalizedStatus) => void;
+  setSourceDocument: (
+    document: { kind: "docx" | "tex"; base64: string } | null,
+  ) => void;
   clearFile: () => void;
 
   setJobDescription: (text: string) => void;
@@ -105,6 +119,7 @@ type Actions = {
   setJob: (j: JobAnalysis) => void;
 
   setReport: (r: AtsReport) => void;
+  setFitBrief: (b: FitBrief | null) => void;
   setMeasuredScore: (
     measuredAfter: number,
     measuredCategories: AtsCategory[],
@@ -152,6 +167,7 @@ const initial: State = {
   fileType: null,
   fileSize: null,
   fileFingerprint: null,
+  sourceDocument: null,
   resume: null,
   resumeStyleSource: null,
   personalizedStyleProfile: null,
@@ -160,6 +176,7 @@ const initial: State = {
   jobUrl: "",
   job: null,
   report: null,
+  fitBrief: null,
   preview: null,
   optimization: null,
   optimizationModel: null,
@@ -260,17 +277,20 @@ export const useFlow = create<State & Actions>()(
           personalizedStatus: profile ? "ready" : "idle",
         }),
       setPersonalizedStatus: (s) => set({ personalizedStatus: s }),
+      setSourceDocument: (document) => set({ sourceDocument: document }),
       clearFile: () =>
         set({
           fileName: null,
           fileType: null,
           fileSize: null,
           fileFingerprint: null,
+          sourceDocument: null,
           resume: null,
           resumeStyleSource: null,
           personalizedStyleProfile: null,
           personalizedStatus: "idle",
           report: null,
+          fitBrief: null,
           preview: null,
           optimization: null,
           optimizationModel: null,
@@ -287,6 +307,7 @@ export const useFlow = create<State & Actions>()(
           jobDescription: text,
           job: null,
           report: null,
+          fitBrief: null,
           preview: null,
           optimization: null,
           optimizationModel: null,
@@ -297,6 +318,7 @@ export const useFlow = create<State & Actions>()(
       setJobUrl: (url) => set({ jobUrl: url }),
       setJob: (j) => set({ job: j }),
       setReport: (r) => set({ report: r }),
+      setFitBrief: (b) => set({ fitBrief: b }),
       setMeasuredScore: (measuredAfter, measuredCategories) =>
         set((s) =>
           s.report
@@ -508,6 +530,8 @@ export const useFlow = create<State & Actions>()(
     {
       name: "nextresume-flow",
       storage: createJSONStorage(() => localStorage),
+      // Everything except the raw source document, which is memory-only.
+      partialize: ({ sourceDocument: _sourceDocument, ...rest }) => rest,
     },
   ),
 );
