@@ -85,7 +85,7 @@ export const LIMITS = {
   redeem:      { key: "redeem",       limit: 10, windowMs: 60_000 },
   importJobUrl:{ key: "import-job-url", limit: 10, windowMs: 60_000 },
   importJobImage:{ key: "import-job-image", limit: 5, windowMs: 60_000 },
-  voiceRewrite:{ key: "voice-rewrite",  limit: 10, windowMs: 60_000 },
+  refineBullet:{ key: "refine-bullet",  limit: 20, windowMs: 60_000 },
 } as const;
 
 /** Guard an API route. Returns a 429 response if over quota, else null. */
