@@ -13,6 +13,8 @@ export type TexExport = {
   applied: number[];
   skipped: TexRewriteSkip[];
   unplaced: string[];
+  /** Skills with no unambiguous home in a category-grouped source. */
+  skillsOmitted: string[];
   coverage: number;
 };
 
@@ -53,6 +55,7 @@ export function buildEditedTex({
     applied: result.applied,
     skipped: result.skipped,
     unplaced: plan.unplaced,
+    skillsOmitted: plan.skillsOmitted,
     coverage: plan.coverage,
   };
 }

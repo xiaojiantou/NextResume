@@ -269,11 +269,21 @@ export const useFlow = create<State & Actions>()(
           };
         }),
       setResumeStyleSource: (source) =>
-        set({
+        set((state) => ({
           resumeStyleSource: source,
           personalizedStyleProfile: null,
           personalizedStatus: "idle",
-        }),
+          // "Original-inspired" is derived from pictures of the uploaded
+          // document, and only a PDF has any. A .docx has no faithful
+          // renderer and a .tex would need a TeX distribution, so for those
+          // the default style can never resolve — leaving it selected greets
+          // every Word and LaTeX user with a failure banner and a blocked
+          // download button. Fall back to the style that always works.
+          pdfStyle:
+            state.pdfStyle === "personalized" && !source?.screenshots.length
+              ? "classic"
+              : state.pdfStyle,
+        })),
       setPersonalizedStyleProfile: (profile) =>
         set({
           personalizedStyleProfile: profile,

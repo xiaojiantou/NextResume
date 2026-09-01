@@ -122,10 +122,15 @@ export function PdfStylePicker({
   current,
   onPick,
   personalizedStatus,
+  // "Original-inspired" reads the uploaded document's visual system out of
+  // page images. Only a PDF upload produces any, so for Word and LaTeX the
+  // option is stated as unavailable instead of failing after it is picked.
+  personalizedAvailable = true,
 }: {
   current: PdfStyle;
   onPick: (id: PdfStyle) => void;
   personalizedStatus?: PersonalizedStatus;
+  personalizedAvailable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -169,17 +174,28 @@ export function PdfStylePicker({
           {STYLES.map((s) => {
             const selected = s.id === current;
             const isPersonalized = s.id === "personalized";
+            const unavailable = isPersonalized && !personalizedAvailable;
             return (
               <button
                 key={s.id}
                 type="button"
+                disabled={unavailable}
+                title={
+                  unavailable
+                    ? "Needs page images of the original, which only a PDF upload provides"
+                    : undefined
+                }
                 onClick={() => {
                   onPick(s.id);
                   setOpen(false);
                 }}
                 className={cn(
                   "w-full text-left px-2 py-2 rounded-md transition flex items-center gap-3",
-                  selected ? "bg-ink-50" : "hover:bg-ink-50/60",
+                  unavailable
+                    ? "opacity-50 cursor-not-allowed"
+                    : selected
+                      ? "bg-ink-50"
+                      : "hover:bg-ink-50/60",
                 )}
               >
                 <StyleThumb id={s.id} />
@@ -195,11 +211,13 @@ export function PdfStylePicker({
                     )}
                   </div>
                   <div className="text-xs text-ink-500 mt-0.5">
-                    {isPersonalized && personalizedStatus === "generating"
-                      ? "Rebuilding the uploaded resume's regions and visual hierarchy…"
-                      : isPersonalized && personalizedStatus === "failed"
-                        ? "Couldn't rebuild this time — try again, or pick another style"
-                        : s.blurb}
+                    {unavailable
+                      ? "Only available for PDF uploads — it is rebuilt from images of your original"
+                      : isPersonalized && personalizedStatus === "generating"
+                        ? "Rebuilding the uploaded resume's regions and visual hierarchy…"
+                        : isPersonalized && personalizedStatus === "failed"
+                          ? "Couldn't rebuild this time — try again, or pick another style"
+                          : s.blurb}
                   </div>
                 </div>
                 {selected && (
