@@ -10,6 +10,7 @@ import { TargetPagesPicker } from "@/components/TargetPagesPicker";
 import { ContentStructurePicker } from "@/components/ContentStructurePicker";
 import { OriginalDocumentPreview } from "@/components/OriginalDocumentPreview";
 import { LatexSourcePreview } from "@/components/LatexSourcePreview";
+import { LivePdfPreview } from "@/components/LivePdfPreview";
 import {
   FIT_PROGRESS_STAGES,
   ResumeFitPanel,
@@ -1867,10 +1868,12 @@ function ResultPageInner() {
           <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50/40 px-4 py-3 text-sm text-ink-700 flex items-start gap-2.5">
             <Info size={14} className="mt-0.5 text-accent-600 shrink-0" />
             <div>
-              Hover any bullet in the{" "}
-              <span className="font-medium">optimized resume</span> to see
-              exactly which sentences from your original resume back it up. We
-              never invent experience.
+              The right pane is your actual download. Every rewritten bullet is
+              shown{" "}
+              <span className="font-medium">
+                next to the original sentences it came from
+              </span>{" "}
+              in the comparison below. We never invent experience.
             </div>
           </div>
         )}
@@ -2006,16 +2009,40 @@ function ResultPageInner() {
                   }`
                 }
               >
-                <ResumeView
-                  mode="optimized"
-                  resume={displayedResume ?? resume}
-                  optimization={displayedOptimization}
-                  hoveredEvidence={hoveredEvidence}
-                  hoveredOptimizedId={hoveredOptimizedId}
-                  setHoveredOptimizedId={setHoveredOptimizedId}
-                  evidenceMode={evidenceMode}
-                  includeSummary={summaryEnabled}
-                />
+                {/* The pane sits next to a photograph of the user's own
+                    document, so it has to be the deliverable itself. It used
+                    to be a fixed-style HTML view that ignored the selected PDF
+                    style entirely — which read as a before/after and quietly
+                    taught everyone that the export looks like this. */}
+                {/* The preview is an iframe sized h-full, so it needs a
+                    container with a definite height. Taking it from the output
+                    paper makes the pane page-shaped, which is what puts it on
+                    the same footing as the page images opposite. */}
+                <div
+                  className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+                  style={{
+                    aspectRatio: `${outputPage.widthPt} / ${outputPage.heightPt}`,
+                  }}
+                >
+                  <LivePdfPreview
+                    resume={displayedResume ?? resume}
+                    optimization={displayedOptimization}
+                    style={pdfStyle}
+                    palette={pdfPalette}
+                    targetPages={fittedViewActive ? targetPages : "auto"}
+                    pageSize={outputPage}
+                    fitVariant={fittedViewActive ? activeFitVariant : null}
+                    sourceRevision={sourceRevision}
+                    personalizedStyleProfile={personalizedStyleProfile}
+                    personalizedStatus={personalizedStatus}
+                    personalizedError={personalizedError}
+                    includeSummary={summaryEnabled}
+                    onRetryPersonalized={() => {
+                      personalizeRan.current = true;
+                      void generatePersonalized();
+                    }}
+                  />
+                </div>
               </PaneWrapper>
             )}
           </div>
@@ -2025,7 +2052,9 @@ function ResultPageInner() {
         {view !== "edit" && evidenceMode && <EvidencePanel hoveredId={hoveredOptimizedId} />}
 
         {/* Bullet diff */}
-        {view !== "edit" && <BulletDiff />}
+        {view !== "edit" && (
+          <BulletDiff onFocusBullet={setHoveredOptimizedId} />
+        )}
 
         {view !== "edit" && (
           <>
@@ -2249,7 +2278,7 @@ function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
         <span className="text-ink-400 font-normal text-xs ml-2">
           {bullet
             ? "Showing the original lines that back this rewrite."
-            : "Hover an optimized bullet to inspect its source."}
+            : "Select a bullet in the comparison below to inspect its source."}
         </span>
       </div>
 
@@ -2490,7 +2519,15 @@ function BulletDiffRow({
   );
 }
 
-function BulletDiff() {
+function BulletDiff({
+  // The optimized pane is the rendered PDF now, so a bullet cannot be pointed
+  // at up there. This comparison is where a bullet gets selected, and the
+  // evidence trace follows it — reusing the focus signal the rows already had
+  // rather than adding a hover one the file deliberately avoided.
+  onFocusBullet,
+}: {
+  onFocusBullet?: (bulletId: string) => void;
+} = {}) {
   const {
     resume,
     optimization,
@@ -2523,7 +2560,10 @@ function BulletDiff() {
     quotaRemaining,
     locked: lockedContentIds.includes(bullet.id),
     focused: focusedBulletId === bullet.id,
-    onFocus: () => setFocusedBulletId(bullet.id),
+    onFocus: () => {
+      setFocusedBulletId(bullet.id);
+      onFocusBullet?.(bullet.id);
+    },
     onToggleLock: () => toggleLockedContentId(bullet.id),
     onReplace: (next: OptimizedBullet) =>
       replaceOptimizedBullet(ownerId, bullet.id, next),
