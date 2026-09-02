@@ -127,6 +127,9 @@ export async function POST(req: NextRequest) {
         "X-Resume-Edits-Applied": String(edited.applied.length),
         "X-Resume-Edits-Skipped": String(edited.skipped.length),
         "X-Resume-Edits-Unplaced": String(edited.unplaced.length),
+        "X-Resume-Skills-Omitted": encodeURIComponent(
+          edited.skillsOmitted.slice(0, 20).join(", "),
+        ),
       },
     });
   } catch (e) {

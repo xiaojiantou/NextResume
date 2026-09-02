@@ -21,6 +21,7 @@ import { BulletRefine } from "@/components/BulletRefine";
 import { findModel } from "@/lib/models";
 import { applyOptimizationToResume } from "@/lib/applyOptimization";
 import { REFINE_QUOTA, orderAuthHeaders, useFlow } from "@/lib/store";
+import { loadSourceDocument } from "@/lib/sourceDocumentStore";
 
 import { cn } from "@/lib/cn";
 import {
@@ -164,6 +165,8 @@ function ResultPageInner() {
   const {
     resume,
     sourceDocument,
+    setSourceDocument,
+    fileFingerprint,
     job,
     report,
     optimization,
@@ -210,6 +213,26 @@ function ResultPageInner() {
     markPaid,
     setOrderAccess,
   } = useFlow();
+
+  // Paying by card is a top-level navigation, so the in-memory copy of the
+  // uploaded file is gone by the time the buyer gets here. Read it back off
+  // the device, matched to the resume actually in the flow.
+  useEffect(() => {
+    if (sourceDocument || !fileFingerprint) return;
+    let cancelled = false;
+    void loadSourceDocument(fileFingerprint).then((stored) => {
+      if (!cancelled && stored) setSourceDocument(stored);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fileFingerprint, setSourceDocument, sourceDocument]);
+
+  // A profile already generated (or restored from an order) keeps the style
+  // usable even when the page images that produced it are no longer at hand.
+  const personalizedAvailable = Boolean(
+    resumeStyleSource?.screenshots.length || personalizedStyleProfile,
+  );
 
   // Decoding is cheap but not free, and the pane re-renders on every hover.
   const latexSource = useMemo(
@@ -809,11 +832,23 @@ function ResultPageInner() {
       const kept =
         Number(res.headers.get("X-Resume-Edits-Skipped") || "0") +
         Number(res.headers.get("X-Resume-Edits-Unplaced") || "0");
-      if (kept > 0) {
-        setExportNotice(
-          `${kept} ${kept === 1 ? "line" : "lines"} kept the original wording so your formatting and links stayed intact. Everything else was updated in place.`,
-        );
-      }
+      // A resume whose skills are split into labeled categories has no
+      // unambiguous line for a skill the rewrite added, so it is named here
+      // rather than quietly missing from a file the PDF does include it in.
+      const omittedSkills = decodeURIComponent(
+        res.headers.get("X-Resume-Skills-Omitted") || "",
+      )
+        .split(", ")
+        .filter(Boolean);
+      const notices = [
+        kept > 0
+          ? `${kept} ${kept === 1 ? "line" : "lines"} kept the original wording so your formatting and links stayed intact. Everything else was updated in place.`
+          : "",
+        omittedSkills.length > 0
+          ? `Your skills are grouped by category, so ${omittedSkills.length === 1 ? "this added skill has" : "these added skills have"} no category to go in — add ${omittedSkills.length === 1 ? "it" : "them"} by hand where they fit: ${omittedSkills.join(", ")}.`
+          : "",
+      ].filter(Boolean);
+      if (notices.length > 0) setExportNotice(notices.join(" "));
       await saveResponseAsFile(
         res,
         `${resume.name || "resume"}.${compiled ? "pdf" : isTex ? "tex" : "docx"}`,
@@ -1641,6 +1676,7 @@ function ResultPageInner() {
                 }
               }}
               personalizedStatus={personalizedStatus}
+              personalizedAvailable={personalizedAvailable}
             />
             {pdfStyle === "personalized" && personalizedStyleProfile ? (
               <button

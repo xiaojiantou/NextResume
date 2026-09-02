@@ -13,7 +13,12 @@
 // for this because it is AGPL.
 import "server-only";
 import path from "node:path";
-import type { ResumePageSpec, ResumeStyleSource } from "./types";
+import { measurePdfStyle } from "./pdfStyleMetrics";
+import type {
+  ResumePageSpec,
+  ResumeStyleMetrics,
+  ResumeStyleSource,
+} from "./types";
 
 // 96 DPI is pdf.js's scale-1 baseline; 2x lands ~150 DPI, enough detail for
 // layout/colour analysis without blowing up the base64 payload.
@@ -82,6 +87,7 @@ export async function rasterizePdf(
     const pageCount = doc.numPages;
     const screenshots: string[] = [];
     let spec: ResumePageSpec | undefined;
+    let styleMetrics: ResumeStyleMetrics | null = null;
 
     for (let i = 1; i <= Math.min(pageCount, maxPages); i++) {
       const page = await doc.getPage(i);
@@ -89,6 +95,16 @@ export async function rasterizePdf(
         if (!spec) {
           const base = page.getViewport({ scale: 1 });
           spec = pageSpec(base.width, base.height);
+        }
+        // Page 1 carries the document's typographic system, and it is the only
+        // page holding the name. Measuring here reuses the page pdf.js has
+        // already parsed for rendering. Best-effort: a file we cannot measure
+        // simply keeps the vision estimate.
+        if (i === 1 && spec) {
+          styleMetrics = await measurePdfStyle(page, spec).catch((error) => {
+            console.warn("[pdfRaster] style measurement failed", error);
+            return null;
+          });
         }
         const viewport = page.getViewport({ scale: RENDER_SCALE });
         const canvas = createCanvas(
@@ -115,6 +131,7 @@ export async function rasterizePdf(
       screenshots,
       page: spec ?? pageSpec(612, 792),
       pageCount: pageCount || 1,
+      styleMetrics,
     };
   } finally {
     await doc.destroy();

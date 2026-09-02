@@ -470,19 +470,41 @@ export function resolveResumeContent(
       skill.normalize("NFKC").toLocaleLowerCase().trim(),
     ),
   );
+  const skillKey = (skill: string) =>
+    skill.normalize("NFKC").toLocaleLowerCase().trim();
+  // The source's own categories — "Languages:", "Backend:" — are content, not
+  // decoration: they are how a reader finds the one skill they came looking
+  // for. Optimizing for a role used to drop them and emit an undifferentiated
+  // run of forty terms. Keep the labels, reorder inside each one by the
+  // optimized ranking, and let anything the rewrite added follow unlabeled
+  // rather than be filed under a category that never claimed it.
+  const skillRank = new Map(
+    resolvedSkills.map((skill, index) => [skillKey(skill), index]),
+  );
+  const sourceGroups = (resume.skillGroups ?? [])
+    .map((group) => ({
+      ...group,
+      skills: group.skills
+        .filter((skill) => resolvedSkillKeys.has(skillKey(skill)))
+        .sort(
+          (left, right) =>
+            (skillRank.get(skillKey(left)) ?? Number.MAX_SAFE_INTEGER) -
+            (skillRank.get(skillKey(right)) ?? Number.MAX_SAFE_INTEGER),
+        ),
+    }))
+    .filter((group) => group.skills.length > 0);
+  const claimed = new Set(
+    sourceGroups.flatMap((group) => group.skills.map(skillKey)),
+  );
+  const unclaimedSkills = resolvedSkills.filter(
+    (skill) => !claimed.has(skillKey(skill)),
+  );
   const skillGroups =
-    !optimization || optimization.structureMode === "preserve"
-      ? (resume.skillGroups ?? [])
-          .map((group) => ({
-            ...group,
-            skills: group.skills.filter((skill) =>
-              resolvedSkillKeys.has(
-                skill.normalize("NFKC").toLocaleLowerCase().trim(),
-              ),
-            ),
-          }))
-          .filter((group) => group.skills.length > 0)
-      : [];
+    sourceGroups.length === 0
+      ? []
+      : unclaimedSkills.length > 0
+        ? [...sourceGroups, { label: "", skills: unclaimedSkills }]
+        : sourceGroups;
 
   const base = {
     summary,

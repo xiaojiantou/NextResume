@@ -119,6 +119,12 @@ export async function POST(req: NextRequest) {
         "X-Resume-Edits-Skipped": String(skipped.length),
         "X-Resume-Edits-Unplaced": String(plan.unplaced.length),
         "X-Resume-Edit-Coverage": plan.coverage.toFixed(2),
+        // Skills the rebuilt PDF carries but a category-grouped Word document
+        // has no unambiguous line for. Named, not just counted, so the client
+        // can tell the user exactly what to add by hand.
+        "X-Resume-Skills-Omitted": encodeURIComponent(
+          plan.skillsOmitted.slice(0, 20).join(", "),
+        ),
       },
     });
   } catch (e) {

@@ -5,14 +5,13 @@
 // contains — and the optimized text is what gets written back. Anything that
 // cannot be placed with confidence keeps its original wording rather than
 // risking an edit landing in the wrong paragraph.
+//
+// The decision itself is shared with the LaTeX export; only the edit shape
+// differs, so all this layer does is rename the index.
 import type { Optimization, Resume } from "../types.ts";
-import {
-  collectResumeReplacements,
-  splitByChanged,
-} from "../resumeReplacements.ts";
+import { planReplacements } from "../resumeReplacements.ts";
 import type { DocxParagraph } from "./paragraphs.ts";
 import type { ParagraphEdit } from "./rewrite.ts";
-import { alignToParagraphs, type AlignTarget } from "../alignParagraphs.ts";
 
 export type DocxEditPlan = {
   edits: ParagraphEdit[];
@@ -20,6 +19,8 @@ export type DocxEditPlan = {
   unplaced: string[];
   /** Content ids that were placed but whose wording did not change. */
   unchanged: string[];
+  /** Skills with no unambiguous home in a category-grouped source. */
+  skillsOmitted: string[];
   /** Share of rewritten content that found its paragraph, 0..1. */
   coverage: number;
 };
@@ -35,35 +36,17 @@ export function planDocxEdits({
   paragraphs: readonly DocxParagraph[];
   includeSummary?: boolean;
 }): DocxEditPlan {
-  const { rewritten, unchanged } = splitByChanged(
-    collectResumeReplacements(resume, optimization, includeSummary),
-  );
-
-  const targets: AlignTarget[] = rewritten.map((item) => ({
-    id: item.id,
-    text: item.original,
-  }));
-  const alignment = alignToParagraphs(targets, paragraphs);
-  const optimizedById = new Map(
-    rewritten.map((item) => [item.id, item.optimized]),
-  );
-
-  const edits: ParagraphEdit[] = [];
-  for (const match of alignment.matched) {
-    const text = optimizedById.get(match.id);
-    if (text === undefined) continue;
-    edits.push({ paragraphIndex: match.paragraphIndex, text });
-  }
-  // Deterministic document order keeps the applied/skipped report readable.
-  edits.sort((left, right) => left.paragraphIndex - right.paragraphIndex);
-
+  const plan = planReplacements({
+    resume,
+    optimization,
+    units: paragraphs,
+    includeSummary,
+  });
   return {
-    edits,
-    unplaced: alignment.unmatched,
-    unchanged,
-    coverage:
-      rewritten.length === 0
-        ? 1
-        : alignment.matched.length / rewritten.length,
+    ...plan,
+    edits: plan.edits.map((edit) => ({
+      paragraphIndex: edit.index,
+      text: edit.text,
+    })),
   };
 }

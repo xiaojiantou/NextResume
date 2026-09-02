@@ -4,6 +4,11 @@
 
 import { AppShell } from "@/components/AppShell";
 import { useFlow } from "@/lib/store";
+import {
+  deleteSourceDocument,
+  saveSourceDocument,
+  type StoredSourceDocument,
+} from "@/lib/sourceDocumentStore";
 import type { Resume, ResumeStyleSource } from "@/lib/types";
 import {
   AlertCircle,
@@ -204,6 +209,13 @@ export default function UploadPage() {
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
+  // Dropping the resume also drops the stored copy of the file; leaving it
+  // behind would let a later upload of the same document resurrect it.
+  const discardResume = useCallback(() => {
+    clearFile();
+    void deleteSourceDocument();
+  }, [clearFile]);
+
   const handle = useCallback(
     async (f: File) => {
       setResumeError(null);
@@ -231,7 +243,7 @@ export default function UploadPage() {
       // A newly selected file is a new source document, not a manual edit of
       // the previous resume. Clear resume-scoped ids, locks, variants and Fit
       // state before b1/r1 ids are reused by the new parse.
-      clearFile();
+      discardResume();
 
       try {
         const fingerprint = await fingerprintFile(f);
@@ -239,11 +251,14 @@ export default function UploadPage() {
         // Hold on to the original file so the optimized wording can be written
         // back into it later, preserving the user's own formatting. Only the
         // editable formats can be rewritten in place; a PDF cannot.
-        setSourceDocument(
+        const source: StoredSourceDocument | null =
           t === "docx" || t === "tex"
             ? { kind: t, base64: await encodeFileBase64(f) }
-            : null,
-        );
+            : null;
+        setSourceDocument(source);
+        // Also on disk, so the file survives the full page load that paying
+        // through Stripe puts between here and the download.
+        if (source) await saveSourceDocument(fingerprint, source);
         const data = await uploadResume(f, (pct, ph) => {
           setProgress(pct);
           setPhase(ph);
@@ -254,7 +269,7 @@ export default function UploadPage() {
         setResumeError(
           e instanceof Error ? e.message : "Could not parse resume.",
         );
-        clearFile();
+        discardResume();
       } finally {
         setParsing(false);
       }
@@ -264,7 +279,7 @@ export default function UploadPage() {
       setSourceDocument,
       setResume,
       setResumeStyleSource,
-      clearFile,
+      discardResume,
     ],
   );
 
@@ -552,7 +567,7 @@ export default function UploadPage() {
                   />
                 )}
                 <button
-                  onClick={clearFile}
+                  onClick={discardResume}
                   disabled={parsing}
                   className="btn btn-ghost !p-2 text-ink-400"
                   aria-label="Remove file"

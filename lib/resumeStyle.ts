@@ -7,6 +7,7 @@ import type {
   ResumeLayoutRegion,
   ResumeLayoutSection,
   ResumePageSpec,
+  ResumeStyleMetrics,
   ResumeStyleProfile,
   ResumeStyleSource,
 } from "./types";
@@ -259,15 +260,35 @@ function sanitizeLayoutBlueprint(
       ? { ...region, sections: [...region.sections, ...unclaimed] }
       : region,
   );
+  const headerPlacement = oneOf(
+    input.headerPlacement,
+    ["full", "primary", "none"] as const,
+    fallback.headerPlacement,
+  );
+  // Contact details sitting under the name belong to the header — the prompt
+  // says so, but nothing enforced it, and a model that lists "contact" among
+  // the main region's sections makes the renderer emit a "Contact" heading
+  // the source never had, plus a section gap to go with it. A real contact
+  // rail is a different thing: it lives in a column that is not the main one,
+  // and is left exactly as the model described it.
+  const withHeaderContact =
+    headerPlacement === "none"
+      ? withFallbackSections
+      : withFallbackSections.map((region) =>
+          region.id === primaryRegionId
+            ? {
+                ...region,
+                sections: region.sections.filter(
+                  (section) => section !== "contact",
+                ),
+              }
+            : region,
+        );
   return {
-    headerPlacement: oneOf(
-      input.headerPlacement,
-      ["full", "primary", "none"] as const,
-      fallback.headerPlacement,
-    ),
+    headerPlacement,
     primaryRegionId,
     gutterPt: numberIn(input.gutterPt, fallback.gutterPt, 0, 24),
-    regions: normalizeRegionWidths(withFallbackSections, primaryRegionId),
+    regions: normalizeRegionWidths(withHeaderContact, primaryRegionId),
   };
 }
 
@@ -481,6 +502,153 @@ export function approximateResumeStyleProfile(
 }
 
 /**
+ * Bounds for values read off the source file rather than guessed at.
+ *
+ * The narrow ranges applied to vision output are a hedge against a model
+ * inventing a number; a measurement needs no such hedge, only a sanity check.
+ * Keeping them equally tight is what turned a resume set in 9.5pt at 1.1
+ * leading into 10pt at 1.25 — a ~15% inflation applied before anything had
+ * even been laid out, which is enough on its own to push one page onto two.
+ */
+const MEASURED_BOUNDS = {
+  bodyPt: [8, 13],
+  namePt: [13, 40],
+  titlePt: [8, 18],
+  sectionPt: [8, 18],
+  metaPt: [7, 13],
+  lineHeight: [0.95, 1.9],
+  marginPt: [18, 90],
+  // The estimate floor for bulletPt is 1.5. A resume that runs its bullets
+  // with no gap at all pays that 1.5 twenty-odd times over, which is worth
+  // roughly a fifth of a page on its own — by far the largest single source
+  // of drift, and invisible in any individual line.
+  sectionGapPt: [0, 30],
+  entryGapPt: [0, 20],
+  bulletGapPt: [0, 10],
+} as const;
+
+const SERIF_FAMILIES = new Set<ResumeStyleProfile["fontFamily"]>([
+  "Georgia",
+  "Times New Roman",
+]);
+
+/**
+ * Overwrites the estimated typography with what the source PDF actually does.
+ *
+ * Only the numbers are replaced. Region structure, colours, and divider
+ * treatment stay with the vision model, which is the part it reads well.
+ */
+function applyMeasuredStyle(
+  profile: ResumeStyleProfile,
+  metrics: ResumeStyleMetrics | null | undefined,
+): ResumeStyleProfile {
+  if (!metrics) return profile;
+  const measured = (
+    value: number | null | undefined,
+    fallback: number,
+    [min, max]: readonly [number, number],
+  ) => (typeof value === "number" ? numberIn(value, fallback, min, max) : fallback);
+
+  // A serif source rendered in Helvetica is the single most visible break in
+  // the illusion. Correct only the class: a model that already picked a serif
+  // may well have picked the better serif.
+  const guessIsSerif = SERIF_FAMILIES.has(profile.fontFamily);
+  const fontFamily: ResumeStyleProfile["fontFamily"] =
+    metrics.serif === null || metrics.serif === guessIsSerif
+      ? profile.fontFamily
+      : metrics.serif
+        ? "Times New Roman"
+        : "Helvetica";
+  const headingIsSerif = SERIF_FAMILIES.has(profile.headingFontFamily);
+  const headingFontFamily: ResumeStyleProfile["headingFontFamily"] =
+    metrics.serif === null || metrics.serif === headingIsSerif
+      ? profile.headingFontFamily
+      : metrics.serif
+        ? "Times New Roman"
+        : "Helvetica";
+
+  return {
+    ...profile,
+    measured: true,
+    fontFamily,
+    headingFontFamily,
+    typography: {
+      bodyPt: measured(
+        metrics.bodyPt,
+        profile.typography.bodyPt,
+        MEASURED_BOUNDS.bodyPt,
+      ),
+      lineHeight: measured(
+        metrics.lineHeight,
+        profile.typography.lineHeight,
+        MEASURED_BOUNDS.lineHeight,
+      ),
+      namePt: measured(
+        metrics.namePt,
+        profile.typography.namePt,
+        MEASURED_BOUNDS.namePt,
+      ),
+      titlePt: measured(
+        metrics.titlePt,
+        profile.typography.titlePt,
+        MEASURED_BOUNDS.titlePt,
+      ),
+      sectionPt: measured(
+        metrics.sectionPt,
+        profile.typography.sectionPt,
+        MEASURED_BOUNDS.sectionPt,
+      ),
+      metaPt: measured(
+        metrics.metaPt,
+        profile.typography.metaPt,
+        MEASURED_BOUNDS.metaPt,
+      ),
+    },
+    spacing: metrics.spacing
+      ? {
+          sectionPt: measured(
+            metrics.spacing.sectionPt,
+            profile.spacing.sectionPt,
+            MEASURED_BOUNDS.sectionGapPt,
+          ),
+          entryPt: measured(
+            metrics.spacing.entryPt,
+            profile.spacing.entryPt,
+            MEASURED_BOUNDS.entryGapPt,
+          ),
+          bulletPt: measured(
+            metrics.spacing.bulletPt,
+            profile.spacing.bulletPt,
+            MEASURED_BOUNDS.bulletGapPt,
+          ),
+        }
+      : profile.spacing,
+    marginsPt: {
+      top: measured(
+        metrics.marginsPt.top,
+        profile.marginsPt.top,
+        MEASURED_BOUNDS.marginPt,
+      ),
+      right: measured(
+        metrics.marginsPt.right,
+        profile.marginsPt.right,
+        MEASURED_BOUNDS.marginPt,
+      ),
+      bottom: measured(
+        metrics.marginsPt.bottom,
+        profile.marginsPt.bottom,
+        MEASURED_BOUNDS.marginPt,
+      ),
+      left: measured(
+        metrics.marginsPt.left,
+        profile.marginsPt.left,
+        MEASURED_BOUNDS.marginPt,
+      ),
+    },
+  };
+}
+
+/**
  * Vision output is untrusted. Clamp it to a deliberately small design
  * vocabulary so it can influence appearance without hiding or restructuring
  * resume content.
@@ -577,7 +745,7 @@ export function sanitizeResumeStyleProfile(
       ),
   );
 
-  return {
+  const estimated: ResumeStyleProfile = {
     version: RESUME_STYLE_PROFILE_VERSION,
     pageLayouts,
     approximate: bool(input.approximate, false),
@@ -712,6 +880,32 @@ export function sanitizeResumeStyleProfile(
     // Page geometry is measured from the uploaded file, never trusted to AI.
     page: measuredPage,
   };
+  // Typography and margins follow the same rule wherever the source file
+  // could actually be measured.
+  return applyMeasuredStyle(estimated, source.styleMetrics);
+}
+
+/**
+ * The layout to render a given output page with.
+ *
+ * A profile holds one layout per SOURCE page, but how many pages the output
+ * needs is decided by how much content there is. A one-page source rewritten
+ * onto two pages used to reuse page 1's blueprint verbatim for page 2 —
+ * repeating the name, title and contact line at the top of it, which no resume
+ * does. Only a page the model actually looked at gets to claim the header.
+ */
+export function profileForPageIndex(
+  profile: ResumeStyleProfile,
+  index: number,
+): ResumeStyleProfile {
+  const described = profile.pageLayouts[index];
+  const template =
+    described ?? profile.pageLayouts[profile.pageLayouts.length - 1];
+  const layoutBlueprint =
+    described || index === 0
+      ? template.layoutBlueprint
+      : { ...template.layoutBlueprint, headerPlacement: "none" as const };
+  return { ...profile, layout: template.layout, layoutBlueprint };
 }
 
 export function isCurrentResumeStyleProfile(

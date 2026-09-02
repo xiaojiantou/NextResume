@@ -226,9 +226,11 @@ export function ResumePdfSidebar({
         <View key={ref}>
           <Text style={styles.sideLabel}>{labels.skills}</Text>
           {skillGroups.length > 0 ? (
-            skillGroups.map((group) => (
-              <View key={group.label}>
-                <Text style={styles.skillGroupLabel}>{group.label}</Text>
+            skillGroups.map((group, index) => (
+              <View key={group.label || `ungrouped-${index}`}>
+                {group.label ? (
+                  <Text style={styles.skillGroupLabel}>{group.label}</Text>
+                ) : null}
                 <View style={styles.skillWrap}>
                   {group.skills.map((skill) => (
                     <Text key={skill} style={styles.skillPill}>{skill}</Text>

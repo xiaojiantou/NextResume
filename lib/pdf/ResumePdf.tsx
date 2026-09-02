@@ -241,9 +241,14 @@ export function ResumePdf({
             {labels.skills}
           </Text>
           {skillGroups.length > 0 ? (
-            skillGroups.map((group) => (
-              <Text key={group.label} style={styles.skills}>
-                <Text style={styles.skillGroupLabel}>{group.label}: </Text>
+            // The trailing group carries skills the rewrite added, which no
+            // source category claims; it runs on without a label rather than
+            // borrowing one.
+            skillGroups.map((group, index) => (
+              <Text key={group.label || `ungrouped-${index}`} style={styles.skills}>
+                {group.label ? (
+                  <Text style={styles.skillGroupLabel}>{group.label}: </Text>
+                ) : null}
                 {group.skills.join(", ")}
               </Text>
             ))
