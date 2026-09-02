@@ -188,10 +188,47 @@ export type ResumePageSpec = {
   orientation: "portrait" | "landscape";
 };
 
+/**
+ * Typography and page geometry read off the source PDF itself, rather than
+ * estimated from a picture of it. Absent for inputs with no measurable text
+ * layer (DOCX, LaTeX, scans), in which case the vision estimate stands.
+ */
+export type ResumeStyleMetrics = {
+  bodyPt: number;
+  namePt: number;
+  titlePt: number;
+  sectionPt: number;
+  metaPt: number;
+  /** Multiple of bodyPt; null when the page had too few lines to tell. */
+  lineHeight: number | null;
+  /**
+   * Extra space each structural break adds beyond a normal line advance.
+   * Zero is a real answer: dense resumes routinely run bullets with no gap
+   * between them at all.
+   */
+  spacing: {
+    sectionPt: number;
+    entryPt: number;
+    bulletPt: number;
+  } | null;
+  marginsPt: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  /** From the embedded font names; null when the page mixes both evenly. */
+  serif: boolean | null;
+  /** Characters the measurement is based on, for confidence. */
+  sampledChars: number;
+};
+
 export type ResumeStyleSource = {
   screenshots: string[];
   page: ResumePageSpec;
   pageCount: number;
+  /** Measured source typography. Trusted over the vision estimate. */
+  styleMetrics?: ResumeStyleMetrics | null;
   /** Optional semantic layout hints captured during the original parse. */
   visualLayoutGuide?: ResumeVisualLayoutGuide | null;
   /** Deterministic PDF-coordinate fallback when vision is unavailable. */
@@ -243,6 +280,13 @@ export type ResumeStyleProfile = {
   pageLayouts: ResumePageLayout[];
   /** True when the safe deterministic approximation replaced vision output. */
   approximate?: boolean;
+  /**
+   * True when typography and margins were read off the source file instead of
+   * estimated from a picture of it. The renderer treats a measured profile as
+   * the target to reproduce rather than a starting point to grow into the
+   * page. Absent on profiles built before measurement existed.
+   */
+  measured?: boolean;
   layout: ResumeLayout;
   layoutBlueprint: ResumeLayoutBlueprint;
   /** Derived legacy fields retained for persisted v2 profiles and Fit calls. */

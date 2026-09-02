@@ -16,6 +16,7 @@ import { partitionResumeForPages } from "./pdf/balancedPages";
 import type { TargetPages } from "./pdf/config";
 import {
   approximateResumeStyleProfile,
+  profileForPageIndex,
   sanitizeResumeStyleProfile,
 } from "./resumeStyle";
 import type {
@@ -153,6 +154,19 @@ function dateRange(start: string, end: string): string {
   return [start, end].filter(Boolean).join(" — ");
 }
 
+/**
+ * The second line of an entry header: what the role was under, and where.
+ * Omitted entirely when an entry carries neither, so nothing reserves a line
+ * for content that is not there.
+ */
+function entryMetaRow(prefix: string, subheading: string, location: string): string {
+  if (!subheading && !location) return "";
+  return `<div class="entry-top">
+          ${contentLeaf("div", `${prefix}:subheading`, subheading, "entry-sub")}
+          ${contentLeaf("div", `${prefix}:location`, location, "entry-location")}
+        </div>`;
+}
+
 function renderBullets(
   owner: string,
   bullets: string[],
@@ -181,15 +195,16 @@ function renderBlocks(
   return blocks
     .map((block) => {
       const prefix = `${owner}:${block.id}`;
+      // Two rows, each pairing a left field with its right-aligned partner —
+      // the arrangement resumes actually use. Giving the location a row of its
+      // own cost a line per entry, which across a full history is most of the
+      // reason a one-page source needed two.
       return `<article class="entry">
         <div class="entry-top">
-          <div class="entry-heading">
-            ${contentLeaf("div", `${prefix}:heading`, block.heading, "entry-name")}
-            ${contentLeaf("div", `${prefix}:subheading`, block.subheading, "entry-sub")}
-          </div>
+          ${contentLeaf("div", `${prefix}:heading`, block.heading, "entry-name")}
           ${contentLeaf("div", `${prefix}:dates`, dateRange(block.start, block.end), "entry-dates")}
         </div>
-        ${contentLeaf("div", `${prefix}:location`, block.location, "entry-location")}
+        ${entryMetaRow(prefix, block.subheading, block.location)}
         ${renderBullets(prefix, block.bullets, profile.bulletMarker)}
       </article>`;
     })
@@ -226,13 +241,10 @@ function renderAdditionalItems(
       const prefix = `additional:${section.id}:${item.id}`;
       return `<article class="entry additional-entry">
         <div class="entry-top">
-          <div class="entry-heading">
-            ${contentLeaf("div", `${prefix}:heading`, item.heading, "entry-name")}
-            ${contentLeaf("div", `${prefix}:subheading`, item.subheading, "entry-sub")}
-          </div>
+          ${contentLeaf("div", `${prefix}:heading`, item.heading, "entry-name")}
           ${contentLeaf("div", `${prefix}:dates`, dateRange(item.start, item.end), "entry-dates")}
         </div>
-        ${contentLeaf("div", `${prefix}:location`, item.location, "entry-location")}
+        ${entryMetaRow(prefix, item.subheading, item.location)}
         ${renderBullets(prefix, item.bullets.map((bullet) => bullet.text), profile.bulletMarker)}
       </article>`;
     })
@@ -359,10 +371,17 @@ export function buildPersonalizedHtml({
   fit: FitPreset;
 }): string {
   const { widthPt, heightPt } = profile.page;
+  // These floors protect against a vision model inventing an unreadable size.
+  // A measured profile is not a guess: raising a resume actually set in 9.5pt
+  // to 10pt is not a safety net, it is a 5% inflation applied to every line.
+  // Below 8.5pt / 18pt nothing prints acceptably, so that is where the real
+  // floor sits.
+  const minimumBodyPt = fit.minimumBodyPt ?? (profile.measured ? 8.5 : 10);
+  const minimumMarginPt = fit.minimumMarginPt ?? (profile.measured ? 18 : 36);
   const bodyPt = fontSize(
     profile.typography.bodyPt,
     fit.fontScale,
-    fit.minimumBodyPt ?? 10,
+    minimumBodyPt,
   );
   const metaPt = fontSize(
     profile.typography.metaPt,
@@ -409,22 +428,13 @@ export function buildPersonalizedHtml({
     : contentLeafHtml("div", "contact", contactHtml, "contact");
 
   const margins = {
-    top: Math.max(
-      fit.minimumMarginPt ?? 36,
-      profile.marginsPt.top * fit.marginScale,
-    ),
-    right: Math.max(
-      fit.minimumMarginPt ?? 36,
-      profile.marginsPt.right * fit.marginScale,
-    ),
+    top: Math.max(minimumMarginPt, profile.marginsPt.top * fit.marginScale),
+    right: Math.max(minimumMarginPt, profile.marginsPt.right * fit.marginScale),
     bottom: Math.max(
-      fit.minimumMarginPt ?? 36,
+      minimumMarginPt,
       profile.marginsPt.bottom * fit.marginScale,
     ),
-    left: Math.max(
-      fit.minimumMarginPt ?? 36,
-      profile.marginsPt.left * fit.marginScale,
-    ),
+    left: Math.max(minimumMarginPt, profile.marginsPt.left * fit.marginScale),
   };
   const gridColumns = blueprint.regions
     .map((region) => `${region.widthPercent}fr`)
@@ -441,7 +451,7 @@ export function buildPersonalizedHtml({
     : "none";
   const markerColor = profile.colors.accent;
   const lineHeight = Math.max(
-    fit.minimumBodyPt === 9 ? 1.1 : 1.18,
+    profile.measured ? 1 : fit.minimumBodyPt === 9 ? 1.1 : 1.18,
     profile.typography.lineHeight * fit.lineHeightScale,
   );
   const renderHeader = (scope: "full" | "primary") => `<header class="${headerClass} header-${scope}">
@@ -630,8 +640,10 @@ export function buildPersonalizedHtml({
   .entry:first-child { margin-top: 0; }
   .entry-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10pt; }
   .entry-heading { min-width: 0; }
-  .entry-name { font-weight: 700; }
+  .entry-name { font-weight: 700; min-width: 0; }
   .entry-sub, .entry-location { color: ${profile.colors.muted}; font-size: ${metaPt}pt; }
+  .entry-sub { min-width: 0; }
+  .entry-location { flex: none; }
   .entry-dates { flex: none; color: ${profile.colors.muted}; font-size: ${metaPt}pt; font-weight: 600; }
   .surface-sidebar .entry-sub, .surface-sidebar .entry-location, .surface-sidebar .entry-dates { color: ${profile.colors.sidebarText}; opacity: .86; }
   .bullets { list-style: none; margin: ${profile.spacing.bulletPt * fit.spacingScale}pt 0 0; padding: 0; }
@@ -679,10 +691,15 @@ function createContentManifest(
   if (content.summary) items.push({ id: "summary", value: content.summary });
   if (content.skillGroups.length > 0) {
     content.skillGroups.forEach((group, groupIndex) => {
-      items.push({
-        id: `skillgroup:${groupIndex}:label`,
-        value: group.label,
-      });
+      // The trailing group holding skills the rewrite added has no label, and
+      // contentLeaf renders nothing for an empty value — so claiming the id
+      // here would fail the integrity check for markup that never existed.
+      if (group.label) {
+        items.push({
+          id: `skillgroup:${groupIndex}:label`,
+          value: group.label,
+        });
+      }
       group.skills.forEach((skill, skillIndex) =>
         items.push({
           id: `skillgroup:${groupIndex}:skill:${skillIndex}`,
@@ -973,16 +990,8 @@ export async function renderPersonalizedPdf({
       fill: number;
       pageCount: number;
     };
-    const profileForPage = (index: number): ResumeStyleProfile => {
-      const template =
-        requestedProfile.pageLayouts[index] ??
-        requestedProfile.pageLayouts[requestedProfile.pageLayouts.length - 1];
-      return {
-        ...requestedProfile,
-        layout: template.layout,
-        layoutBlueprint: template.layoutBlueprint,
-      };
-    };
+    const profileForPage = (index: number): ResumeStyleProfile =>
+      profileForPageIndex(requestedProfile, index);
     const renderFit = async (
       fit: FitPreset,
       candidateContent: ResolvedResumeDocument,
@@ -1047,10 +1056,19 @@ export async function renderPersonalizedPdf({
       ) {
         return base.buffer;
       }
+      // Expansion exists to stop a sparse profile rendering as a small block
+      // at the top of an empty page. It has no business running on a measured
+      // profile: growing type 16% and spacing 50% to hit a page-fill ratio is
+      // exactly the drift this style is supposed to avoid, and the optimized
+      // content is shorter than the source, so a page that ends early is the
+      // honest result of the source's own typography. Compaction stays — a
+      // slightly tighter single page beats spilling onto a second one.
       const presets =
         base.pageCount > 1
           ? COMPACT_FIT_PRESETS
-          : [...EXPANDED_FIT_PRESETS].reverse();
+          : candidateProfile.measured
+            ? []
+            : [...EXPANDED_FIT_PRESETS].reverse();
       for (const fit of presets) {
         const rendered = await renderFit(
           fit,
