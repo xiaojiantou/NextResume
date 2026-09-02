@@ -327,10 +327,29 @@ export async function analyzeResumeVisualLayout(
   };
 }
 
+// Sizes and spacing, asked for only when the source file could not be
+// measured. A PDF with a text layer states all of this exactly — see
+// pdfStyleMetrics — and the measured values overwrite whatever comes back
+// here, so asking for them costs output tokens and attention for nothing.
+// Only a source with no usable text layer, or a style source captured before
+// measurement existed, still needs the estimate.
+const MEASURABLE_FIELDS = `  "marginsPt": { "top": number, "right": number, "bottom": number, "left": number },
+  "typography": {
+    "bodyPt": number,
+    "lineHeight": number,
+    "namePt": number,
+    "titlePt": number,
+    "sectionPt": number,
+    "metaPt": number
+  },
+  "spacing": { "sectionPt": number, "entryPt": number, "bulletPt": number },
+`;
+
 // The model describes appearance only. It never receives or creates resume
 // content and cannot emit HTML/CSS, which prevents a visual decision from
 // deleting a section or bullet.
-const STYLE_PROFILE_PROMPT = `Study the attached resume page screenshots and describe their visual system as JSON. Do not transcribe or return any resume content.
+function styleProfilePrompt(measured: boolean): string {
+  return `Study the attached resume page screenshots and describe their visual system as JSON. Do not transcribe or return any resume content.
 
 Return ONLY one JSON object matching this exact shape:
 {
@@ -371,17 +390,7 @@ Return ONLY one JSON object matching this exact shape:
     "sidebarBackground": "#rrggbb",
     "sidebarText": "#rrggbb"
   },
-  "marginsPt": { "top": number, "right": number, "bottom": number, "left": number },
-  "typography": {
-    "bodyPt": number,
-    "lineHeight": number,
-    "namePt": number,
-    "titlePt": number,
-    "sectionPt": number,
-    "metaPt": number
-  },
-  "spacing": { "sectionPt": number, "entryPt": number, "bulletPt": number },
-  "header": {
+${measured ? "" : MEASURABLE_FIELDS}  "header": {
     "alignment": "left" | "center",
     "divider": boolean,
     "photoPosition": "none" | "left" | "right",
@@ -397,7 +406,11 @@ Return ONLY one JSON object matching this exact shape:
   "bulletMarker": "disc" | "dash" | "square"
 }
 
-Create a safe flow-based approximation of the source, not a pixel-perfect copy. Estimate sizes in print points. Match the source's page architecture, visual hierarchy, spacing, colors, divider treatment, bullets, and photo placement.
+Create a safe flow-based approximation of the source, not a pixel-perfect copy. ${
+    measured
+      ? "Sizes, line spacing and margins are read from the file itself and are not yours to supply. Spend your whole attention on the source's page architecture, visual hierarchy, colors, divider treatment, bullets, and photo placement."
+      : "Estimate sizes in print points. Match the source's page architecture, visual hierarchy, spacing, colors, divider treatment, bullets, and photo placement."
+  }
 
 Important layout rules:
 - Return one pageLayouts item for every supplied source screenshot. Analyze each page independently; do not assume later pages share page 1's structure.
@@ -416,6 +429,7 @@ Important layout rules:
 - Use headerPlacement "none" on continuation pages that do not repeat the candidate name/title header.
 
 Never output HTML, CSS, selectors, content, display rules, fixed heights, or overflow rules.`;
+}
 
 export async function generateResumeStyleProfile({
   source,
@@ -423,6 +437,10 @@ export async function generateResumeStyleProfile({
   source: ResumeStyleSource;
 }): Promise<unknown> {
   const client = openaiCompatClient("novita");
+  // A source we could measure gets the shorter contract: thirteen numbers it
+  // would otherwise produce are overwritten on arrival, so asking for them
+  // only buys output tokens and a wider surface to get wrong.
+  const measured = Boolean(source.styleMetrics);
   const res = await client.chat.completions.create({
     model: VISION_MODEL,
     messages: [
@@ -431,7 +449,7 @@ export async function generateResumeStyleProfile({
         content: [
           {
             type: "text",
-            text: `${STYLE_PROFILE_PROMPT}\n\nMeasured source page: ${source.page.widthPt.toFixed(1)}pt × ${source.page.heightPt.toFixed(1)}pt, ${source.page.orientation}. Screenshots: ${source.screenshots.length} of ${source.pageCount} page(s).`,
+            text: `${styleProfilePrompt(measured)}\n\nMeasured source page: ${source.page.widthPt.toFixed(1)}pt × ${source.page.heightPt.toFixed(1)}pt, ${source.page.orientation}. Screenshots: ${source.screenshots.length} of ${source.pageCount} page(s).`,
           },
           ...source.screenshots.slice(0, 3).map((url) => ({
             type: "image_url" as const,
@@ -441,7 +459,7 @@ export async function generateResumeStyleProfile({
       },
     ],
     temperature: 0.2,
-    max_tokens: 3200,
+    max_tokens: measured ? 2400 : 3200,
   });
 
   const raw = res.choices[0]?.message?.content?.trim() || "";
