@@ -23,6 +23,10 @@ export const metadata: Metadata = {
   title: "NextResume — AI-native resume optimization",
   description:
     "Tailor your resume to any job description in seconds. ATS-optimized, evidence-backed, interview-ready.",
+  icons: {
+    icon: "/assets/img/nextresume-icon.svg",
+    shortcut: "/assets/img/nextresume-icon.svg",
+  },
 };
 
 export default function RootLayout({
