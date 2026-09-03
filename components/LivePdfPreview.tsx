@@ -11,9 +11,14 @@ import type {
 import type { PdfStyle, TargetPages } from "@/lib/pdf/config";
 import type { ResumeFitVariant } from "@/lib/resumeFit";
 import { orderAuthHeaders } from "@/lib/store";
+import {
+  createPdfPreviewCacheEntry,
+  loadPdfPreviewCache,
+  savePdfPreviewCache,
+} from "@/lib/pdfPreviewCache";
 
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export function LivePdfPreview({
   resume,
@@ -51,7 +56,35 @@ export function LivePdfPreview({
   const [retryNonce, setRetryNonce] = useState(0);
   const [approximateLayout, setApproximateLayout] = useState(false);
   const currentUrlRef = useRef<string | null>(null);
+  const lastCacheBypassNonceRef = useRef(0);
   const retryUntilRef = useRef(0);
+  const cacheEntry = useMemo(
+    () =>
+      createPdfPreviewCacheEntry({
+        resume,
+        optimization,
+        style,
+        palette,
+        targetPages,
+        pageSize,
+        personalizedStyleProfile,
+        fitVariant: fitVariant ?? null,
+        sourceRevision,
+        includeSummary,
+      }),
+    [
+      resume,
+      optimization,
+      style,
+      palette,
+      targetPages,
+      pageSize,
+      personalizedStyleProfile,
+      fitVariant,
+      sourceRevision,
+      includeSummary,
+    ],
+  );
 
   useEffect(() => {
     if (style === "personalized" && !personalizedStyleProfile) {
@@ -68,8 +101,26 @@ export function LivePdfPreview({
     if (Date.now() < retryUntilRef.current) return;
 
     let active = true;
+    let timer: number | null = null;
     const controller = new AbortController();
-    const timer = window.setTimeout(() => {
+    const bypassCache = retryNonce !== lastCacheBypassNonceRef.current;
+    if (bypassCache) lastCacheBypassNonceRef.current = retryNonce;
+
+    const applyPreviewBlob = (blob: Blob, approximate: boolean) => {
+      if (!active) return;
+      const nextUrl = URL.createObjectURL(blob);
+      if (currentUrlRef.current) {
+        URL.revokeObjectURL(currentUrlRef.current);
+      }
+      currentUrlRef.current = nextUrl;
+      setUrl(nextUrl);
+      setError(null);
+      setApproximateLayout(approximate);
+      setRetrySeconds(0);
+      retryUntilRef.current = 0;
+    };
+
+    const fetchPreview = () => {
       setLoading(true);
       setError(null);
       void fetch("/api/export/pdf", {
@@ -115,15 +166,8 @@ export function LivePdfPreview({
         })
         .then(({ blob, approximate }) => {
           if (!active) return;
-          const nextUrl = URL.createObjectURL(blob);
-          if (currentUrlRef.current) {
-            URL.revokeObjectURL(currentUrlRef.current);
-          }
-          currentUrlRef.current = nextUrl;
-          setUrl(nextUrl);
-          setApproximateLayout(approximate);
-          setRetrySeconds(0);
-          retryUntilRef.current = 0;
+          applyPreviewBlob(blob, approximate);
+          void savePdfPreviewCache(cacheEntry, blob, approximate);
         })
         .catch((previewError) => {
           if (
@@ -141,14 +185,33 @@ export function LivePdfPreview({
         .finally(() => {
           if (active) setLoading(false);
         });
-    }, 900);
+    };
+
+    const queueFetch = (delayMs: number) => {
+      timer = window.setTimeout(fetchPreview, delayMs);
+    };
+
+    if (bypassCache) {
+      queueFetch(0);
+    } else {
+      void loadPdfPreviewCache(cacheEntry).then((cached) => {
+        if (!active) return;
+        if (cached) {
+          applyPreviewBlob(cached.blob, cached.approximateLayout);
+          setLoading(false);
+          return;
+        }
+        queueFetch(900);
+      });
+    }
 
     return () => {
       active = false;
-      window.clearTimeout(timer);
+      if (timer !== null) window.clearTimeout(timer);
       controller.abort();
     };
   }, [
+    cacheEntry,
     optimization,
     pageSize,
     palette,

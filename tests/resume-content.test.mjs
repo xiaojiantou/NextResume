@@ -29,6 +29,7 @@ import {
   defaultResumePage,
   pruneFitVariants,
 } from "../lib/resumeFit.ts";
+import { createPdfPreviewCacheEntry } from "../lib/pdfPreviewCache.ts";
 import {
   RESUME_STYLE_PROFILE_VERSION,
   approximateResumeStyleProfile,
@@ -890,6 +891,72 @@ test("fit cache keys include template, page target, paper, and keep choices", ()
   assert.notEqual(
     createFitLayoutRevision(null),
     createFitLayoutRevision({ version: 5, layout: "single-column" }),
+  );
+});
+
+test("PDF preview cache keys reuse exact inputs and change for rendered output changes", () => {
+  const page = defaultResumePage(null);
+  const base = {
+    resume: fixtureResume,
+    optimization: fixtureOptimization,
+    style: "classic",
+    palette: "classic-ink",
+    targetPages: "auto",
+    pageSize: page,
+    personalizedStyleProfile: null,
+    fitVariant: null,
+    sourceRevision: "revision",
+    includeSummary: true,
+  };
+  const first = createPdfPreviewCacheEntry(base);
+  const reordered = createPdfPreviewCacheEntry({
+    ...base,
+    resume: { ...fixtureResume },
+    optimization: { ...fixtureOptimization },
+  });
+
+  assert.equal(first.key, reordered.key);
+  assert.equal(first.signature, reordered.signature);
+  assert.notEqual(
+    first.key,
+    createPdfPreviewCacheEntry({ ...base, palette: "sage" }).key,
+  );
+  assert.notEqual(
+    first.key,
+    createPdfPreviewCacheEntry({ ...base, includeSummary: false }).key,
+  );
+  assert.notEqual(
+    first.key,
+    createPdfPreviewCacheEntry({
+      ...base,
+      pageSize: { ...page, widthPt: page.widthPt + 1 },
+    }).key,
+  );
+  assert.notEqual(
+    first.key,
+    createPdfPreviewCacheEntry({
+      ...base,
+      fitVariant: {
+        id: "fit-1",
+        cacheKey: "fit-cache-1",
+        createdAt: "2026-09-03T20:00:00.000Z",
+        lastUsedAt: "2026-09-03T20:00:00.000Z",
+        actualPages: 1,
+        targetPages: 1,
+      },
+    }).key,
+  );
+  assert.notEqual(
+    createPdfPreviewCacheEntry({
+      ...base,
+      style: "personalized",
+      personalizedStyleProfile: { version: 1, layout: "single-column" },
+    }).key,
+    createPdfPreviewCacheEntry({
+      ...base,
+      style: "personalized",
+      personalizedStyleProfile: { version: 2, layout: "single-column" },
+    }).key,
   );
 });
 
