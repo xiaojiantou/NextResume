@@ -60,8 +60,8 @@ import {
   Columns2,
   Cpu,
   Download,
-  Eye,
   FileDown,
+  Files,
   FileText,
   Info,
   Layers,
@@ -85,7 +85,7 @@ import {
   useState,
 } from "react";
 
-type View = "split" | "optimized" | "original" | "edit";
+type View = "split" | "edit";
 type ContentVersion = "full" | "fitted";
 
 // The rewrite is one non-streaming request, so there is no real completion
@@ -244,7 +244,7 @@ function ResultPageInner() {
     [sourceDocument],
   );
 
-  const [view, setView] = useState<View>("split");
+  const [view, setView] = useState<View>("edit");
   const [contentVersion, setContentVersion] =
     useState<ContentVersion>("full");
   const [evidenceMode, setEvidenceMode] = useState(true);
@@ -1586,153 +1586,138 @@ function ResultPageInner() {
           )}
 
         {/* Toolbar */}
-        <div className="mt-6 card p-2 flex flex-wrap items-center gap-2 justify-between">
-          <div className="flex items-center gap-1">
-            <ToolbarTab
-              active={view === "split"}
-              onClick={() => setView("split")}
-              icon={<Columns2 size={14} />}
-              label="Side-by-side"
-            />
-            <ToolbarTab
-              active={view === "optimized"}
-              onClick={() => setView("optimized")}
-              icon={<Sparkles size={14} />}
-              label="Optimized only"
-            />
-            <ToolbarTab
-              active={view === "original"}
-              onClick={() => setView("original")}
-              icon={<Eye size={14} />}
-              label="Original only"
-            />
-            <ToolbarTab
-              active={view === "edit"}
-              onClick={() => {
-                if (resume) setView("edit");
-              }}
-              icon={<Pencil size={14} />}
-              label="Edit Resume"
-              disabled={!resume}
-            />
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
-              <span className="inline-flex items-center gap-1.5">
-                <Layers size={14} className="text-accent-600" />
-                Evidence Mode
-              </span>
-              <Switch
-                checked={evidenceMode}
-                onChange={() => setEvidenceMode((v) => !v)}
+        <div className="mt-6 overflow-visible rounded-xl border border-ink-100 bg-white shadow-soft">
+          <div className="flex flex-col gap-3 border-b border-ink-100 p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div
+              className="grid grid-cols-2 gap-1 rounded-lg bg-ink-50 p-1 sm:inline-grid"
+              role="tablist"
+              aria-label="Result view"
+            >
+              <ToolbarTab
+                active={view === "edit"}
+                onClick={() => {
+                  if (resume) setView("edit");
+                }}
+                icon={<Pencil size={14} />}
+                label="Edit Resume"
+                disabled={!resume}
               />
-            </label>
-            {!resume.summary && optimization.summary ? (
-              <label
-                className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer"
-                title="Your original resume has no summary section. Include the AI-written one?"
-              >
-                <span>AI summary</span>
-                <Switch
+              <ToolbarTab
+                active={view === "split"}
+                onClick={() => setView("split")}
+                icon={<Columns2 size={14} />}
+                label="Side-by-side"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {view !== "edit" ? (
+                <ToolbarSwitch
+                  checked={evidenceMode}
+                  onChange={() => setEvidenceMode((v) => !v)}
+                  icon={<Layers size={14} />}
+                  label="Evidence"
+                />
+              ) : null}
+              {!resume.summary && optimization.summary ? (
+                <ToolbarSwitch
                   checked={summaryEnabled}
                   onChange={() => setIncludeSummary(!summaryEnabled)}
+                  icon={<FileText size={14} />}
+                  label="AI summary"
+                  title="Your original resume has no summary section. Include the AI-written one?"
                 />
-              </label>
-            ) : null}
-            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
-            <ModelPicker
-              current={selectedModel}
-              onPick={switchOptimizationModel}
-              onRegenerate={() => regenerate(selectedModel)}
-              regenerating={generating}
-              compact
-            />
-            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
-            <span className="text-xs text-ink-500 hidden md:inline">
-              Content structure
-            </span>
-            <ContentStructurePicker
-              current={contentStructure}
-              onPick={switchStructureMode}
-              disabled={generating}
-            />
-            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
-            <span className="text-xs text-ink-500 hidden md:inline">
-              PDF style
-            </span>
-            <PdfStylePicker
-              current={pdfStyle}
-              onPick={(id) => {
-                setPdfStyle(id);
-                setContentVersion("full");
-                setFitConflict(null);
-                setFitError(null);
-                if (id !== "personalized") {
-                  setPdfPalette(getDefaultPaletteId(id));
-                }
-                if (id === "personalized" && personalizedStatus === "failed") {
-                  setPersonalizedError(null);
-                  setPersonalizedStatus("idle");
-                  personalizeRan.current = false;
-                }
-              }}
-              personalizedStatus={personalizedStatus}
-              personalizedAvailable={personalizedAvailable}
-            />
-            {pdfStyle === "personalized" && personalizedStyleProfile ? (
-              <button
-                type="button"
-                disabled={personalizedStatus === "generating"}
-                onClick={() => {
-                  personalizeRan.current = true;
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-2 bg-ink-50/40 p-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1.45fr)_auto]">
+            <ToolbarGroup label="Rewrite" icon={<Cpu size={13} />}>
+              <ModelPicker
+                current={selectedModel}
+                onPick={switchOptimizationModel}
+                onRegenerate={() => regenerate(selectedModel)}
+                regenerating={generating}
+                compact
+              />
+            </ToolbarGroup>
+
+            <ToolbarGroup label="Layout" icon={<FileText size={13} />}>
+              <ContentStructurePicker
+                current={contentStructure}
+                onPick={switchStructureMode}
+                disabled={generating}
+              />
+              <PdfStylePicker
+                current={pdfStyle}
+                onPick={(id) => {
+                  setPdfStyle(id);
                   setContentVersion("full");
                   setFitConflict(null);
                   setFitError(null);
-                  clearFitVariantsForStyle("personalized");
-                  void generatePersonalized();
-                }}
-                className="btn btn-outline min-h-11 !px-2.5 text-xs"
-                title="Rebuild the uploaded resume's page regions and visual style"
-              >
-                <RefreshCw
-                  size={13}
-                  className={
-                    personalizedStatus === "generating"
-                      ? "animate-spin"
-                      : undefined
+                  if (id !== "personalized") {
+                    setPdfPalette(getDefaultPaletteId(id));
                   }
+                  if (id === "personalized" && personalizedStatus === "failed") {
+                    setPersonalizedError(null);
+                    setPersonalizedStatus("idle");
+                    personalizeRan.current = false;
+                  }
+                }}
+                personalizedStatus={personalizedStatus}
+                personalizedAvailable={personalizedAvailable}
+              />
+              {pdfStyle === "personalized" && personalizedStyleProfile ? (
+                <button
+                  type="button"
+                  disabled={personalizedStatus === "generating"}
+                  onClick={() => {
+                    personalizeRan.current = true;
+                    setContentVersion("full");
+                    setFitConflict(null);
+                    setFitError(null);
+                    clearFitVariantsForStyle("personalized");
+                    void generatePersonalized();
+                  }}
+                  className="btn btn-outline min-h-10 !px-2.5 text-xs"
+                  title="Rebuild the uploaded resume's page regions and visual style"
+                >
+                  <RefreshCw
+                    size={13}
+                    className={
+                      personalizedStatus === "generating"
+                        ? "animate-spin"
+                        : undefined
+                    }
+                  />
+                  {personalizedStatus === "generating" ? "Rebuilding…" : "Rebuild"}
+                </button>
+              ) : null}
+              {pdfStyle !== "personalized" ? (
+                <PdfPalettePicker
+                  style={pdfStyle as FixedPdfStyle}
+                  current={pdfPalette}
+                  onPick={(palette) => {
+                    setPdfPalette(palette);
+                    setContentVersion("full");
+                    setFitConflict(null);
+                    setFitError(null);
+                  }}
                 />
-                {personalizedStatus === "generating"
-                  ? "Rebuilding layout…"
-                  : "Rebuild layout"}
-              </button>
-            ) : null}
-            {pdfStyle !== "personalized" ? (
-              <PdfPalettePicker
-                style={pdfStyle as FixedPdfStyle}
-                current={pdfPalette}
-                onPick={(palette) => {
-                  setPdfPalette(palette);
+              ) : null}
+            </ToolbarGroup>
+
+            <ToolbarGroup label="Length" icon={<Files size={13} />}>
+              <TargetPagesPicker
+                current={targetPages}
+                recommended={recommendedPages}
+                onPick={(pages) => {
+                  setTargetPages(pages);
                   setContentVersion("full");
                   setFitConflict(null);
                   setFitError(null);
                 }}
               />
-            ) : null}
-            <div className="h-5 w-px bg-ink-100 hidden sm:block" />
-            <span className="text-xs text-ink-500 hidden md:inline">
-              Target length
-            </span>
-            <TargetPagesPicker
-              current={targetPages}
-              recommended={recommendedPages}
-              onPick={(pages) => {
-                setTargetPages(pages);
-                setContentVersion("full");
-                setFitConflict(null);
-                setFitError(null);
-              }}
-            />
+            </ToolbarGroup>
           </div>
         </div>
 
@@ -1943,7 +1928,7 @@ function ResultPageInner() {
           </div>
         ) : (
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
-            {(view === "split" || view === "original") && (
+            {view === "split" ? (
               <PaneWrapper
                 title={
                   resumeStyleSource?.screenshots.length
@@ -1988,8 +1973,8 @@ function ResultPageInner() {
                   />
                 )}
               </PaneWrapper>
-            )}
-            {(view === "split" || view === "optimized") && (
+            ) : null}
+            {view === "split" ? (
               <PaneWrapper
                 title={
                   fittedViewActive
@@ -2044,7 +2029,7 @@ function ResultPageInner() {
                   />
                 </div>
               </PaneWrapper>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -2212,14 +2197,17 @@ function ToolbarTab({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
+      role="tab"
+      aria-selected={active}
       className={cn(
-        "px-3 py-1.5 rounded-md text-sm font-medium inline-flex items-center gap-1.5 transition",
+        "inline-flex min-h-10 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-ink-900/10",
         disabled
           ? "text-ink-300 cursor-not-allowed"
           : active
-            ? "bg-ink-900 text-white"
+            ? "bg-ink-900 text-white shadow-soft"
             : "text-ink-600 hover:bg-ink-100",
       )}
       title={disabled ? "Upload a resume first" : undefined}
@@ -2230,29 +2218,74 @@ function ToolbarTab({
   );
 }
 
-function Switch({
+function ToolbarGroup({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-ink-100 bg-white px-3 py-2 shadow-[0_1px_1px_rgba(16,24,40,0.02)]">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-ink-400">
+        {icon}
+        {label}
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ToolbarSwitch({
   checked,
   onChange,
+  icon,
+  label,
+  title,
 }: {
   checked: boolean;
   onChange: () => void;
+  icon: React.ReactNode;
+  label: string;
+  title?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onChange}
+      title={title}
       className={cn(
-        "w-9 h-5 rounded-full relative transition",
-        checked ? "bg-ink-900" : "bg-ink-200",
+        "inline-flex min-h-10 items-center gap-2 rounded-lg border px-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-ink-900/10",
+        checked
+          ? "border-ink-200 bg-white text-ink-900 shadow-soft"
+          : "border-transparent bg-ink-50 text-ink-500 hover:bg-ink-100 hover:text-ink-800",
       )}
       aria-pressed={checked}
     >
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <span className={checked ? "text-accent-600" : "text-ink-400"}>
+          {icon}
+        </span>
+        {label}
+      </span>
       <span
         className={cn(
-          "absolute left-0 top-0.5 w-4 h-4 rounded-full bg-white shadow-soft transition-transform",
-          checked ? "translate-x-[18px]" : "translate-x-0.5",
+          "relative h-5 w-9 rounded-full transition",
+          checked ? "bg-ink-900" : "bg-ink-200",
         )}
-      />
+        aria-hidden="true"
+      >
+        <span
+          className={cn(
+            "absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow-soft transition-transform",
+            checked ? "translate-x-[18px]" : "translate-x-0.5",
+          )}
+        />
+      </span>
     </button>
   );
 }

@@ -35,17 +35,23 @@ export function ModelPicker({
   }, [open]);
 
   return (
-    <div className="flex items-center gap-2" ref={ref}>
+    <div
+      className={cn("flex items-center gap-2", compact && "min-w-0 flex-wrap")}
+      ref={ref}
+    >
       <div className="relative">
         <button
+          type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white text-sm transition hover:border-ink-300",
-            compact ? "px-2.5 py-1" : "px-3 py-1.5",
+            "inline-flex max-w-full items-center gap-1.5 rounded-md border border-ink-200 bg-white text-sm transition hover:border-ink-300 focus:outline-none focus:ring-2 focus:ring-ink-900/10",
+            compact ? "min-h-10 px-2.5 py-1" : "px-3 py-1.5",
           )}
         >
           <Cpu size={13} className="text-ink-500" />
-          <span className="font-medium text-ink-900">{model.name}</span>
+          <span className="min-w-0 truncate font-medium text-ink-900">
+            {model.name}
+          </span>
           {model.badge && (
             <span
               className={cn(
@@ -158,18 +164,26 @@ export function ModelPicker({
 
       {onRegenerate && (
         <button
+          type="button"
           onClick={onRegenerate}
           disabled={regenerating}
+          title="Regenerate content"
           className={cn(
             "btn btn-outline",
-            compact && "!py-1 !px-2.5 text-xs",
+            compact && "min-h-10 !px-2.5 !py-1 text-xs",
           )}
         >
           <RefreshCw
             size={12}
             className={regenerating ? "animate-spin" : ""}
           />
-          {regenerating ? "Regenerating content…" : "Regenerate content"}
+          {regenerating
+            ? compact
+              ? "Regenerating…"
+              : "Regenerating content…"
+            : compact
+              ? "Regenerate"
+              : "Regenerate content"}
         </button>
       )}
     </div>
