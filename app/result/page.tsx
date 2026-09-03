@@ -1340,7 +1340,7 @@ function ResultPageInner() {
 
   return (
     <AppShell step="result">
-      <div className="container-x py-8 max-w-7xl">
+      <div className="mx-auto w-full max-w-[1800px] px-4 py-8 sm:px-6 lg:px-8 2xl:px-10">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
