@@ -68,6 +68,15 @@ const BASE = env.NOVITA_BASE_URL || "https://api.novita.ai/v3/openai";
 const MODEL = env.NOVITA_MODEL || "deepseek/deepseek-v3-0324";
 
 // Read the live prompts out of the routes so this always evaluates what ships.
+// The markers below are written with \n, but a Windows checkout hands us the
+// same file with \r\n — so the end marker never matched there and the eval died
+// on startup. Reading the prompts out of the route source is the whole point of
+// this script (an eval that reimplements the prompt measures the
+// reimplementation), so it has to survive either checkout.
+function readSource(file) {
+  return readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+}
+
 function sliceTemplate(src, decl, end) {
   const from = src.indexOf(decl);
   if (from < 0) throw new Error(`could not find ${decl}`);
@@ -77,10 +86,10 @@ function sliceTemplate(src, decl, end) {
   return src.slice(start, stop);
 }
 
-const jobRouteSrc = readFileSync("app/api/parse-job/route.ts", "utf8");
+const jobRouteSrc = readSource("app/api/parse-job/route.ts");
 const SYSTEM = sliceTemplate(jobRouteSrc, "const SYSTEM = `", "`;\n\nexport async function POST");
 
-const optimizeRouteSrc = readFileSync("app/api/optimize/route.ts", "utf8");
+const optimizeRouteSrc = readSource("app/api/optimize/route.ts");
 const OPTIMIZE_SYSTEM = sliceTemplate(
   optimizeRouteSrc,
   "const FULL_SYSTEM = `",
