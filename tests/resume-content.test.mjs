@@ -1482,6 +1482,41 @@ test("role optimization drops unsupported skills instead of failing the resume",
   );
 });
 
+test("a rewrite that copies the source's skills needs to justify none of them", () => {
+  // The prompt no longer asks for an entry per skill: grounding for a skill
+  // the source already names is decided here by matching the source text, and
+  // an entry supplied for one is discarded. Since skillEvidence was about half
+  // the model's entire output, that is most of the rewrite's latency spent on
+  // sentences nothing reads.
+  const grounded = reconcileGroundedSkills(fixtureResume, ["TypeScript"], []);
+
+  assert.deepEqual(grounded.skills, ["TypeScript"]);
+  // Downstream still receives a complete array — this layer writes it.
+  assert.equal(grounded.skillEvidence.length, 1);
+  assert.equal(grounded.skillEvidence[0].grounding, "direct");
+  assert.ok(grounded.skillEvidence[0].rationale.length > 0);
+  assert.deepEqual(
+    validateGroundedOptimization(fixtureResume, {
+      ...fixtureOptimization,
+      skills: grounded.skills,
+      skillEvidence: grounded.skillEvidence,
+    }),
+    [],
+  );
+});
+
+test("an added skill with no justification is still refused", () => {
+  // The other half of the rule: omitting entries is free for copied skills and
+  // fatal for invented ones.
+  const grounded = reconcileGroundedSkills(
+    fixtureResume,
+    ["TypeScript", "Distributed Systems"],
+    [],
+  );
+
+  assert.ok(!grounded.skills.includes("Distributed Systems"));
+});
+
 test("role optimization keeps strongly evidenced indirect capabilities", () => {
   const grounded = reconcileGroundedSkills(
     fixtureResume,

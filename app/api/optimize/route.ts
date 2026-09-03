@@ -53,9 +53,12 @@ Output ONLY valid JSON matching this schema:
   "title": string,
   "skills": string[],
   "skillEvidence": [{
+    // ONLY for a skill you are adding. See the skills rules below — a skill
+    // copied from the input needs no entry. Usually this array is empty or
+    // holds one or two items.
     "skill": string,
-    "grounding": "direct" | "indirect",
-    "skillType": "tool" | "capability" | "domain" | "soft" | "credential" | "language",
+    "grounding": "indirect",
+    "skillType": "capability" | "domain" | "soft",
     "evidence": string[],
     "rationale": string
   }],
@@ -114,7 +117,8 @@ Hard rules — keyword coverage:
 Hard rules — headline, skills, and summary:
 - "title" is the headline that sits under the candidate's name. It is the field recruiters filter an ATS on, so it must speak to THIS posting, not to the candidate's last job. Set it to the posting's exact job title when the candidate's experience supports that role. If the posting's seniority would overstate them, keep the posting's role words and drop only the level ("Senior Backend Platform Engineer" -> "Backend Platform Engineer"). Never claim a specialization the resume does not evidence, and never put a company name in it.
 - "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
-- Return exactly one skillEvidence entry for every proposed skill. Use grounding "direct" when the skill or a standard alias appears explicitly in the source. Use grounding "indirect" only for a capability, domain, or soft skill strongly demonstrated by 1-3 cited source bullet IDs; explain the support in rationale. Tools, frameworks, platforms, credentials, and languages must be direct.
+- Return a skillEvidence entry ONLY for a skill you are ADDING — one whose words are not already in the input resume. A skill you copied from the input needs no entry: it is verified against the source text directly, and an entry for it is discarded unread. Most rewrites add nothing and return [].
+- An added skill must be a "capability", "domain" or "soft" skill, must cite 1-3 real source bullet IDs in "evidence", and must explain the support in "rationale". A tool, framework, platform, credential or language can never be added — if the resume does not name it, it does not go in.
 - "summary": if the input resume has a summary, tailor it; if it has none, write a tight 2-3 line one grounded only in real experience.
 
 Hard rules — organization:

@@ -87,6 +87,41 @@ test("spacing falls back to the estimate when it could not be measured", () => {
   assert.equal(profile.typography.bodyPt, 9.5);
 });
 
+test("a measured profile survives the render pass, which has no file behind it", () => {
+  // A profile is sanitized twice: once where it is generated, with the source
+  // file's metrics at hand, and again inside renderPersonalizedPdf, which
+  // builds a synthetic source carrying none. The second pass used to re-clamp
+  // everything to the bounds meant for guesses — 9.5pt back to 10, 1.158 line
+  // height back to 1.25, 28pt margins back to 36 — which is about ten lines of
+  // an A4 page, and the whole difference between reproducing a one-page resume
+  // and emitting two.
+  const generated = sanitizeResumeStyleProfile(ESTIMATE, sourceWith(METRICS));
+  const rendered = sanitizeResumeStyleProfile(generated, {
+    screenshots: [],
+    page: generated.page,
+    pageCount: generated.pageLayouts.length,
+  });
+
+  assert.equal(rendered.measured, true);
+  assert.equal(rendered.typography.bodyPt, 9.5);
+  assert.ok(Math.abs(rendered.typography.lineHeight - 1.158) < 0.001);
+  assert.equal(rendered.marginsPt.left, 28);
+  assert.equal(rendered.spacing.bulletPt, 0.5);
+  assert.equal(rendered.fontFamily, "Times New Roman");
+});
+
+test("an unmeasured profile is not promoted by passing through again", () => {
+  const generated = sanitizeResumeStyleProfile(ESTIMATE, sourceWith(null));
+  const rendered = sanitizeResumeStyleProfile(generated, {
+    screenshots: [],
+    page: generated.page,
+    pageCount: 1,
+  });
+
+  assert.notEqual(rendered.measured, true);
+  assert.equal(rendered.typography.bodyPt, 11);
+});
+
 test("an unreadable measurement is still refused", () => {
   const profile = sanitizeResumeStyleProfile(
     ESTIMATE,
