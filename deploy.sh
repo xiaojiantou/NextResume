@@ -11,6 +11,30 @@ set -e
 echo "🚀 Deploying NextResume..."
 echo ""
 
+# Production deploys should come from main so the deployed code matches history.
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$BRANCH" != "main" ]; then
+  echo "❌ Production deploys must run from main. Current branch: $BRANCH"
+  echo "Run: git switch main && git pull --ff-only origin main"
+  exit 1
+fi
+
+echo "🔄 Syncing main with GitHub..."
+git fetch origin main
+if git merge-base --is-ancestor HEAD origin/main && [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+  git pull --ff-only origin main
+elif ! git merge-base --is-ancestor origin/main HEAD; then
+  echo "❌ Local main and origin/main have diverged. Rebase or merge before deploying."
+  exit 1
+fi
+
+# Branch switches can leave stale Next.js route metadata that makes tsc look
+# for API routes that no longer exist.
+echo "🧹 Clearing stale Next.js type cache..."
+if [ -d .next/types ]; then
+  rm -r .next/types
+fi
+
 # Check TypeScript
 echo "📋 Type checking..."
 npx tsc --noEmit || { echo "❌ TypeScript errors"; exit 1; }

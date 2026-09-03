@@ -29,7 +29,6 @@ const isPublicRoute = createRouteMatcher([
   "/api/fit-resume(.*)",
   "/api/export(.*)",
   "/api/personalize(.*)",
-  "/api/voice-rewrite(.*)",
 
   // Its own token check (verifyOrderToken) is the real gate here, so buyers
   // can open their order from any device via the emailed link.

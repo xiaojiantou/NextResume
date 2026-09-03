@@ -36,6 +36,10 @@ fi
 # Step 2: Type check
 echo ""
 echo -e "${BLUE}Step 2: Running TypeScript check...${NC}"
+echo "Clearing stale Next.js type cache..."
+if [ -d .next/types ]; then
+  rm -r .next/types
+fi
 if npx tsc --noEmit; then
   echo -e "${GREEN}✅ TypeScript check passed${NC}"
 else
