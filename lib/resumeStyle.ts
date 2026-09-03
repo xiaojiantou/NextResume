@@ -533,6 +533,61 @@ const SERIF_FAMILIES = new Set<ResumeStyleProfile["fontFamily"]>([
 ]);
 
 /**
+ * Reads a profile's own numbers back as measurements.
+ *
+ * A profile is sanitized twice: once where it is generated, which has the
+ * source file's metrics at hand, and again at render time, which does not —
+ * the profile arrives from the client with no file behind it. Without this the
+ * second pass re-clamps measured values to the bounds meant for guesses,
+ * throwing away the measurement entirely: 9.5pt back up to 10, 1.158 line
+ * height back up to 1.25, 28pt margins back out to 36. That is about ten lines
+ * of an A4 page, which is the difference between reproducing a one-page resume
+ * and emitting two.
+ *
+ * So `measured` travels with the profile and is honoured on the way back in.
+ * The values still pass through the measured bounds, so a client cannot use
+ * this to ask for something unreadable.
+ */
+function metricsFromProfile(input: Record<string, unknown>): ResumeStyleMetrics | null {
+  if (!bool(input.measured, false)) return null;
+  const typography = object(input.typography);
+  const spacing = object(input.spacing);
+  const margins = object(input.marginsPt);
+  const at = (value: unknown): number | null =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+  const bodyPt = at(typography.bodyPt);
+  if (bodyPt === null) return null;
+  return {
+    bodyPt,
+    namePt: at(typography.namePt) ?? bodyPt,
+    titlePt: at(typography.titlePt) ?? bodyPt,
+    sectionPt: at(typography.sectionPt) ?? bodyPt,
+    metaPt: at(typography.metaPt) ?? bodyPt,
+    lineHeight: at(typography.lineHeight),
+    spacing:
+      at(spacing.sectionPt) !== null &&
+      at(spacing.entryPt) !== null &&
+      at(spacing.bulletPt) !== null
+        ? {
+            sectionPt: at(spacing.sectionPt)!,
+            entryPt: at(spacing.entryPt)!,
+            bulletPt: at(spacing.bulletPt)!,
+          }
+        : null,
+    marginsPt: {
+      top: at(margins.top) ?? 36,
+      right: at(margins.right) ?? 36,
+      bottom: at(margins.bottom) ?? 36,
+      left: at(margins.left) ?? 36,
+    },
+    // The font family already survives `oneOf` on its own, so there is no
+    // class to correct on the way back in.
+    serif: null,
+    sampledChars: 0,
+  };
+}
+
+/**
  * Overwrites the estimated typography with what the source PDF actually does.
  *
  * Only the numbers are replaced. Region structure, colours, and divider
@@ -880,9 +935,13 @@ export function sanitizeResumeStyleProfile(
     // Page geometry is measured from the uploaded file, never trusted to AI.
     page: measuredPage,
   };
-  // Typography and margins follow the same rule wherever the source file
-  // could actually be measured.
-  return applyMeasuredStyle(estimated, source.styleMetrics);
+  // Typography and margins follow the same rule wherever the source file could
+  // actually be measured — or, on a second pass with no file at hand, wherever
+  // the profile itself reports that they were.
+  return applyMeasuredStyle(
+    estimated,
+    source.styleMetrics ?? metricsFromProfile(input),
+  );
 }
 
 /**

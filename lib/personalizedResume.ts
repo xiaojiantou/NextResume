@@ -671,8 +671,21 @@ function createContentManifest(
   content: ResolvedResumeDocument,
   profile: ResumeStyleProfile,
 ): ManifestItem[] {
-  const items: ManifestItem[] = [{ id: "name", value: content.name }];
-  if (content.title) items.push({ id: "title", value: content.title });
+  // This has to mirror buildPersonalizedHtml exactly. The name, the title and
+  // — unless a rail claims it — the contact line all live in the header, and a
+  // continuation page renders no header at all. Claiming an id the page was
+  // never going to produce fails the integrity check, which discards the whole
+  // original-inspired layout and silently falls back to a fixed template.
+  const blueprint = profile.layoutBlueprint;
+  const headerRendered = blueprint.headerPlacement !== "none";
+  const claimedByRegion = (section: "contact" | "photo") =>
+    blueprint.regions.some((region) => region.sections.includes(section));
+
+  const items: ManifestItem[] = [];
+  if (headerRendered) {
+    items.push({ id: "name", value: content.name });
+    if (content.title) items.push({ id: "title", value: content.title });
+  }
   const contact = [
     content.email,
     content.phone,
@@ -681,11 +694,13 @@ function createContentManifest(
   ]
     .filter(Boolean)
     .join(" · ");
-  if (contact) items.push({ id: "contact", value: contact });
-  if (content.photo && profile.header.photoPosition !== "none") {
-    items.push({ id: "photo", value: "" });
-  } else if (content.photo) {
-    // The renderer forces a visible photo even if vision missed it.
+  if (contact && (claimedByRegion("contact") || headerRendered)) {
+    items.push({ id: "contact", value: contact });
+  }
+  // A photo is always rendered when the content has one — the renderer moves it
+  // to the right edge even if vision reported no photo — but it still needs
+  // somewhere to go.
+  if (content.photo && (claimedByRegion("photo") || headerRendered)) {
     items.push({ id: "photo", value: "" });
   }
   if (content.summary) items.push({ id: "summary", value: content.summary });
@@ -982,6 +997,25 @@ export async function renderPersonalizedPdf({
     pageCount: Math.max(1, styleProfile.pageLayouts?.length ?? 1),
   };
   const requestedProfile = sanitizeResumeStyleProfile(styleProfile, source);
+  // The profile the renderer actually uses is not always the one the client
+  // holds — this pass has no source file behind it, so anything it cannot
+  // justify gets replaced by a default. Printing the effective values makes a
+  // silent substitution visible instead of leaving it to be inferred from a
+  // page count.
+  console.log(
+    "[personalizedResume] effective profile:",
+    JSON.stringify({
+      measured: requestedProfile.measured ?? false,
+      approximate: requestedProfile.approximate ?? false,
+      font: requestedProfile.fontFamily,
+      body: requestedProfile.typography.bodyPt,
+      lineHeight: Number(requestedProfile.typography.lineHeight.toFixed(3)),
+      section: requestedProfile.typography.sectionPt,
+      margins: requestedProfile.marginsPt,
+      spacing: requestedProfile.spacing,
+      sourcePages: requestedProfile.pageLayouts.length,
+    }),
+  );
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
@@ -1069,12 +1103,18 @@ export async function renderPersonalizedPdf({
           : candidateProfile.measured
             ? []
             : [...EXPANDED_FIT_PRESETS].reverse();
+      console.log(
+        `[personalizedResume] page ${pageIndex + 1} base fit: pages=${base.pageCount} fill=${base.fill.toFixed(2)} presets=${presets.length}`,
+      );
       for (const fit of presets) {
         const rendered = await renderFit(
           fit,
           candidateContent,
           candidateManifest,
           candidateProfile,
+        );
+        console.log(
+          `[personalizedResume] page ${pageIndex + 1} fit font×${fit.fontScale} spacing×${fit.spacingScale}: pages=${rendered.pageCount} fill=${rendered.fill.toFixed(2)}`,
         );
         if (rendered.pageCount !== 1) continue;
         exact.push(rendered);
