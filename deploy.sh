@@ -43,7 +43,7 @@ npx tsc --noEmit || { echo "❌ TypeScript errors"; exit 1; }
 echo "📤 Committing + pushing to GitHub..."
 git add -A
 git commit -m "Deploy: $(date '+%Y-%m-%d %H:%M:%S')" || true
-git push origin main || echo "⚠️  git push failed (deploy continues anyway)"
+git push origin main || { echo "❌ git push failed; deploy cancelled"; exit 1; }
 
 # Actual deployment: Vercel CLI (builds remotely)
 echo "☁️  Deploying to Vercel production..."
