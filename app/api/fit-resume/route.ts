@@ -109,6 +109,8 @@ Evidence and truth rules:
 - Some work roles include nested "teams". Treat team names as source context only. Do not output "teams"; keep each team achievement in its parent role's flat "bullets" transport using the original bullet id/evidence.
 - Reword, combine, shorten, or expand only facts traceable to those evidence ids. Every number in rewritten text must appear in that bullet's evidence.
 - Skills must be selected verbatim from the original or optimized skill lists.
+- If the source resume already had a summary, edit that summary in place and keep it concise. Do not create a second summary above it or concatenate old and new summary wording.
+- If the source resume had no summary, keep summary "" unless adding one is clearly worth the space for this target job.
 - Return every work role id as a transport record. Set hidden=true to omit a lower-priority role from a compressed result. In OPTIMIZE FOR ROLE, the newest visible role needs at least 2 bullets when the source has 2; other visible, non-collapsed roles need at least 1.
 - A collapsed role remains visible with company/title/dates but no bullets. A hidden role is omitted completely.
 - Return every project id as a transport record. Set hidden=true to omit a lower-priority project from a compressed result.

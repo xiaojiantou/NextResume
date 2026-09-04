@@ -120,7 +120,8 @@ Hard rules — headline, skills, and summary:
 - "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
 - Return a skillEvidence entry ONLY for a skill you are ADDING — one whose words are not already in the input resume. A skill you copied from the input needs no entry: it is verified against the source text directly, and an entry for it is discarded unread. Most rewrites add nothing and return [].
 - An added skill must be a "capability", "domain" or "soft" skill, must cite 1-3 real source bullet IDs in "evidence", and must explain the support in "rationale". A tool, framework, platform, credential or language can never be added — if the resume does not name it, it does not go in.
-- "summary": if the input resume has a summary, tailor it; if it has none, write a tight 2-3 line one grounded only in real experience.
+- "summary": if the input resume has a summary, rewrite THAT summary in place with concise wording; do not prepend a second summary, do not echo the old summary plus a new one, and keep it to 1-2 sentences grounded only in real experience.
+- If the input resume has no summary, return "" unless a short summary would materially improve role positioning for this specific job. When you create one, keep it to 1-2 concise sentences grounded only in real experience; the user can still choose whether to include it.
 
 Hard rules — organization:
 - sectionOrder must contain every non-empty source section exactly once. Reorder sections to lead with the strongest evidence for the target role. Use additional:<id> for every source additional section. The renderer maps supported source extras only into canonical Awards, Certifications, Publications, Languages, or Leadership & Volunteering sections; it never creates an ambiguous Additional Information section.
@@ -174,7 +175,8 @@ Non-negotiable rules:
 - Every output bullet id MUST equal its one source bullet id. Its evidence MUST be exactly [that same id]. Never merge, split, add, delete, or move bullets.
 - Some input roles include "teams" that group achievements inside the same company. Treat team names as source context only. Do not output "teams"; return every team achievement as part of its parent role's flat "bullets" list using the same bullet id.
 - Keep every source skill. You may reorder skills and normalize capitalization only. Never add or remove one.
-- If the source summary or professional title is empty, keep it empty. If present, rewrite it without adding unsupported facts.
+- If the source summary is present, rewrite that summary in place with concise wording; do not add a second summary above it. If the source summary is empty, keep it empty.
+- If the source professional title is empty, keep it empty. If present, rewrite it without adding unsupported facts.
 - Never alter or infer companies, schools, historical job titles, degrees, project names, dates, locations, awards, certificates, publications, organizations, metrics, tools, or results.
 - Every number in a rewrite must already appear in that same source bullet.
 - Use concise, natural English. Keep each bullet non-empty and improve relevance only within its own evidence.`;

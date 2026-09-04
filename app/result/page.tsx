@@ -2663,7 +2663,7 @@ function BulletDiff({
             hoveredOptimizedId={previewHoverId}
             setHoveredOptimizedId={setPreviewHoverId}
             evidenceMode={false}
-            includeSummary={includeSummary ?? true}
+            includeSummary={includeSummary ?? Boolean(resume.summary)}
             focusedBulletId={focusedBulletId}
           />
         </div>

@@ -43,6 +43,34 @@ test("legacy string links still load and gain targets", () => {
   assert.deepEqual(normalizeResumeLinks("nope"), []);
 });
 
+test("summary-like labels without urls are not treated as header links", () => {
+  assert.deepEqual(
+    normalizeResumeLinks([
+      { label: "LinkedIn Profile" },
+      { label: "GitHub Profile" },
+      { label: "Howbe, LLC" },
+      {
+        label:
+          "Founder, CEO IOLTA Ledger: AI-Powered Trust Accounting & Compliance",
+      },
+      { label: "Founder · CEO · AI Product Builder" },
+    ]),
+    [{ label: "LinkedIn Profile" }, { label: "GitHub Profile" }],
+  );
+});
+
+test("summary-like labels with urls fall back to compact urls", () => {
+  assert.deepEqual(
+    normalizeResumeLinks([
+      {
+        label: "Founder · CEO · AI Product Builder",
+        url: "https://candidate.dev/about",
+      },
+    ]),
+    [{ label: "candidate.dev/about", url: "https://candidate.dev/about" }],
+  );
+});
+
 test("a link object with only a url is labelled from it", () => {
   assert.deepEqual(
     normalizeResumeLinks([{ url: "https://www.github.com/jane" }]),

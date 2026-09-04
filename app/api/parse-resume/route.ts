@@ -25,7 +25,7 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
   "title": string,            // current/most-recent title
   "email": string,
   "phone": string,
-  "location": string,
+  "location": string,         // city/state/country/region or "Remote"; "" if not stated
   "links": [
     // Profile links from the header (LinkedIn, GitHub, portfolio, website).
     // "label" is the short display form the resume actually shows, e.g.
@@ -129,7 +129,9 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
 Rules:
 - Preserve ALL source content VERBATIM. Do not rewrite, summarize, or omit.
 - Role/company lines often carry a tech-stack suffix (e.g. "Acme Corp | FastAPI, Redis, GCS"). Put that suffix in the role's "techStack" verbatim — never discard it, and never mix it into company/title.
-- Header links (LinkedIn, GitHub, portfolio) go in "links" — these matter to recruiters; never drop them. Never invent a "url" that was not given to you.
+- Header links (LinkedIn, GitHub, portfolio, personal website) go in "links" — these matter to recruiters; never drop them. Never invent a "url" that was not given to you.
+- Do not put company names, job titles, product descriptions, taglines, summaries, or project lists in "links" or "location". If that text is a profile/summary paragraph, put it in "summary"; if it is work/project content, put it under the correct section.
+- "location" is only a real geographic location, region, or work arrangement such as "Remote". If the header has no such value, use "".
 - This product uses English resume labels. Set language to "en".
 - Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across role-level bullets, nested team bullets, and project bullets.
 - If one company/role contains nested team, org, group, department, or product-area headings, keep one company entry and put each nested heading in "teams"; put that team's achievements under that team. Do not split the same company into duplicate experience entries just because the source lists teams.

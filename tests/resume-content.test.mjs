@@ -209,6 +209,36 @@ test("company teams keep their achievements grouped through resolution", () => {
   ]);
 });
 
+test("summary-like header spillover is removed from contact fields", () => {
+  const resume = normalizeParsedResume({
+    name: "Candidate",
+    email: "candidate@example.com",
+    phone: "+1 555 0100",
+    location:
+      "Howbe, LLC · Founder, CEO IOLTA Ledger: AI-Powered Trust Accounting",
+    links: [
+      { label: "Portfolio", url: "https://candidate.dev" },
+      { label: "LinkedIn Profile" },
+      { label: "Howbe, LLC" },
+      {
+        label:
+          "Founder, CEO IOLTA Ledger: AI-Powered Trust Accounting & Compliance",
+      },
+    ],
+    summary: "Founder building AI-native workflow products.",
+  });
+
+  assert.equal(resume.location, "");
+  assert.deepEqual(resume.links, [
+    { label: "Portfolio", url: "https://candidate.dev/" },
+    { label: "LinkedIn Profile" },
+  ]);
+  assert.equal(
+    resolveResumeContent(resume, null).summary,
+    "Founder building AI-native workflow products.",
+  );
+});
+
 test("short coursework and skill taxonomies render as compact flowing lists", () => {
   const coursework = {
     id: "coursework",

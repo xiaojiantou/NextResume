@@ -22,6 +22,10 @@ const URL_PATTERN =
   /\b(?:https?:\/\/|www\.)[^\s<>()[\]{}"']+|\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9-]+)*\.(?:com|org|net|io|dev|ai|co|me|app|edu|gov|xyz|page|site|tech|design|studio)\b(?:\/[^\s<>()[\]{}"']*)?/gi;
 
 const TRAILING_PUNCTUATION = /[.,;:!?)\]}>'"]+$/;
+const LABEL_ONLY_PROFILE =
+  /^(linkedin|linked\s*in|github|gitlab|portfolio|website|personal website|personal site|homepage|profile|github profile|linkedin profile)$/i;
+const PROFILE_LABEL_HINT =
+  /\b(linkedin|linked\s*in|github|gitlab|portfolio|website|homepage|profile)\b/i;
 
 export function normalizeLinkUrl(value: string): string | undefined {
   const trimmed = value.trim().replace(TRAILING_PUNCTUATION, "");
@@ -56,6 +60,20 @@ export function labelForUrl(url: string): string {
   }
 }
 
+function plausibleLabelOnlyLink(label: string): boolean {
+  const clean = label.trim();
+  if (!clean || clean.length > 48) return false;
+  if (/[,:;•·|]/.test(clean)) return false;
+  return LABEL_ONLY_PROFILE.test(clean) || PROFILE_LABEL_HINT.test(clean);
+}
+
+function safeDisplayLabel(label: string, url?: string): string {
+  const clean = label.trim();
+  if (!url) return plausibleLabelOnlyLink(clean) ? clean : "";
+  if (clean.length > 72 || /[,:;•·|]/.test(clean)) return labelForUrl(url);
+  return clean || labelForUrl(url);
+}
+
 function sameTarget(left?: string, right?: string): boolean {
   if (!left || !right) return false;
   const strip = (value: string) =>
@@ -72,7 +90,10 @@ export function normalizeResumeLinks(value: unknown): ResumeLink[] {
       const label = entry.trim();
       if (!label) continue;
       const url = normalizeLinkUrl(label);
-      links.push(url ? { label, url } : { label });
+      const displayLabel = safeDisplayLabel(label, url);
+      if (displayLabel) {
+        links.push(url ? { label: displayLabel, url } : { label: displayLabel });
+      }
       continue;
     }
     if (!entry || typeof entry !== "object") continue;
@@ -83,7 +104,7 @@ export function normalizeResumeLinks(value: unknown): ResumeLink[] {
         : undefined;
     const rawLabel =
       typeof candidate.label === "string" ? candidate.label.trim() : "";
-    const label = rawLabel || (url ? labelForUrl(url) : "");
+    const label = safeDisplayLabel(rawLabel || (url ? labelForUrl(url) : ""), url);
     if (!label) continue;
     links.push(url ? { label, url } : { label });
   }

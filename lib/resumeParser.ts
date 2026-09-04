@@ -34,6 +34,25 @@ function text(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function locationText(value: unknown): string {
+  const location = text(value);
+  if (!location) return "";
+  if (location.length > 72) return "";
+  if (/[:;•|]/.test(location)) return "";
+  if ((location.match(/·/g) ?? []).length > 0) return "";
+  if (/\b(?:LLC|Inc\.?|Corp\.?|Corporation|Ltd\.?|Limited|GmbH)\b/i.test(location)) {
+    return "";
+  }
+  if (
+    /\b(?:founder|ceo|cto|engineer|manager|director|product|platform|powered|compliance|resume|tailoring|optimization)\b/i.test(
+      location,
+    )
+  ) {
+    return "";
+  }
+  return location;
+}
+
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
     ? (value as Record<string, unknown>)
@@ -77,7 +96,7 @@ function roleTeams(value: unknown): ParsedRoleTeam[] {
         id: text(item.id) || `team-${index + 1}`,
         name: text(item.name) || text(item.team) || text(item.heading),
         title: text(item.title),
-        location: text(item.location),
+        location: locationText(item.location),
         start: text(item.start),
         end: text(item.end),
         bulletIds: uniqueText([
@@ -130,7 +149,7 @@ function roles(value: unknown): ResumeRole[] {
       id: text(item.id) || `r-${index + 1}`,
       company: text(item.company),
       title: text(item.title),
-      location: text(item.location),
+      location: locationText(item.location),
       start: text(item.start),
       end: text(item.end),
       techStack: text(item.techStack),
@@ -147,7 +166,7 @@ function projects(value: unknown): ResumeProject[] {
       id: text(item.id) || `p-${index + 1}`,
       name: text(item.name),
       role: text(item.role),
-      location: text(item.location),
+      location: locationText(item.location),
       start: text(item.start),
       end: text(item.end),
       bullets: bullets(item.bullets),
@@ -194,7 +213,7 @@ function additionalItems(value: unknown): ResumeAdditionalItem[] {
       id: text(item.id) || `ai-${index + 1}`,
       heading: text(item.heading),
       subheading: text(item.subheading),
-      location: text(item.location),
+      location: locationText(item.location),
       start: text(item.start),
       end: text(item.end),
       bullets: bullets(item.bullets),
@@ -246,7 +265,7 @@ export function normalizeParsedResume(value: unknown): Resume {
     title: text(input.title),
     email: text(input.email),
     phone: text(input.phone),
-    location: text(input.location),
+    location: locationText(input.location),
     links: normalizeResumeLinks(input.links),
     summary: text(input.summary),
     skills: array(input.skills).map(text).filter(Boolean),
