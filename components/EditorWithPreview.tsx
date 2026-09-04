@@ -100,7 +100,7 @@ export function EditorWithPreview({
 
       {/* Content */}
       {layout === "split" ? (
-        <div className="grid grid-cols-2 gap-6 h-[calc(100vh-300px)]">
+        <div className="grid h-[calc(100dvh-8rem)] min-h-[720px] grid-cols-2 gap-6">
           {/* Editor Side */}
           <div className="overflow-y-auto pr-4 pb-4">
             <EditableResumeCanvas
@@ -148,7 +148,7 @@ export function EditorWithPreview({
           />
         </div>
       ) : (
-        <div className="h-[calc(100vh-200px)] rounded-lg border border-ink-100 bg-ink-50 overflow-hidden">
+        <div className="h-[calc(100dvh-8rem)] min-h-[760px] overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
           <LivePdfPreview
             resume={resume}
             optimization={optimization}

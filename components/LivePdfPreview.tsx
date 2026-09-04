@@ -342,7 +342,7 @@ export function LivePdfPreview({
   return (
     <div className="relative h-full w-full">
       <iframe
-        src={`${url}#toolbar=1&view=FitH`}
+        src={`${url}#toolbar=1&view=Fit`}
         title="Edited resume PDF preview"
         className="h-full w-full rounded-lg"
       />

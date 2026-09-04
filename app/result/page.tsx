@@ -65,6 +65,7 @@ import {
   FileText,
   Info,
   Layers,
+  ListChecks,
   Lock,
   Mic,
   RotateCcw,
@@ -85,7 +86,7 @@ import {
   useState,
 } from "react";
 
-type View = "split" | "edit";
+type View = "split" | "edit" | "bullets";
 type ContentVersion = "full" | "fitted";
 
 // The rewrite is one non-streaming request, so there is no real completion
@@ -1589,7 +1590,7 @@ function ResultPageInner() {
         <div className="mt-6 overflow-visible rounded-xl border border-ink-100 bg-white shadow-soft">
           <div className="flex flex-col gap-3 border-b border-ink-100 p-3 lg:flex-row lg:items-center lg:justify-between">
             <div
-              className="grid grid-cols-2 gap-1 rounded-lg bg-ink-50 p-1 sm:inline-grid"
+              className="grid grid-cols-1 gap-1 rounded-lg bg-ink-50 p-1 sm:inline-grid sm:grid-cols-3"
               role="tablist"
               aria-label="Result view"
             >
@@ -1608,9 +1609,15 @@ function ResultPageInner() {
                 icon={<Columns2 size={14} />}
                 label="Side-by-side"
               />
+              <ToolbarTab
+                active={view === "bullets"}
+                onClick={() => setView("bullets")}
+                icon={<ListChecks size={14} />}
+                label="Bullet by bullet"
+              />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {view !== "edit" ? (
+              {view === "bullets" ? (
                 <ToolbarSwitch
                   checked={evidenceMode}
                   onChange={() => setEvidenceMode((v) => !v)}
@@ -1849,16 +1856,15 @@ function ResultPageInner() {
           </div>
         ) : null}
 
-        {evidenceMode && (
+        {view === "bullets" && evidenceMode && (
           <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50/40 px-4 py-3 text-sm text-ink-700 flex items-start gap-2.5">
             <Info size={14} className="mt-0.5 text-accent-600 shrink-0" />
             <div>
-              The right pane is your actual download. Every rewritten bullet is
-              shown{" "}
+              Every rewritten bullet is shown{" "}
               <span className="font-medium">
                 next to the original sentences it came from
               </span>{" "}
-              in the comparison below. We never invent experience.
+              here. We never invent experience.
             </div>
           </div>
         )}
@@ -2034,10 +2040,12 @@ function ResultPageInner() {
         )}
 
         {/* Evidence detail */}
-        {view !== "edit" && evidenceMode && <EvidencePanel hoveredId={hoveredOptimizedId} />}
+        {view === "bullets" && evidenceMode && (
+          <EvidencePanel hoveredId={hoveredOptimizedId} />
+        )}
 
         {/* Bullet diff */}
-        {view !== "edit" && (
+        {view === "bullets" && (
           <BulletDiff onFocusBullet={setHoveredOptimizedId} />
         )}
 
@@ -2296,11 +2304,17 @@ function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
   const all = [
     ...optimization.roles.flatMap((r) => r.bullets),
     ...(optimization.projects?.flatMap((p) => p.bullets) ?? []),
+    ...(optimization.additionalSections?.flatMap((section) =>
+      section.items.flatMap((item) => item.bullets),
+    ) ?? []),
   ];
   const bullet = all.find((b) => b.id === hoveredId);
   const orig = [
     ...resume.experience.flatMap((r) => r.bullets),
     ...(resume.projects?.flatMap((p) => p.bullets) ?? []),
+    ...(resume.additionalSections?.flatMap((section) =>
+      section.items.flatMap((item) => item.bullets),
+    ) ?? []),
   ].filter((b) => bullet?.evidence.includes(b.id));
 
   return (
