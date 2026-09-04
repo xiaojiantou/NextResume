@@ -171,6 +171,35 @@ export function EditableResumeCanvas({
     const ids = new Set(team.bulletIds);
     return role.bullets.filter((bullet) => ids.has(bullet.id));
   };
+  const experienceGroups = (() => {
+    if (!resume.experienceGroups?.length) {
+      return [{ id: "experience-all", title: "", roles: resume.experience }];
+    }
+    const rolesById = new Map(resume.experience.map((role) => [role.id, role]));
+    const groupedIds = new Set<string>();
+    const groups = resume.experienceGroups
+      .map((group, index) => {
+        const roles = group.roleIds
+          .map((id) => rolesById.get(id))
+          .filter((role): role is ResumeRole => Boolean(role));
+        roles.forEach((role) => groupedIds.add(role.id));
+        return {
+          id: group.id || `experience-group-${index + 1}`,
+          title: group.title,
+          roles,
+        };
+      })
+      .filter((group) => group.roles.length > 0);
+    const ungrouped = resume.experience.filter(
+      (role) => !groupedIds.has(role.id),
+    );
+    if (ungrouped.length > 0) {
+      groups.push({ id: "experience-ungrouped", title: "", roles: ungrouped });
+    }
+    return groups.length > 0
+      ? groups
+      : [{ id: "experience-all", title: "", roles: resume.experience }];
+  })();
 
   const updateProjectBullet = (
     projectId: string,
@@ -410,7 +439,14 @@ export function EditableResumeCanvas({
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-ink-900">Experience</h3>
         </div>
-        {resume.experience.map((role) => (
+        {experienceGroups.map((group) => (
+          <div key={group.id} className="space-y-4">
+            {group.title ? (
+              <div className="text-xs font-semibold uppercase tracking-widest text-accent-700">
+                {group.title}
+              </div>
+            ) : null}
+            {group.roles.map((role) => (
           <div key={role.id} className="card p-6 border-l-4 border-l-accent-500">
             <div className="mb-3 flex justify-end">
               <KeepButton contentId={role.id} />
@@ -537,6 +573,8 @@ export function EditableResumeCanvas({
                 );
               })}
             </div>
+          </div>
+            ))}
           </div>
         ))}
       </div>

@@ -175,6 +175,17 @@ function createStyles(
     entry: {
       marginTop: px(isAcademic ? 9 : 10),
     },
+    experienceGroup: {
+      marginTop: px(isAcademic ? 8 : 9),
+    },
+    experienceGroupLabel: {
+      color: palette.accent,
+      fontFamily: isTech ? "Courier-Bold" : "Helvetica-Bold",
+      fontSize: fs(8.3),
+      lineHeight: lh(1.2),
+      marginBottom: px(2),
+      textTransform: "uppercase",
+    },
     entryHeader: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -330,6 +341,7 @@ export function ResumePdfDistinctive({
     title,
     skills,
     experience,
+    experienceGroups,
     projects,
     education,
     additionalSections,
@@ -410,6 +422,23 @@ export function ResumePdfDistinctive({
         {entry.teams?.map(renderTeam)}
       </View>
     ));
+  const renderExperienceEntries = () =>
+    experienceGroups.length > 0
+      ? experienceGroups.map((group) => (
+          <View key={group.id} style={styles.experienceGroup}>
+            {group.title ? (
+              <Text
+                style={styles.experienceGroupLabel}
+                wrap={false}
+                minPresenceAhead={48}
+              >
+                {group.title}
+              </Text>
+            ) : null}
+            {renderEntries(group.blocks)}
+          </View>
+        ))
+      : renderEntries(experience);
   const renderSection = (ref: (typeof sectionOrder)[number]) => {
     if (ref === "summary") {
       return summary ? (
@@ -436,7 +465,7 @@ export function ResumePdfDistinctive({
       return entries.length > 0 ? (
         <View key={ref} style={styles.section}>
           <Text style={styles.sectionLabel}>{sectionLabel(labels[ref])}</Text>
-          {renderEntries(entries)}
+          {ref === "experience" ? renderExperienceEntries() : renderEntries(entries)}
         </View>
       ) : null;
     }

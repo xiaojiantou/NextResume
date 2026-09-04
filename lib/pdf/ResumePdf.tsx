@@ -103,6 +103,14 @@ function createStyles(
       borderBottomColor: palette.border,
     },
     section: { marginTop: px(16) },
+    experienceGroup: { marginTop: px(9) },
+    experienceGroupLabel: {
+      fontSize: fs(8.7),
+      fontFamily: "Helvetica-Bold",
+      color: palette.accent,
+      textTransform: "uppercase",
+      marginBottom: px(2),
+    },
     summary: { fontSize: body(), color: palette.text, lineHeight: lh(1.5) },
     skills: {
       fontSize: body(),
@@ -241,6 +249,7 @@ export function ResumePdf({
     skills,
     skillGroups,
     experience,
+    experienceGroups,
     projects,
     education,
     additionalSections,
@@ -292,9 +301,56 @@ export function ResumePdf({
         .slice(1)
         .map((text, index) =>
           renderBullet(text, `${team.id}-bullet-${index + 1}`),
-        )}
+      )}
     </View>
   );
+  const renderExperienceRole = (role: (typeof experience)[number]) => (
+    <View key={role.id}>
+      <View wrap={false} minPresenceAhead={36}>
+        <View style={styles.roleHeader}>
+          <Text style={styles.roleTitleGroup}>
+            <Text style={styles.roleTitle}>{role.heading}</Text>
+            {role.subheading ? (
+              <Text style={styles.roleTitleMuted}>
+                {"  ·  "}
+                {role.subheading}
+              </Text>
+            ) : null}
+          </Text>
+          <Text style={styles.roleDates}>
+            {role.start} — {role.end}
+          </Text>
+        </View>
+        {role.location ? (
+          <Text style={styles.roleLocation}>{role.location}</Text>
+        ) : null}
+        {role.bullets[0] ? (
+          renderBullet(role.bullets[0], `${role.id}-bullet-0`)
+        ) : null}
+      </View>
+      {role.bullets.slice(1).map((text, index) => (
+        renderBullet(text, `${role.id}-bullet-${index + 1}`)
+      ))}
+      {role.teams?.map(renderTeam)}
+    </View>
+  );
+  const renderExperienceContent = () =>
+    experienceGroups.length > 0
+      ? experienceGroups.map((group) => (
+          <View key={group.id} style={styles.experienceGroup}>
+            {group.title ? (
+              <Text
+                style={styles.experienceGroupLabel}
+                wrap={false}
+                minPresenceAhead={48}
+              >
+                {group.title}
+              </Text>
+            ) : null}
+            {group.blocks.map(renderExperienceRole)}
+          </View>
+        ))
+      : experience.map(renderExperienceRole);
   const renderSection = (ref: (typeof sectionOrder)[number]) => {
     if (ref === "summary") {
       return summary ? (
@@ -332,36 +388,7 @@ export function ResumePdf({
       return experience.length > 0 ? (
         <View key={ref} style={styles.section}>
           <Text style={styles.sectionLabel} minPresenceAhead={48}>{labels.experience}</Text>
-          {experience.map((role) => (
-            <View key={role.id}>
-              <View wrap={false} minPresenceAhead={36}>
-                <View style={styles.roleHeader}>
-                  <Text style={styles.roleTitleGroup}>
-                    <Text style={styles.roleTitle}>{role.heading}</Text>
-                    {role.subheading ? (
-                      <Text style={styles.roleTitleMuted}>
-                        {"  ·  "}
-                        {role.subheading}
-                      </Text>
-                    ) : null}
-                  </Text>
-                  <Text style={styles.roleDates}>
-                    {role.start} — {role.end}
-                  </Text>
-                </View>
-                {role.location ? (
-                  <Text style={styles.roleLocation}>{role.location}</Text>
-                ) : null}
-                {role.bullets[0] ? (
-                  renderBullet(role.bullets[0], `${role.id}-bullet-0`)
-                ) : null}
-              </View>
-              {role.bullets.slice(1).map((text, index) => (
-                renderBullet(text, `${role.id}-bullet-${index + 1}`)
-              ))}
-              {role.teams?.map(renderTeam)}
-            </View>
-          ))}
+          {renderExperienceContent()}
         </View>
       ) : null;
     }

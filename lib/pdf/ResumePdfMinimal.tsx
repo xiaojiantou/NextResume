@@ -104,6 +104,14 @@ function createStyles(
       color: palette.text,
       lineHeight: lh(1.5),
     },
+    experienceGroup: { marginTop: px(10) },
+    experienceGroupLabel: {
+      fontSize: fs(8.4),
+      fontFamily: "Helvetica-Bold",
+      color: palette.accent,
+      marginBottom: px(2),
+      textTransform: "uppercase",
+    },
     roleBlock: { marginTop: px(12) },
     roleHeader: {
       flexDirection: "row",
@@ -219,6 +227,7 @@ export function ResumePdfMinimal({
     skills,
     skillGroups,
     experience,
+    experienceGroups,
     projects,
     education,
     additionalSections,
@@ -263,9 +272,51 @@ export function ResumePdfMinimal({
         .slice(1)
         .map((text, index) =>
           renderBullet(text, `${team.id}-bullet-${index + 1}`),
-        )}
+      )}
     </View>
   );
+  const renderBlock = (block: (typeof experience)[number]) => (
+    <View key={block.id} style={styles.roleBlock}>
+      <View wrap={false} minPresenceAhead={36}>
+        <View style={styles.roleHeader}>
+          <View style={styles.roleHeadingGroup}>
+            <Text style={styles.roleHeading}>{block.heading}</Text>
+            <Text style={styles.roleSub}>{block.subheading}</Text>
+          </View>
+          <Text style={styles.roleDates}>
+            {block.start} — {block.end}
+          </Text>
+        </View>
+        {block.location ? (
+          <Text style={styles.roleLocation}>{block.location}</Text>
+        ) : null}
+        {block.bullets[0] ? (
+          renderBullet(block.bullets[0], `${block.id}-bullet-0`)
+        ) : null}
+      </View>
+      {block.bullets.slice(1).map((text, index) => (
+        renderBullet(text, `${block.id}-bullet-${index + 1}`)
+      ))}
+      {block.teams?.map(renderTeam)}
+    </View>
+  );
+  const renderExperienceContent = () =>
+    experienceGroups.length > 0
+      ? experienceGroups.map((group) => (
+          <View key={group.id} style={styles.experienceGroup}>
+            {group.title ? (
+              <Text
+                style={styles.experienceGroupLabel}
+                wrap={false}
+                minPresenceAhead={48}
+              >
+                {group.title}
+              </Text>
+            ) : null}
+            {group.blocks.map(renderBlock)}
+          </View>
+        ))
+      : experience.map(renderBlock);
   const renderSection = (ref: (typeof sectionOrder)[number]) => {
     if (ref === "summary") {
       return summary ? (
@@ -314,31 +365,9 @@ export function ResumePdfMinimal({
       return blocks.length > 0 ? (
         <View key={ref} style={styles.section}>
           <Text style={styles.sectionTag} minPresenceAhead={48}>{labels[ref]}</Text>
-          {blocks.map((block) => (
-            <View key={block.id} style={styles.roleBlock}>
-              <View wrap={false} minPresenceAhead={36}>
-                <View style={styles.roleHeader}>
-                  <View style={styles.roleHeadingGroup}>
-                    <Text style={styles.roleHeading}>{block.heading}</Text>
-                    <Text style={styles.roleSub}>{block.subheading}</Text>
-                  </View>
-                  <Text style={styles.roleDates}>
-                    {block.start} — {block.end}
-                  </Text>
-                </View>
-                {block.location ? (
-                  <Text style={styles.roleLocation}>{block.location}</Text>
-                ) : null}
-                {block.bullets[0] ? (
-                  renderBullet(block.bullets[0], `${block.id}-bullet-0`)
-                ) : null}
-              </View>
-              {block.bullets.slice(1).map((text, index) => (
-                renderBullet(text, `${block.id}-bullet-${index + 1}`)
-              ))}
-              {block.teams?.map(renderTeam)}
-            </View>
-          ))}
+          {ref === "experience"
+            ? renderExperienceContent()
+            : blocks.map(renderBlock)}
         </View>
       ) : null;
     }

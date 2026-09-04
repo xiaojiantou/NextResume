@@ -39,6 +39,12 @@ export type ResolvedTeamBlock = {
   bullets: string[];
 };
 
+export type ResolvedExperienceGroup = {
+  id: string;
+  title: string;
+  blocks: ResolvedBlock[];
+};
+
 export type ResolvedResumeDocument = {
   name: string;
   title: string;
@@ -53,6 +59,8 @@ export type ResolvedResumeDocument = {
   /** Source skill categories; when non-empty, render these instead of `skills`. */
   skillGroups: ResumeSkillGroup[];
   experience: ResolvedBlock[];
+  /** Source headings that group work roles, e.g. "Earlier Experience". */
+  experienceGroups: ResolvedExperienceGroup[];
   projects: ResolvedBlock[];
   education: Resume["education"];
   additionalSections: ResumeAdditionalSection[];
@@ -315,6 +323,49 @@ function resolveSectionOrder(
     (ref) => sectionHasContent(ref, content) && !seen.has(ref),
   );
   return [...introduced, ...deduped, ...missing];
+}
+
+function normalizedHeading(value: string): string {
+  return value.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function resolveExperienceGroups(
+  groups: Resume["experienceGroups"],
+  blocks: ResolvedBlock[],
+  displayedExperienceLabel: string,
+): ResolvedExperienceGroup[] {
+  if (!groups?.length || blocks.length === 0) return [];
+  const blockById = new Map(blocks.map((block) => [block.id, block]));
+  const groupedRoleIds = new Set<string>();
+  const resolvedGroups = groups
+    .map((group) => {
+      const groupBlocks = group.roleIds
+        .map((id) => blockById.get(id))
+        .filter((block): block is ResolvedBlock => Boolean(block));
+      groupBlocks.forEach((block) => groupedRoleIds.add(block.id));
+      return {
+        id: group.id,
+        title: group.title,
+        blocks: groupBlocks,
+      };
+    })
+    .filter((group) => group.blocks.length > 0);
+  const ungrouped = blocks.filter((block) => !groupedRoleIds.has(block.id));
+  if (ungrouped.length > 0) {
+    resolvedGroups.push({
+      id: "experience-ungrouped",
+      title: "",
+      blocks: ungrouped,
+    });
+  }
+  const displayLabel = normalizedHeading(displayedExperienceLabel);
+  return resolvedGroups.map((group, index) => ({
+    ...group,
+    title:
+      index === 0 && normalizedHeading(group.title) === displayLabel
+        ? ""
+        : group.title,
+  }));
 }
 
 export type ResolveResumeOptions = {
@@ -583,12 +634,19 @@ export function resolveResumeContent(
       : unclaimedSkills.length > 0
         ? [...sourceGroups, { label: "", skills: unclaimedSkills }]
         : sourceGroups;
+  const sectionLabels = optimization?.sectionLabels ?? resume.sectionLabels ?? {};
+  const experienceGroups = resolveExperienceGroups(
+    resume.experienceGroups,
+    experience,
+    sectionLabels.experience ?? "Experience",
+  );
 
   const base = {
     summary,
     skills: resolvedSkills,
     skillGroups,
     experience,
+    experienceGroups,
     projects,
     education: baseEducation,
     // Chunked parsing can leave a section heading whose content landed in a
@@ -609,7 +667,7 @@ export function resolveResumeContent(
     photo: resume.photo,
     language: detectResumeLanguage(resume),
     ...base,
-    sectionLabels: optimization?.sectionLabels ?? resume.sectionLabels ?? {},
+    sectionLabels,
     sectionOrder: resolveSectionOrder(
       preferredSectionOrder,
       base,

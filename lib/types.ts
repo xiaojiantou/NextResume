@@ -34,6 +34,14 @@ export type ResumeRole = {
   teams?: ResumeTeam[];
 };
 
+export type ResumeExperienceGroup = {
+  id: string;
+  /** Source heading grouping work roles, e.g. "Earlier Experience". */
+  title: string;
+  /** IDs of roles that appeared under this source heading. */
+  roleIds: string[];
+};
+
 export type ResumeEducation = {
   school: string;
   degree: string;
@@ -170,6 +178,8 @@ export type Resume = {
    */
   skillGroups?: ResumeSkillGroup[];
   experience: ResumeRole[];
+  /** Optional source headings inside the work history section. */
+  experienceGroups?: ResumeExperienceGroup[];
   projects: ResumeProject[];
   education: ResumeEducation[];
   /**

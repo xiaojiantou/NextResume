@@ -157,6 +157,14 @@ function createStyles(
       marginTop: px(1),
     },
     roleBlock: { marginTop: px(10) },
+    experienceGroup: { marginTop: px(9) },
+    experienceGroupLabel: {
+      fontSize: fs(8.4),
+      fontFamily: "Helvetica-Bold",
+      color: palette.accent,
+      marginBottom: px(2),
+      textTransform: "uppercase",
+    },
     teamBlock: { marginTop: px(6), paddingLeft: px(10) },
     teamHeader: {
       flexDirection: "row",
@@ -230,6 +238,7 @@ export function ResumePdfSidebar({
     skills,
     skillGroups,
     experience,
+    experienceGroups,
     projects,
     education,
     additionalSections,
@@ -358,6 +367,23 @@ export function ResumePdfSidebar({
         {block.teams?.map(renderTeam)}
       </View>
     ));
+  const renderExperienceContent = () =>
+    experienceGroups.length > 0
+      ? experienceGroups.map((group) => (
+          <View key={group.id} style={styles.experienceGroup}>
+            {group.title ? (
+              <Text
+                style={styles.experienceGroupLabel}
+                wrap={false}
+                minPresenceAhead={48}
+              >
+                {group.title}
+              </Text>
+            ) : null}
+            {renderBlocks(group.blocks)}
+          </View>
+        ))
+      : renderBlocks(experience);
   const renderMainSection = (ref: (typeof sectionOrder)[number]) => {
     if (ref === "summary") {
       return summary ? (
@@ -372,7 +398,7 @@ export function ResumePdfSidebar({
       return blocks.length > 0 ? (
         <View key={ref}>
           <Text style={styles.mainSectionLabel} minPresenceAhead={48}>{labels[ref]}</Text>
-          {renderBlocks(blocks)}
+          {ref === "experience" ? renderExperienceContent() : renderBlocks(blocks)}
         </View>
       ) : null;
     }

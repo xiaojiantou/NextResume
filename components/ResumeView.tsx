@@ -49,6 +49,10 @@ function ContactLine({ resume }: { resume: Resume }) {
   );
 }
 
+function normalizedHeading(value: string): string {
+  return value.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
+}
+
 export function ResumeView({
   mode,
   resume,
@@ -149,6 +153,41 @@ export function ResumeView({
       (bullet) => !optimizedMatchesIds(bullet, teamIds),
     );
   };
+  const experienceGroups = (() => {
+    if (!resume.experienceGroups?.length) {
+      return [{ id: "experience-all", title: "", roles: resume.experience }];
+    }
+    const rolesById = new Map(resume.experience.map((role) => [role.id, role]));
+    const groupedIds = new Set<string>();
+    const groups = resume.experienceGroups
+      .map((group, index) => {
+        const roles = group.roleIds
+          .map((id) => rolesById.get(id))
+          .filter((role): role is Resume["experience"][number] =>
+            Boolean(role),
+          );
+        roles.forEach((role) => groupedIds.add(role.id));
+        return {
+          id: group.id || `experience-group-${index + 1}`,
+          title:
+            index === 0 &&
+            normalizedHeading(group.title) === normalizedHeading(labels.experience)
+              ? ""
+              : group.title,
+          roles,
+        };
+      })
+      .filter((group) => group.roles.length > 0);
+    const ungrouped = resume.experience.filter(
+      (role) => !groupedIds.has(role.id),
+    );
+    if (ungrouped.length > 0) {
+      groups.push({ id: "experience-ungrouped", title: "", roles: ungrouped });
+    }
+    return groups.length > 0
+      ? groups
+      : [{ id: "experience-all", title: "", roles: resume.experience }];
+  })();
 
   return (
     <div className="paper flex flex-col p-10 text-[12.5px] leading-relaxed text-ink-800 font-serif">
@@ -223,7 +262,14 @@ export function ResumeView({
       <section className="mt-5" style={{ order: sectionRank("experience", 30) }}>
         <SectionLabel>{labels.experience}</SectionLabel>
         <div className="space-y-5 mt-2">
-          {resume.experience.map((role) => {
+          {experienceGroups.map((group) => (
+            <div key={group.id} className="space-y-5">
+              {group.title ? (
+                <div className="font-sans text-[11px] font-semibold uppercase tracking-widest text-accent-700">
+                  {group.title}
+                </div>
+              ) : null}
+              {group.roles.map((role) => {
             const optRole = optimization?.roles.find((o) => o.id === role.id);
             const directSourceBullets = role.bullets.filter(
               (bullet) => !roleTeamBulletIds(role).has(bullet.id),
@@ -351,6 +397,8 @@ export function ResumeView({
               </div>
             );
           })}
+            </div>
+          ))}
         </div>
       </section>
       )}

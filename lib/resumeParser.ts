@@ -12,6 +12,7 @@ import type {
   ResumeBullet,
   CoreResumeSection,
   ResumeEducation,
+  ResumeExperienceGroup,
   ResumeProject,
   ResumeRole,
   ResumeSectionRef,
@@ -159,6 +160,19 @@ function roles(value: unknown): ResumeRole[] {
   });
 }
 
+function experienceGroups(value: unknown): ResumeExperienceGroup[] {
+  return array(value)
+    .map((raw, index) => {
+      const item = record(raw);
+      return {
+        id: text(item.id) || `experience-group-${index + 1}`,
+        title: text(item.title) || text(item.heading) || text(item.label),
+        roleIds: uniqueText(array(item.roleIds).map(text)),
+      };
+    })
+    .filter((group) => group.title && group.roleIds.length > 0);
+}
+
 function projects(value: unknown): ResumeProject[] {
   return array(value).map((raw, index) => {
     const item = record(raw);
@@ -271,6 +285,7 @@ export function normalizeParsedResume(value: unknown): Resume {
     skills: array(input.skills).map(text).filter(Boolean),
     skillGroups: skillGroups(input.skillGroups),
     experience: roles(input.experience),
+    experienceGroups: experienceGroups(input.experienceGroups),
     projects: projects(input.projects),
     education: education(input.education),
     language: language === "en" ? "en" : undefined,
@@ -377,6 +392,7 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
     skills: [],
     skillGroups: [],
     experience: [],
+    experienceGroups: [],
     projects: [],
     education: [],
     additionalSections: [],
@@ -387,6 +403,25 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
   const order: string[] = [];
   const pushOrder = (ref: string) => {
     if (!order.includes(ref)) order.push(ref);
+  };
+  const pendingExperienceGroups: Array<{
+    title: string;
+    roles: ResumeRole[];
+  }> = [];
+  const pushExperienceGroup = (title: string, roles: ResumeRole[]) => {
+    const cleanTitle = title.trim();
+    const uniqueRoles = roles.filter(
+      (role, index) => roles.indexOf(role) === index,
+    );
+    if (!cleanTitle || uniqueRoles.length === 0) return;
+    const last = pendingExperienceGroups[pendingExperienceGroups.length - 1];
+    if (last && normalizedKey([last.title]) === normalizedKey([cleanTitle])) {
+      for (const role of uniqueRoles) {
+        if (!last.roles.includes(role)) last.roles.push(role);
+      }
+      return;
+    }
+    pendingExperienceGroups.push({ title: cleanTitle, roles: uniqueRoles });
   };
 
   for (const part of parts) {
@@ -444,6 +479,7 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       }
     }
 
+    const partRolesById = new Map<string, ResumeRole>();
     for (const role of part.experience) {
       const key = normalizedKey([
         role.company,
@@ -466,13 +502,34 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
         if (!existing.techStack && role.techStack) {
           existing.techStack = role.techStack;
         }
+        partRolesById.set(role.id, existing);
       } else {
-        merged.experience.push({
+        const inserted = {
           ...role,
           bullets: [...role.bullets],
           ...(role.teams?.length ? { teams: cloneRoleTeams(role) } : {}),
-        });
+        };
+        merged.experience.push(inserted);
+        partRolesById.set(role.id, inserted);
       }
+    }
+    const explicitGroups = part.experienceGroups ?? [];
+    const groupedSourceRoleIds = new Set<string>();
+    for (const group of explicitGroups) {
+      const groupRoles = group.roleIds
+        .map((id) => {
+          groupedSourceRoleIds.add(id);
+          return partRolesById.get(id);
+        })
+        .filter((role): role is ResumeRole => Boolean(role));
+      pushExperienceGroup(group.title, groupRoles);
+    }
+    const ungroupedPartRoles = part.experience
+      .filter((role) => !groupedSourceRoleIds.has(role.id))
+      .map((role) => partRolesById.get(role.id))
+      .filter((role): role is ResumeRole => Boolean(role));
+    if (ungroupedPartRoles.length > 0) {
+      pushExperienceGroup(part.sectionLabels?.experience ?? "", ungroupedPartRoles);
     }
 
     for (const project of part.projects ?? []) {
@@ -602,8 +659,10 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
   // Stable IDs are assigned after merging so optimization/evidence references
   // do not depend on how the source text happened to be chunked.
   let bulletIndex = 1;
+  const roleRefToStableId = new Map<ResumeRole, string>();
   merged.experience = merged.experience.map((role, roleIndex) => {
     const roleId = `r${roleIndex + 1}`;
+    roleRefToStableId.set(role, roleId);
     const bulletIdMap = new Map<string, string>();
     const bullets = role.bullets.map((bullet) => {
       const id = `b${bulletIndex++}`;
@@ -637,6 +696,66 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
       ...(teams.length > 0 ? { teams } : {}),
     };
   });
+  const stableExperienceGroups = pendingExperienceGroups
+    .map((group, sourceIndex) => ({
+      title: group.title,
+      sourceIndex,
+      roleIds: uniqueText(
+        group.roles
+          .map((role) => roleRefToStableId.get(role))
+          .filter((id): id is string => Boolean(id)),
+      ),
+    }))
+    .filter((group) => group.title && group.roleIds.length > 0);
+  const experienceGroupByRoleId = new Map<
+    string,
+    { title: string; sourceIndex: number }
+  >();
+  for (const group of stableExperienceGroups) {
+    for (const roleId of group.roleIds) {
+      if (!experienceGroupByRoleId.has(roleId)) {
+        experienceGroupByRoleId.set(roleId, {
+          title: group.title,
+          sourceIndex: group.sourceIndex,
+        });
+      }
+    }
+  }
+  const draftExperienceGroups: Array<
+    ResumeExperienceGroup & { sourceKey: string }
+  > = [];
+  for (const role of merged.experience) {
+    const sourceGroup = experienceGroupByRoleId.get(role.id);
+    const title = sourceGroup?.title ?? "";
+    const sourceKey = sourceGroup
+      ? `source:${sourceGroup.sourceIndex}`
+      : `implicit:${title}`;
+    const last = draftExperienceGroups[draftExperienceGroups.length - 1];
+    if (last?.sourceKey === sourceKey) {
+      last.roleIds.push(role.id);
+      continue;
+    }
+    draftExperienceGroups.push({
+      id: "",
+      title,
+      roleIds: [role.id],
+      sourceKey,
+    });
+  }
+  const sectionExperienceLabel = merged.sectionLabels?.experience ?? "";
+  const keepsUsefulExperienceGroups =
+    draftExperienceGroups.length > 1 ||
+    draftExperienceGroups.some(
+      (group) =>
+        group.title &&
+        normalizedKey([group.title]) !== normalizedKey([sectionExperienceLabel]),
+    );
+  merged.experienceGroups = keepsUsefulExperienceGroups
+    ? draftExperienceGroups.map(({ sourceKey: _sourceKey, ...group }, index) => ({
+        ...group,
+        id: `eg${index + 1}`,
+      }))
+    : [];
   merged.projects = merged.projects.map((project, projectIndex) => ({
     ...project,
     id: `p${projectIndex + 1}`,
@@ -764,10 +883,13 @@ function manifestSection(
     return {
       ref,
       label: resume.sectionLabels?.experience ?? "Experience",
-      entryIds: resume.experience.flatMap((role) => [
-        role.id,
-        ...(role.teams ?? []).map((team) => team.id),
-      ]),
+      entryIds: [
+        ...(resume.experienceGroups ?? []).map((group) => group.id),
+        ...resume.experience.flatMap((role) => [
+          role.id,
+          ...(role.teams ?? []).map((team) => team.id),
+        ]),
+      ],
       bulletIds: resume.experience.flatMap((role) =>
         role.bullets.map((bullet) => bullet.id),
       ),

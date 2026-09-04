@@ -72,6 +72,17 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
       ]
     }
   ],
+  "experienceGroups": [
+    // Source headings that group work roles inside the broader experience
+    // area. Use this when the resume has multiple employment headings such as
+    // "Professional Experience", "Earlier Experience", "Internships", or
+    // "Research Experience". [] if there is only one work section heading.
+    {
+      "id": string,           // stable ID like "eg1", "eg2"...
+      "title": string,        // heading exactly as shown
+      "roleIds": string[]     // role ids from "experience" under this heading
+    }
+  ],
   "projects": [
     // A separate "Projects" section, distinct from work experience/internships.
     // Personal, academic, or side projects — NOT roles at an employer.
@@ -138,6 +149,7 @@ Rules:
 - If an achievement is under a team heading, put it in that team's "bullets", not in the parent role's "bullets". Parent role "bullets" are only for achievements directly attached to the company/role.
 - A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".
 - EVERY section containing employment roles — "Experience", "Professional Experience", "Work Experience", "Employment History", internships — goes into "experience". Never put employment roles in additionalSections, and never output the same role in two places.
+- If the resume has multiple employment-role section headings, keep all roles in "experience" and preserve those headings in "experienceGroups" with roleIds assigned to the roles under each heading. For example, "Professional Experience" followed later by "Earlier Experience" becomes two experienceGroups. Do not collapse these headings into one label and do not discard "Earlier Experience".
 - Put awards, certifications, publications, languages, volunteering, and every other non-core section in additionalSections. Never discard an unfamiliar section.
 - "degree" must be verbatim including GPA and honors, e.g. "M.S in Computer Science; GPA: 4.0/4.0".
 - sectionOrder must include every non-empty section in its original reading order.
