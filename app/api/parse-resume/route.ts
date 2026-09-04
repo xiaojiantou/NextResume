@@ -52,7 +52,23 @@ const SYSTEM = `You parse resume text into structured JSON. Output ONLY valid JS
       "end": string,          // "Present" if current
       "techStack": string,    // verbatim tech/tools line attached to this role (often after a "|"), e.g. "FastAPI, PostgreSQL, Redis"; "" if none
       "bullets": [
+        // Company/role-level achievements that are NOT nested under a team.
         { "id": string, "text": string }  // ID like "b1","b2"... unique across whole resume
+      ],
+      "teams": [
+        // Optional teams, groups, orgs, departments, or product areas nested
+        // under this company/role. [] if the role has no nested team structure.
+        {
+          "id": string,       // stable ID like "r1-team1"
+          "name": string,     // team/group/org name exactly as shown
+          "title": string,    // team-specific title/scope if shown; "" if none
+          "location": string,
+          "start": string,
+          "end": string,
+          "bullets": [
+            { "id": string, "text": string } // continue the global b1,b2... sequence
+          ]
+        }
       ]
     }
   ],
@@ -115,7 +131,9 @@ Rules:
 - Role/company lines often carry a tech-stack suffix (e.g. "Acme Corp | FastAPI, Redis, GCS"). Put that suffix in the role's "techStack" verbatim — never discard it, and never mix it into company/title.
 - Header links (LinkedIn, GitHub, portfolio) go in "links" — these matter to recruiters; never drop them. Never invent a "url" that was not given to you.
 - This product uses English resume labels. Set language to "en".
-- Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across all roles AND projects.
+- Assign sequential IDs: r1,r2... for roles; p1,p2... for projects; b1,b2,b3... globally across role-level bullets, nested team bullets, and project bullets.
+- If one company/role contains nested team, org, group, department, or product-area headings, keep one company entry and put each nested heading in "teams"; put that team's achievements under that team. Do not split the same company into duplicate experience entries just because the source lists teams.
+- If an achievement is under a team heading, put it in that team's "bullets", not in the parent role's "bullets". Parent role "bullets" are only for achievements directly attached to the company/role.
 - A resume section titled "Projects" (or similar) must go in "projects", never merged into "experience".
 - EVERY section containing employment roles — "Experience", "Professional Experience", "Work Experience", "Employment History", internships — goes into "experience". Never put employment roles in additionalSections, and never output the same role in two places.
 - Put awards, certifications, publications, languages, volunteering, and every other non-core section in additionalSections. Never discard an unfamiliar section.

@@ -130,6 +130,31 @@ function createStyles(
       fontFamily: "Helvetica-Bold",
     },
     roleLocation: { fontSize: fs(8.5), color: palette.muted, marginTop: px(1) },
+    teamBlock: { marginTop: px(7), paddingLeft: px(10) },
+    teamHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+    },
+    teamHeadingGroup: {
+      flexGrow: 1,
+      flexBasis: 0,
+      paddingRight: px(8),
+    },
+    teamHeading: {
+      fontSize: fs(9.3),
+      fontFamily: "Helvetica-Bold",
+      color: palette.text,
+    },
+    teamSub: { fontSize: fs(8.5), color: palette.muted, marginTop: px(1) },
+    teamDates: {
+      flexShrink: 0,
+      maxWidth: "30%",
+      textAlign: "right",
+      fontSize: fs(8.2),
+      color: palette.muted,
+      fontFamily: "Helvetica-Bold",
+    },
     bulletRow: { flexDirection: "row", marginTop: px(5), paddingLeft: px(2) },
     bulletDash: {
       width: px(12),
@@ -203,6 +228,44 @@ export function ResumePdfMinimal({
   } =
     resolveResumeContent(resume, optimization, { includeSummary });
   const labels = getResumeSectionLabels(language, sectionLabels);
+  const renderBullet = (text: string, key: string) => (
+    <View key={key} style={styles.bulletRow}>
+      <Text style={styles.bulletDash}>–</Text>
+      <Text style={styles.bulletText}>{text}</Text>
+    </View>
+  );
+  const renderTeam = (
+    team: NonNullable<(typeof experience)[number]["teams"]>[number],
+  ) => (
+    <View key={team.id} style={styles.teamBlock}>
+      <View wrap={false} minPresenceAhead={28}>
+        <View style={styles.teamHeader}>
+          <View style={styles.teamHeadingGroup}>
+            <Text style={styles.teamHeading}>{team.heading}</Text>
+            {team.subheading ? (
+              <Text style={styles.teamSub}>{team.subheading}</Text>
+            ) : null}
+          </View>
+          {team.start || team.end ? (
+            <Text style={styles.teamDates}>
+              {[team.start, team.end].filter(Boolean).join(" — ")}
+            </Text>
+          ) : null}
+        </View>
+        {team.location ? (
+          <Text style={styles.teamSub}>{team.location}</Text>
+        ) : null}
+        {team.bullets[0]
+          ? renderBullet(team.bullets[0], `${team.id}-bullet-0`)
+          : null}
+      </View>
+      {team.bullets
+        .slice(1)
+        .map((text, index) =>
+          renderBullet(text, `${team.id}-bullet-${index + 1}`),
+        )}
+    </View>
+  );
   const renderSection = (ref: (typeof sectionOrder)[number]) => {
     if (ref === "summary") {
       return summary ? (
@@ -267,18 +330,13 @@ export function ResumePdfMinimal({
                   <Text style={styles.roleLocation}>{block.location}</Text>
                 ) : null}
                 {block.bullets[0] ? (
-                  <View style={styles.bulletRow}>
-                    <Text style={styles.bulletDash}>–</Text>
-                    <Text style={styles.bulletText}>{block.bullets[0]}</Text>
-                  </View>
+                  renderBullet(block.bullets[0], `${block.id}-bullet-0`)
                 ) : null}
               </View>
               {block.bullets.slice(1).map((text, index) => (
-                <View key={index} style={styles.bulletRow}>
-                  <Text style={styles.bulletDash}>–</Text>
-                  <Text style={styles.bulletText}>{text}</Text>
-                </View>
+                renderBullet(text, `${block.id}-bullet-${index + 1}`)
               ))}
+              {block.teams?.map(renderTeam)}
             </View>
           ))}
         </View>

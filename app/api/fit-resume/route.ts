@@ -106,6 +106,7 @@ Evidence and truth rules:
 - Never invent a metric, tool, skill, responsibility, employer, project, customer, team size, or result.
 - Every output bullet must keep an existing optimized bullet id. A user-added original bullet id may also be used when it cites itself as evidence.
 - Keep each bullet and every evidence id inside its original work role or project. Never move evidence between employers or projects.
+- Some work roles include nested "teams". Treat team names as source context only. Do not output "teams"; keep each team achievement in its parent role's flat "bullets" transport using the original bullet id/evidence.
 - Reword, combine, shorten, or expand only facts traceable to those evidence ids. Every number in rewritten text must appear in that bullet's evidence.
 - Skills must be selected verbatim from the original or optimized skill lists.
 - Return every work role id as a transport record. Set hidden=true to omit a lower-priority role from a compressed result. In OPTIMIZE FOR ROLE, the newest visible role needs at least 2 bullets when the source has 2; other visible, non-collapsed roles need at least 1.
@@ -1383,15 +1384,25 @@ function createFittedDocuments({
       .filter((role) => !rolePlans.get(role.id)?.hidden)
       .map((role) => {
         const fit = rolePlans.get(role.id);
+        const bullets =
+          fit?.collapsed
+            ? []
+            : (fit?.bullets ?? []).map((bullet) => ({
+                id: bullet.id,
+                text: bullet.text,
+              }));
+        const retainedIds = new Set(bullets.map((bullet) => bullet.id));
+        const teams = (role.teams ?? [])
+          .map((team) => ({
+            ...team,
+            bulletIds: team.bulletIds.filter((id) => retainedIds.has(id)),
+          }))
+          .filter((team) => team.bulletIds.length > 0);
+        const { teams: _teams, ...roleRest } = role;
         return {
-          ...role,
-          bullets:
-            fit?.collapsed
-              ? []
-              : (fit?.bullets ?? []).map((bullet) => ({
-                  id: bullet.id,
-                  text: bullet.text,
-                })),
+          ...roleRest,
+          bullets,
+          ...(teams.length > 0 ? { teams } : {}),
         };
       }),
     projects: (resume.projects ?? [])
@@ -1479,7 +1490,10 @@ function createPreservedLowerBoundDocuments(
     ...resume,
     summary: "",
     skills: [],
-    experience: resume.experience.slice(0, 1).map((role) => ({ ...role, bullets: [] })),
+    experience: resume.experience.slice(0, 1).map((role) => {
+      const { teams: _teams, ...roleRest } = role;
+      return { ...roleRest, bullets: [] };
+    }),
     projects: (resume.projects ?? []).slice(0, 1).map((project) => ({
       ...project,
       bullets: [],

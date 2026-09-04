@@ -98,6 +98,7 @@ Output ONLY valid JSON matching this schema:
 
 Hard rules — content preservation:
 - Rewrite bullets ONE-TO-ONE. Every role and every project from the input appears in the output with the SAME id and the SAME number of bullets, and each output bullet reuses the id of the input bullet it rewrites. NEVER merge, drop, or add bullets. The user decides what to cut, not you.
+- Some input roles include "teams" that group achievements inside the same company. Treat team names as source context only. Do not output "teams"; return every team achievement as part of its parent role's flat "bullets" list using the same bullet id.
 - Instead of cutting, advise: set "relevance" (0-100, how much this bullet supports THIS job description) and "suggestion" ("keep" for strong matches, "trim" if it could be shortened, "cut" only if it is irrelevant to this job). "rationale" is 1 sentence explaining the rewrite or the cut advice.
 - "evidence" must reference REAL bullet IDs from the input resume. Never invent ids.
 
@@ -171,6 +172,7 @@ Output ONLY valid JSON matching:
 Non-negotiable rules:
 - Return every role, project, additional section, item, and bullet exactly once, in source order.
 - Every output bullet id MUST equal its one source bullet id. Its evidence MUST be exactly [that same id]. Never merge, split, add, delete, or move bullets.
+- Some input roles include "teams" that group achievements inside the same company. Treat team names as source context only. Do not output "teams"; return every team achievement as part of its parent role's flat "bullets" list using the same bullet id.
 - Keep every source skill. You may reorder skills and normalize capitalization only. Never add or remove one.
 - If the source summary or professional title is empty, keep it empty. If present, rewrite it without adding unsupported facts.
 - Never alter or infer companies, schools, historical job titles, degrees, project names, dates, locations, awards, certificates, publications, organizations, metrics, tools, or results.

@@ -270,12 +270,23 @@ function chunkDocuments(
     skills: hasSkills ? [...resume.skills] : [],
     experience: resume.experience
       .filter((role) => roleIds.has(role.id))
-      .map((role) => ({
-        ...role,
-        bullets: role.bullets.filter((bullet) =>
-          roleBulletIds.get(role.id)?.has(bullet.id),
-        ),
-      })),
+      .map((role) => {
+        const retainedIds = roleBulletIds.get(role.id) ?? new Set<string>();
+        const teams = (role.teams ?? [])
+          .map((team) => ({
+            ...team,
+            bulletIds: team.bulletIds.filter((id) => retainedIds.has(id)),
+          }))
+          .filter((team) => team.bulletIds.length > 0);
+        const { teams: _teams, ...roleRest } = role;
+        return {
+          ...roleRest,
+          bullets: role.bullets.filter((bullet) =>
+            retainedIds.has(bullet.id),
+          ),
+          ...(teams.length > 0 ? { teams } : {}),
+        };
+      }),
     projects: (resume.projects ?? [])
       .filter((project) => projectIds.has(project.id))
       .map((project) => ({

@@ -2,7 +2,7 @@
 
 "use client";
 
-import type { Resume, ResumeRole, ResumeBullet } from "@/lib/types";
+import type { Resume, ResumeRole, ResumeTeam } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import {
   Plus,
@@ -122,15 +122,20 @@ export function EditableResumeCanvas({
     onResumeChange({ ...resume, experience: updated });
   };
 
-  const addBullet = (roleId: string) => {
+  const addBullet = (roleId: string, teamId?: string) => {
+    const bullet = { id: `bullet-${Date.now()}`, text: "New achievement" };
     const updated = resume.experience.map((role) => {
       if (role.id === roleId) {
         return {
           ...role,
-          bullets: [
-            ...role.bullets,
-            { id: `bullet-${Date.now()}`, text: "New achievement" },
-          ],
+          bullets: [...role.bullets, bullet],
+          teams: teamId
+            ? (role.teams ?? []).map((team) =>
+                team.id === teamId
+                  ? { ...team, bulletIds: [...team.bulletIds, bullet.id] }
+                  : team,
+              )
+            : role.teams,
         };
       }
       return role;
@@ -141,9 +146,17 @@ export function EditableResumeCanvas({
   const deleteBullet = (roleId: string, bulletId: string) => {
     const updated = resume.experience.map((role) => {
       if (role.id === roleId) {
+        const teams = (role.teams ?? [])
+          .map((team) => ({
+            ...team,
+            bulletIds: team.bulletIds.filter((id) => id !== bulletId),
+          }))
+          .filter((team) => team.bulletIds.length > 0);
+        const { teams: _teams, ...roleRest } = role;
         return {
-          ...role,
+          ...roleRest,
           bullets: role.bullets.filter((b) => b.id !== bulletId),
+          ...(teams.length > 0 ? { teams } : {}),
         };
       }
       return role;
@@ -152,6 +165,12 @@ export function EditableResumeCanvas({
   };
 
   const projects = resume.projects ?? [];
+  const teamBulletIds = (role: ResumeRole) =>
+    new Set((role.teams ?? []).flatMap((team) => team.bulletIds));
+  const teamBullets = (role: ResumeRole, team: ResumeTeam) => {
+    const ids = new Set(team.bulletIds);
+    return role.bullets.filter((bullet) => ids.has(bullet.id));
+  };
 
   const updateProjectBullet = (
     projectId: string,
@@ -436,7 +455,9 @@ export function EditableResumeCanvas({
               <div className="text-xs font-medium text-ink-600 uppercase tracking-widest">
                 Achievements
               </div>
-              {role.bullets.map((bullet, bulletIndex) => (
+              {role.bullets
+                .filter((bullet) => !teamBulletIds(role).has(bullet.id))
+                .map((bullet, bulletIndex) => (
                 <div
                   key={`${role.id}:${bullet.id}:${bulletIndex}`}
                   className="flex gap-2 items-start"
@@ -465,6 +486,56 @@ export function EditableResumeCanvas({
               >
                 <Plus size={14} /> Add achievement
               </button>
+              {role.teams?.map((team) => {
+                const bullets = teamBullets(role, team);
+                return (
+                  <div
+                    key={team.id}
+                    className="ml-3 mt-4 border-l border-ink-200 pl-4"
+                  >
+                    <div className="mb-2 font-sans text-sm font-semibold text-ink-800">
+                      {team.name}
+                      {team.title ? (
+                        <span className="font-normal text-ink-500">
+                          {" "}
+                          · {team.title}
+                        </span>
+                      ) : null}
+                    </div>
+                    {bullets.map((bullet, bulletIndex) => (
+                      <div
+                        key={`${role.id}:${team.id}:${bullet.id}:${bulletIndex}`}
+                        className="flex gap-2 items-start"
+                      >
+                        <span className="mt-2 text-ink-400">•</span>
+                        <input
+                          type="text"
+                          value={bullet.text}
+                          onChange={(e) =>
+                            updateBullet(role.id, bullet.id, e.target.value)
+                          }
+                          className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans resize-none"
+                        />
+                        <KeepButton contentId={bullet.id} compact />
+                        <button
+                          type="button"
+                          aria-label="Delete achievement"
+                          onClick={() => deleteBullet(role.id, bullet.id)}
+                          className="p-2 hover:bg-rose-100 rounded text-rose-500 shrink-0"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => addBullet(role.id, team.id)}
+                      className="ml-5 mt-2 text-sm font-medium text-accent-600 hover:text-accent-700 flex items-center gap-1"
+                    >
+                      <Plus size={14} /> Add achievement
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}

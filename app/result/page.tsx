@@ -2616,6 +2616,12 @@ function BulletDiff({
       replaceOptimizedBullet(ownerId, bullet.id, next),
     onQuotaConsume: incrementVoiceCount,
   });
+  const roleTeamBulletIds = (role: Resume["experience"][number]) =>
+    new Set((role.teams ?? []).flatMap((team) => team.bulletIds));
+  const bulletMatchesIds = (
+    bullet: OptimizedBullet,
+    ids: ReadonlySet<string>,
+  ) => ids.has(bullet.id) || bullet.evidence.some((id) => ids.has(id));
 
   return (
     <div className="mt-10">
@@ -2666,6 +2672,29 @@ function BulletDiff({
         {optimization.roles.map((role) => {
           const original = resume.experience.find((r) => r.id === role.id);
           if (!original) return null;
+          const teamIds = roleTeamBulletIds(original);
+          const renderRows = (
+            bullets: OptimizedBullet[],
+            keyPrefix: string,
+          ) =>
+            bullets.map((b, bulletIndex) => {
+              const orig = original.bullets.filter((o) =>
+                b.evidence.includes(o.id),
+              );
+              return (
+                <BulletDiffRow
+                  key={`${keyPrefix}:${b.id}:${bulletIndex}`}
+                  {...rowProps(
+                    role.id,
+                    b,
+                    orig,
+                    original.bullets.find((source) => source.id === b.id) ??
+                      orig[0] ??
+                      null,
+                  )}
+                />
+              );
+            });
           return (
             <div key={role.id}>
               <div className="px-5 py-3 bg-ink-50/60 border-b border-ink-100 text-sm font-medium text-ink-900">
@@ -2675,22 +2704,31 @@ function BulletDiff({
                 </span>
               </div>
               <div className="divide-y divide-ink-100">
-                {role.bullets.map((b, bulletIndex) => {
-                  const orig = original.bullets.filter((o) =>
-                    b.evidence.includes(o.id),
+                {renderRows(
+                  role.bullets.filter((bullet) =>
+                    !bulletMatchesIds(bullet, teamIds),
+                  ),
+                  role.id,
+                )}
+                {original.teams?.map((team) => {
+                  const ids = new Set(team.bulletIds);
+                  const bullets = role.bullets.filter((bullet) =>
+                    bulletMatchesIds(bullet, ids),
                   );
+                  if (bullets.length === 0) return null;
                   return (
-                    <BulletDiffRow
-                      key={`${role.id}:${b.id}:${bulletIndex}`}
-                      {...rowProps(
-                        role.id,
-                        b,
-                        orig,
-                        original.bullets.find((source) => source.id === b.id) ??
-                          orig[0] ??
-                          null,
-                      )}
-                    />
+                    <div key={team.id}>
+                      <div className="border-t border-ink-100 bg-white px-5 py-2 text-xs font-semibold text-ink-700">
+                        {team.name}
+                        {team.title ? (
+                          <span className="font-normal text-ink-500">
+                            {" "}
+                            · {team.title}
+                          </span>
+                        ) : null}
+                      </div>
+                      {renderRows(bullets, `${role.id}:${team.id}`)}
+                    </div>
                   );
                 })}
               </div>

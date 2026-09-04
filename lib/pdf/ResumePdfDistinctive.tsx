@@ -213,6 +213,42 @@ function createStyles(
       fontFamily: metaFont,
       fontSize: fs(8.5),
     },
+    teamBlock: {
+      marginTop: px(6),
+      paddingLeft: px(10),
+    },
+    teamHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+    },
+    teamHeadingGroup: {
+      flexGrow: 1,
+      flexBasis: 0,
+      paddingRight: px(8),
+    },
+    teamHeading: {
+      color: palette.text,
+      fontFamily: isAcademic ? "Times-Bold" : "Helvetica-Bold",
+      fontSize: fs(9.2),
+      lineHeight: lh(1.24),
+    },
+    teamSubheading: {
+      marginTop: px(1),
+      color: palette.muted,
+      fontFamily: isElegant ? "Times-Italic" : metaFont,
+      fontSize: fs(8.4),
+      lineHeight: lh(1.25),
+    },
+    teamDates: {
+      flexShrink: 0,
+      maxWidth: "30%",
+      textAlign: "right",
+      color: palette.muted,
+      fontFamily: isTech ? "Courier-Bold" : "Helvetica-Bold",
+      fontSize: fs(8.1),
+      lineHeight: lh(1.25),
+    },
     bulletRow: {
       flexDirection: "row",
       marginTop: px(4),
@@ -312,6 +348,38 @@ export function ResumePdfDistinctive({
       <Text style={styles.bulletText}>{text}</Text>
     </View>
   );
+  const renderTeam = (
+    team: NonNullable<(typeof experience)[number]["teams"]>[number],
+  ) => (
+    <View key={team.id} style={styles.teamBlock}>
+      <View wrap={false} minPresenceAhead={28}>
+        <View style={styles.teamHeader}>
+          <View style={styles.teamHeadingGroup}>
+            <Text style={styles.teamHeading}>{team.heading}</Text>
+            {team.subheading ? (
+              <Text style={styles.teamSubheading}>{team.subheading}</Text>
+            ) : null}
+          </View>
+          {team.start || team.end ? (
+            <Text style={styles.teamDates}>
+              {[team.start, team.end].filter(Boolean).join(" — ")}
+            </Text>
+          ) : null}
+        </View>
+        {team.location ? (
+          <Text style={styles.teamSubheading}>{team.location}</Text>
+        ) : null}
+        {team.bullets[0]
+          ? renderBullet(team.bullets[0], `${team.id}-bullet-0`)
+          : null}
+      </View>
+      {team.bullets
+        .slice(1)
+        .map((text, index) =>
+          renderBullet(text, `${team.id}-bullet-${index + 1}`),
+        )}
+    </View>
+  );
   const renderEntries = (entries: typeof experience) =>
     entries.map((entry) => (
       <View key={entry.id} style={styles.entry}>
@@ -339,6 +407,7 @@ export function ResumePdfDistinctive({
           .map((text, index) =>
             renderBullet(text, `${entry.id}-bullet-${index + 1}`),
           )}
+        {entry.teams?.map(renderTeam)}
       </View>
     ));
   const renderSection = (ref: (typeof sectionOrder)[number]) => {

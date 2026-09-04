@@ -11,6 +11,7 @@ import {
   resolveResumeContent,
   type ResolvedBlock,
   type ResolvedResumeDocument,
+  type ResolvedTeamBlock,
 } from "./pdf/shared";
 import { partitionResumeForPages } from "./pdf/balancedPages";
 import type { TargetPages } from "./pdf/config";
@@ -187,6 +188,27 @@ function renderBullets(
     .join("")}</ul>`;
 }
 
+function renderTeamBlocks(
+  owner: string,
+  teams: readonly ResolvedTeamBlock[] | undefined,
+  marker: ResumeStyleProfile["bulletMarker"],
+): string {
+  if (!teams?.length) return "";
+  return `<div class="team-groups">${teams
+    .map((team) => {
+      const prefix = `${owner}:team:${team.id}`;
+      return `<div class="team-entry">
+        <div class="entry-top">
+          ${contentLeaf("div", `${prefix}:heading`, team.heading, "team-name")}
+          ${contentLeaf("div", `${prefix}:dates`, dateRange(team.start, team.end), "entry-dates team-dates")}
+        </div>
+        ${entryMetaRow(prefix, team.subheading, team.location)}
+        ${renderBullets(prefix, team.bullets, marker)}
+      </div>`;
+    })
+    .join("")}</div>`;
+}
+
 function renderBlocks(
   blocks: ResolvedBlock[],
   owner: "role" | "project",
@@ -206,6 +228,7 @@ function renderBlocks(
         </div>
         ${entryMetaRow(prefix, block.subheading, block.location)}
         ${renderBullets(prefix, block.bullets, profile.bulletMarker)}
+        ${renderTeamBlocks(prefix, block.teams, profile.bulletMarker)}
       </article>`;
     })
     .join("");
@@ -646,6 +669,11 @@ export function buildPersonalizedHtml({
   .entry-location { flex: none; }
   .entry-dates { flex: none; color: ${profile.colors.muted}; font-size: ${metaPt}pt; font-weight: 600; }
   .surface-sidebar .entry-sub, .surface-sidebar .entry-location, .surface-sidebar .entry-dates { color: ${profile.colors.sidebarText}; opacity: .86; }
+  .team-groups { margin-top: ${Math.max(2, 4 * fit.spacingScale)}pt; padding-left: ${Math.max(7, 10 * fit.spacingScale)}pt; }
+  .team-entry { margin-top: ${Math.max(2, 5 * fit.spacingScale)}pt; break-inside: avoid; page-break-inside: avoid; }
+  .team-entry:first-child { margin-top: 0; }
+  .team-name { font-size: ${metaPt}pt; font-weight: 700; min-width: 0; }
+  .team-dates { font-size: ${Math.max(8, metaPt - 0.2)}pt; }
   .bullets { list-style: none; margin: ${profile.spacing.bulletPt * fit.spacingScale}pt 0 0; padding: 0; }
   .bullets li {
     display: flex;
@@ -744,6 +772,31 @@ function createContentManifest(
       block.bullets.forEach((bullet, index) =>
         items.push({ id: `${prefix}:bullet:${index}`, value: bullet }),
       );
+      block.teams?.forEach((team) => {
+        const teamPrefix = `${prefix}:team:${team.id}`;
+        if (team.heading) {
+          items.push({ id: `${teamPrefix}:heading`, value: team.heading });
+        }
+        if (team.subheading) {
+          items.push({
+            id: `${teamPrefix}:subheading`,
+            value: team.subheading,
+          });
+        }
+        const teamDates = dateRange(team.start, team.end);
+        if (teamDates) {
+          items.push({ id: `${teamPrefix}:dates`, value: teamDates });
+        }
+        if (team.location) {
+          items.push({ id: `${teamPrefix}:location`, value: team.location });
+        }
+        team.bullets.forEach((bullet, index) =>
+          items.push({
+            id: `${teamPrefix}:bullet:${index}`,
+            value: bullet,
+          }),
+        );
+      });
     }
   };
   addBlocks(content.experience, "role");

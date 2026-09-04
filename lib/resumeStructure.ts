@@ -307,7 +307,10 @@ export function currentResumeManifestSections(resume: Resume) {
       return {
         ref,
         label: resume.sectionLabels?.experience ?? "Experience",
-        entryIds: resume.experience.map((role) => role.id),
+        entryIds: resume.experience.flatMap((role) => [
+          role.id,
+          ...(role.teams ?? []).map((team) => team.id),
+        ]),
         bulletIds: resume.experience.flatMap((role) =>
           role.bullets.map((bullet) => bullet.id),
         ),
@@ -1474,6 +1477,10 @@ export function createStructureIntegrity(
 ): StructureIntegrity {
   const totalEntries =
     resume.experience.length +
+    resume.experience.reduce(
+      (total, role) => total + (role.teams?.length ?? 0),
+      0,
+    ) +
     (resume.projects ?? []).length +
     resume.education.length +
     (resume.additionalSections ?? []).reduce(

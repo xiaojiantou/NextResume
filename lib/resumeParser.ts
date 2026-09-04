@@ -18,6 +18,7 @@ import type {
   ResumeSkillGroup,
   ResumeSourceLayout,
   ResumeStructureManifest,
+  ResumeTeam,
   ResumeVisualLayoutGuide,
 } from "./types";
 
@@ -43,21 +44,88 @@ function array(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function bullets(value: unknown): ResumeBullet[] {
+function bullets(value: unknown, fallbackPrefix = "b"): ResumeBullet[] {
   return array(value)
     .map((raw, index) => {
       const item = record(raw);
       return {
-        id: text(item.id) || `b-${index + 1}`,
+        id: text(item.id) || `${fallbackPrefix}-${index + 1}`,
         text: text(item.text),
       };
     })
     .filter((item) => item.text);
 }
 
+type ParsedRoleTeam = ResumeTeam & { bullets: ResumeBullet[] };
+
+function uniqueText(values: string[]): string[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const key = value.trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function roleTeams(value: unknown): ParsedRoleTeam[] {
+  return array(value)
+    .map((raw, index) => {
+      const item = record(raw);
+      const teamBullets = bullets(item.bullets, `team-${index + 1}-bullet`);
+      return {
+        id: text(item.id) || `team-${index + 1}`,
+        name: text(item.name) || text(item.team) || text(item.heading),
+        title: text(item.title),
+        location: text(item.location),
+        start: text(item.start),
+        end: text(item.end),
+        bulletIds: uniqueText([
+          ...array(item.bulletIds).map(text),
+          ...teamBullets.map((bullet) => bullet.id),
+        ]),
+        bullets: teamBullets,
+      };
+    })
+    .filter(
+      (team) =>
+        team.name ||
+        team.title ||
+        team.location ||
+        team.start ||
+        team.end ||
+        team.bulletIds.length > 0,
+    );
+}
+
 function roles(value: unknown): ResumeRole[] {
   return array(value).map((raw, index) => {
     const item = record(raw);
+    const directBullets = bullets(item.bullets, `role-${index + 1}-bullet`);
+    const parsedTeams = roleTeams(item.teams);
+    const allBullets = [...directBullets];
+    const seenBulletIds = new Set(allBullets.map((bullet) => bullet.id));
+    for (const team of parsedTeams) {
+      for (const bullet of team.bullets) {
+        if (seenBulletIds.has(bullet.id)) continue;
+        allBullets.push(bullet);
+        seenBulletIds.add(bullet.id);
+      }
+    }
+    const teams = parsedTeams
+      .map(({ bullets: _bullets, ...team }) => ({
+        ...team,
+        bulletIds: team.bulletIds.filter((id) => seenBulletIds.has(id)),
+      }))
+      .filter(
+        (team) =>
+          team.name ||
+          team.title ||
+          team.location ||
+          team.start ||
+          team.end ||
+          team.bulletIds.length > 0,
+      );
     return {
       id: text(item.id) || `r-${index + 1}`,
       company: text(item.company),
@@ -66,7 +134,8 @@ function roles(value: unknown): ResumeRole[] {
       start: text(item.start),
       end: text(item.end),
       techStack: text(item.techStack),
-      bullets: bullets(item.bullets),
+      bullets: allBullets,
+      ...(teams.length > 0 ? { teams } : {}),
     };
   });
 }
@@ -200,13 +269,80 @@ function normalizedKey(parts: string[]): string {
     .trim();
 }
 
-function mergeBullets(target: ResumeBullet[], incoming: ResumeBullet[]) {
-  const seen = new Set(target.map((bullet) => normalizedKey([bullet.text])));
+function mergeBullets(
+  target: ResumeBullet[],
+  incoming: ResumeBullet[],
+): Map<string, string> {
+  const seen = new Map(
+    target.map((bullet) => [normalizedKey([bullet.text]), bullet.id]),
+  );
+  const idMap = new Map<string, string>();
   for (const bullet of incoming) {
     const key = normalizedKey([bullet.text]);
-    if (!key || seen.has(key)) continue;
+    if (!key) continue;
+    const existingId = seen.get(key);
+    if (existingId) {
+      idMap.set(bullet.id, existingId);
+      continue;
+    }
     target.push(bullet);
-    seen.add(key);
+    seen.set(key, bullet.id);
+    idMap.set(bullet.id, bullet.id);
+  }
+  return idMap;
+}
+
+function cloneRoleTeams(role: ResumeRole): ResumeTeam[] {
+  return (role.teams ?? []).map((team) => ({
+    ...team,
+    bulletIds: [...team.bulletIds],
+  }));
+}
+
+function mergeRoleTeams(
+  target: ResumeRole,
+  incoming: ResumeRole,
+  bulletIdMap: Map<string, string>,
+) {
+  const knownBulletIds = new Set(target.bullets.map((bullet) => bullet.id));
+  const remapBulletIds = (ids: string[]) =>
+    uniqueText(ids.map((id) => bulletIdMap.get(id) ?? id)).filter((id) =>
+      knownBulletIds.has(id),
+    );
+
+  for (const team of incoming.teams ?? []) {
+    const key = normalizedKey([
+      team.name,
+      team.title,
+      team.location,
+      team.start,
+      team.end,
+    ]);
+    const nextBulletIds = remapBulletIds(team.bulletIds);
+    const existing = (target.teams ?? []).find(
+      (candidate) =>
+        normalizedKey([
+          candidate.name,
+          candidate.title,
+          candidate.location,
+          candidate.start,
+          candidate.end,
+        ]) === key,
+    );
+    if (existing && key) {
+      existing.bulletIds = uniqueText([
+        ...existing.bulletIds,
+        ...nextBulletIds,
+      ]);
+      continue;
+    }
+    target.teams = [
+      ...(target.teams ?? []),
+      {
+        ...team,
+        bulletIds: nextBulletIds,
+      },
+    ];
   }
 }
 
@@ -306,12 +442,17 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
           ]) === key,
       );
       if (existing && key) {
-        mergeBullets(existing.bullets, role.bullets);
+        const bulletIdMap = mergeBullets(existing.bullets, role.bullets);
+        mergeRoleTeams(existing, role, bulletIdMap);
         if (!existing.techStack && role.techStack) {
           existing.techStack = role.techStack;
         }
       } else {
-        merged.experience.push({ ...role, bullets: [...role.bullets] });
+        merged.experience.push({
+          ...role,
+          bullets: [...role.bullets],
+          ...(role.teams?.length ? { teams: cloneRoleTeams(role) } : {}),
+        });
       }
     }
 
@@ -442,14 +583,41 @@ export function mergeParsedResumes(parts: Resume[]): Resume {
   // Stable IDs are assigned after merging so optimization/evidence references
   // do not depend on how the source text happened to be chunked.
   let bulletIndex = 1;
-  merged.experience = merged.experience.map((role, roleIndex) => ({
-    ...role,
-    id: `r${roleIndex + 1}`,
-    bullets: role.bullets.map((bullet) => ({
-      ...bullet,
-      id: `b${bulletIndex++}`,
-    })),
-  }));
+  merged.experience = merged.experience.map((role, roleIndex) => {
+    const roleId = `r${roleIndex + 1}`;
+    const bulletIdMap = new Map<string, string>();
+    const bullets = role.bullets.map((bullet) => {
+      const id = `b${bulletIndex++}`;
+      bulletIdMap.set(bullet.id, id);
+      return { ...bullet, id };
+    });
+    const teams = (role.teams ?? [])
+      .map((team, teamIndex) => ({
+        ...team,
+        id: `${roleId}-team${teamIndex + 1}`,
+        bulletIds: uniqueText(
+          team.bulletIds
+            .map((id) => bulletIdMap.get(id))
+            .filter((id): id is string => Boolean(id)),
+        ),
+      }))
+      .filter(
+        (team) =>
+          team.name ||
+          team.title ||
+          team.location ||
+          team.start ||
+          team.end ||
+          team.bulletIds.length > 0,
+      );
+    const { teams: _teams, ...roleRest } = role;
+    return {
+      ...roleRest,
+      id: roleId,
+      bullets,
+      ...(teams.length > 0 ? { teams } : {}),
+    };
+  });
   merged.projects = merged.projects.map((project, projectIndex) => ({
     ...project,
     id: `p${projectIndex + 1}`,
@@ -577,7 +745,10 @@ function manifestSection(
     return {
       ref,
       label: resume.sectionLabels?.experience ?? "Experience",
-      entryIds: resume.experience.map((role) => role.id),
+      entryIds: resume.experience.flatMap((role) => [
+        role.id,
+        ...(role.teams ?? []).map((team) => team.id),
+      ]),
       bulletIds: resume.experience.flatMap((role) =>
         role.bullets.map((bullet) => bullet.id),
       ),

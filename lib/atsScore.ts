@@ -148,6 +148,15 @@ export function resumeToText(resume: Resume): string {
   ];
   for (const role of resume.experience ?? []) {
     parts.push(role.title ?? "", role.company ?? "", role.techStack ?? "");
+    for (const team of role.teams ?? []) {
+      parts.push(
+        team.name ?? "",
+        team.title ?? "",
+        team.location ?? "",
+        team.start ?? "",
+        team.end ?? "",
+      );
+    }
     parts.push(...(role.bullets ?? []).map((b) => b.text));
   }
   for (const project of resume.projects ?? []) {

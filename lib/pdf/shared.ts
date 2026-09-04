@@ -26,6 +26,17 @@ export type ResolvedBlock = {
   start: string;
   end: string;
   bullets: string[];
+  teams?: ResolvedTeamBlock[];
+};
+
+export type ResolvedTeamBlock = {
+  id: string;
+  heading: string;
+  subheading: string;
+  location: string;
+  start: string;
+  end: string;
+  bullets: string[];
 };
 
 export type ResolvedResumeDocument = {
@@ -155,6 +166,52 @@ function dedupeTextValues(values: string[]): string[] {
     seen.add(key);
     return true;
   });
+}
+
+function resolveRoleBullets(
+  role: Resume["experience"][number],
+  opt: Optimization["roles"][number] | undefined,
+): {
+  bySourceId: Map<string, string>;
+  ordered: Array<{ sourceId: string; text: string }>;
+  unmapped: string[];
+} {
+  const sourceIds = new Set(role.bullets.map((bullet) => bullet.id));
+  if (!opt) {
+    const ordered = role.bullets.map((bullet) => ({
+      sourceId: bullet.id,
+      text: bullet.text,
+    }));
+    return {
+      bySourceId: new Map(
+        ordered.map((bullet) => [bullet.sourceId, bullet.text]),
+      ),
+      ordered,
+      unmapped: [],
+    };
+  }
+
+  const bySourceId = new Map<string, string>();
+  const usedOptimizedIndexes = new Set<number>();
+  opt.bullets.forEach((bullet, index) => {
+    const sourceId =
+      (sourceIds.has(bullet.id) ? bullet.id : "") ||
+      (bullet.evidence ?? []).find((id) => sourceIds.has(id)) ||
+      role.bullets[index]?.id ||
+      "";
+    if (!sourceId || bySourceId.has(sourceId)) return;
+    bySourceId.set(sourceId, bullet.text);
+    usedOptimizedIndexes.add(index);
+  });
+
+  const ordered = role.bullets.flatMap((bullet) => {
+    const text = bySourceId.get(bullet.id);
+    return text ? [{ sourceId: bullet.id, text }] : [];
+  });
+  const unmapped = opt.bullets.flatMap((bullet, index) =>
+    usedOptimizedIndexes.has(index) ? [] : [bullet.text],
+  );
+  return { bySourceId, ordered, unmapped };
 }
 
 function compactAdditionalItemText(
@@ -288,13 +345,33 @@ export function resolveResumeContent(
 
   const experience: ResolvedBlock[] = resume.experience.map((role) => {
     const opt = optimization?.roles.find((r) => r.id === role.id);
+    const resolvedBullets = resolveRoleBullets(role, opt);
+    const teamBulletIds = new Set(
+      (role.teams ?? []).flatMap((team) => team.bulletIds),
+    );
     // An explicit empty optimized bullet list is meaningful during exact-page
     // fitting: it keeps the role metadata while omitting lower-priority detail.
     // Only fall back to source bullets when the optimization has no owner at
     // all. Treating [] as missing silently restored removed copy in the PDF.
-    const bullets = opt
-      ? opt.bullets.map((b) => b.text)
-      : role.bullets.map((b) => b.text);
+    const bullets = [
+      ...resolvedBullets.ordered
+        .filter((bullet) => !teamBulletIds.has(bullet.sourceId))
+        .map((bullet) => bullet.text),
+      ...resolvedBullets.unmapped,
+    ];
+    const teams = (role.teams ?? [])
+      .map((team) => ({
+        id: team.id,
+        heading: team.name,
+        subheading: team.title,
+        location: team.location,
+        start: team.start,
+        end: team.end,
+        bullets: team.bulletIds
+          .map((id) => resolvedBullets.bySourceId.get(id))
+          .filter((text): text is string => Boolean(text)),
+      }))
+      .filter((team) => team.bullets.length > 0);
     // The source tech-stack line carries real keyword weight — keep it on the
     // title line the way the original resume printed it.
     const subheading = role.techStack
@@ -308,6 +385,7 @@ export function resolveResumeContent(
       start: role.start,
       end: role.end,
       bullets,
+      ...(teams.length > 0 ? { teams } : {}),
     };
   });
 

@@ -7,6 +7,19 @@ export type ResumeBullet = {
   text: string;
 };
 
+export type ResumeTeam = {
+  id: string;
+  /** Team, org, group, or product area shown inside a company entry. */
+  name: string;
+  /** Optional team-specific role/scope line. */
+  title: string;
+  location: string;
+  start: string;
+  end: string;
+  /** IDs of achievements in the parent role's canonical `bullets` array. */
+  bulletIds: string[];
+};
+
 export type ResumeRole = {
   id: string;
   company: string;
@@ -17,6 +30,8 @@ export type ResumeRole = {
   /** Verbatim tech-stack line from the source resume, e.g. "FastAPI, PostgreSQL, Redis". */
   techStack?: string;
   bullets: ResumeBullet[];
+  /** Optional nested teams inside this company/role. */
+  teams?: ResumeTeam[];
 };
 
 export type ResumeEducation = {

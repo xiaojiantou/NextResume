@@ -45,7 +45,21 @@ function resumeDigest(resume: Resume): string {
     lines.push(
       `\n${role.title} — ${role.company} (${role.start}–${role.end})${role.techStack ? ` [${role.techStack}]` : ""}`,
     );
-    for (const b of role.bullets) lines.push(`- ${b.text}`);
+    const teamBulletIds = new Set(
+      (role.teams ?? []).flatMap((team) => team.bulletIds),
+    );
+    for (const b of role.bullets) {
+      if (!teamBulletIds.has(b.id)) lines.push(`- ${b.text}`);
+    }
+    for (const team of role.teams ?? []) {
+      lines.push(
+        `  Team: ${team.name}${team.title ? ` — ${team.title}` : ""}${team.start || team.end ? ` (${[team.start, team.end].filter(Boolean).join("–")})` : ""}`,
+      );
+      const teamIds = new Set(team.bulletIds);
+      for (const b of role.bullets) {
+        if (teamIds.has(b.id)) lines.push(`  - ${b.text}`);
+      }
+    }
   }
   for (const project of resume.projects ?? []) {
     lines.push(`\nProject: ${project.name}${project.role ? ` — ${project.role}` : ""}`);

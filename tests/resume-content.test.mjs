@@ -105,6 +105,110 @@ test("splitResumeText retains all paragraphs without a hard tail cutoff", () => 
   }
 });
 
+test("company teams keep their achievements grouped through resolution", () => {
+  const merged = mergeParsedResumes([
+    normalizeParsedResume({
+      name: "Candidate",
+      experience: [
+        {
+          id: "chunk-r1",
+          company: "Acme",
+          title: "Engineer",
+          start: "2023",
+          end: "Present",
+          bullets: [{ id: "source-direct", text: "Led company rollout." }],
+          teams: [
+            {
+              id: "chunk-team1",
+              name: "Platform Team",
+              title: "Backend",
+              bullets: [{ id: "source-team1", text: "Built platform APIs." }],
+            },
+          ],
+        },
+      ],
+    }),
+    normalizeParsedResume({
+      experience: [
+        {
+          id: "chunk-r2",
+          company: "Acme",
+          title: "Engineer",
+          start: "2023",
+          end: "Present",
+          teams: [
+            {
+              id: "chunk-team2",
+              name: "Platform Team",
+              title: "Backend",
+              bullets: [
+                { id: "source-team2", text: "Improved API reliability." },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  ]);
+
+  assert.equal(merged.experience.length, 1);
+  assert.deepEqual(
+    merged.experience[0].bullets.map((bullet) => bullet.id),
+    ["b1", "b2", "b3"],
+  );
+  assert.deepEqual(merged.experience[0].teams?.[0], {
+    id: "r1-team1",
+    name: "Platform Team",
+    title: "Backend",
+    location: "",
+    start: "",
+    end: "",
+    bulletIds: ["b2", "b3"],
+  });
+
+  const content = resolveResumeContent(merged, {
+    title: "",
+    summary: "",
+    skills: [],
+    roles: [
+      {
+        id: "r1",
+        bullets: [
+          {
+            id: "b1",
+            text: "Led company rollout.",
+            evidence: ["b1"],
+            matchedKeywords: [],
+            rationale: "",
+          },
+          {
+            id: "b2",
+            text: "Built reliable platform APIs.",
+            evidence: ["b2"],
+            matchedKeywords: [],
+            rationale: "",
+          },
+          {
+            id: "b3",
+            text: "Improved platform API reliability.",
+            evidence: ["b3"],
+            matchedKeywords: [],
+            rationale: "",
+          },
+        ],
+      },
+    ],
+    projects: [],
+  });
+
+  assert.deepEqual(content.experience[0].bullets, ["Led company rollout."]);
+  assert.equal(content.experience[0].teams?.[0].heading, "Platform Team");
+  assert.deepEqual(content.experience[0].teams?.[0].bullets, [
+    "Built reliable platform APIs.",
+    "Improved platform API reliability.",
+  ]);
+});
+
 test("short coursework and skill taxonomies render as compact flowing lists", () => {
   const coursework = {
     id: "coursework",

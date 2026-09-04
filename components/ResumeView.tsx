@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Optimization, Resume } from "@/lib/types";
+import type { Optimization, OptimizedBullet, Resume } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { normalizeResumeLinks } from "@/lib/resumeLinks";
 import {
@@ -107,6 +107,48 @@ export function ResumeView({
     const index = activeSectionOrder?.indexOf(ref as never) ?? -1;
     return index >= 0 ? index + 1 : fallback;
   };
+  const roleTeamBulletIds = (role: Resume["experience"][number]) =>
+    new Set((role.teams ?? []).flatMap((team) => team.bulletIds));
+  const sourceTeamBullets = (
+    role: Resume["experience"][number],
+    team: NonNullable<Resume["experience"][number]["teams"]>[number],
+  ) => {
+    const ids = new Set(team.bulletIds);
+    return role.bullets.filter((bullet) => ids.has(bullet.id));
+  };
+  const optimizedMatchesIds = (
+    bullet: OptimizedBullet,
+    ids: ReadonlySet<string>,
+  ) => ids.has(bullet.id) || bullet.evidence.some((id) => ids.has(id));
+  const optimizedTeamBullets = (
+    role: Resume["experience"][number],
+    optRole: Optimization["roles"][number] | undefined,
+    team: NonNullable<Resume["experience"][number]["teams"]>[number],
+  ) => {
+    const ids = new Set(team.bulletIds);
+    const sourceOrder = new Map(
+      role.bullets.map((bullet, index) => [bullet.id, index]),
+    );
+    return (optRole?.bullets ?? [])
+      .filter((bullet) => optimizedMatchesIds(bullet, ids))
+      .sort((left, right) => {
+        const leftId = [left.id, ...left.evidence].find((id) => ids.has(id));
+        const rightId = [right.id, ...right.evidence].find((id) => ids.has(id));
+        return (
+          (sourceOrder.get(leftId ?? "") ?? Number.MAX_SAFE_INTEGER) -
+          (sourceOrder.get(rightId ?? "") ?? Number.MAX_SAFE_INTEGER)
+        );
+      });
+  };
+  const optimizedDirectBullets = (
+    role: Resume["experience"][number],
+    optRole: Optimization["roles"][number] | undefined,
+  ) => {
+    const teamIds = roleTeamBulletIds(role);
+    return (optRole?.bullets ?? []).filter(
+      (bullet) => !optimizedMatchesIds(bullet, teamIds),
+    );
+  };
 
   return (
     <div className="paper flex flex-col p-10 text-[12.5px] leading-relaxed text-ink-800 font-serif">
@@ -183,6 +225,53 @@ export function ResumeView({
         <div className="space-y-5 mt-2">
           {resume.experience.map((role) => {
             const optRole = optimization?.roles.find((o) => o.id === role.id);
+            const directSourceBullets = role.bullets.filter(
+              (bullet) => !roleTeamBulletIds(role).has(bullet.id),
+            );
+            const directOptimizedBullets = optimizedDirectBullets(
+              role,
+              optRole,
+            );
+            const renderOriginalBullet = (
+              b: Resume["experience"][number]["bullets"][number],
+              key: string,
+            ) => {
+              const isActive = hoveredEvidence.includes(b.id);
+              return (
+                <li
+                  key={key}
+                  className={cn(
+                    "transition-all rounded-md px-1 -mx-1",
+                    evidenceActive && !isActive && "evidence-dim",
+                    evidenceActive && isActive && "evidence-active",
+                  )}
+                >
+                  {b.text}
+                </li>
+              );
+            };
+            const renderOptimizedBullet = (
+              b: OptimizedBullet,
+              key: string,
+            ) => {
+              const isActive = hoveredOptimizedId === b.id;
+              const isFocused = focusedBulletId === b.id;
+              return (
+                <li
+                  key={key}
+                  ref={isFocused ? focusedRef : undefined}
+                  onMouseEnter={() => setHoveredOptimizedId(b.id)}
+                  onMouseLeave={() => setHoveredOptimizedId(null)}
+                  className={cn(
+                    "transition-all rounded-md px-1 -mx-1 cursor-default",
+                    (isFocused || (evidenceMode && isActive)) &&
+                      "evidence-active",
+                  )}
+                >
+                  {b.text}
+                </li>
+              );
+            };
             return (
               <div key={role.id}>
                 <div className="flex items-baseline justify-between font-sans">
@@ -205,43 +294,60 @@ export function ResumeView({
                     {role.location}
                   </div>
                 )}
-                <ul className="mt-2 space-y-1.5 list-disc pl-5">
-                  {mode === "original"
-                    ? role.bullets.map((b, index) => {
-                        const isActive = hoveredEvidence.includes(b.id);
-                        return (
-                          <li
-                            key={`${role.id}:${b.id}:${index}`}
-                            className={cn(
-                              "transition-all rounded-md px-1 -mx-1",
-                              evidenceActive && !isActive && "evidence-dim",
-                              evidenceActive && isActive && "evidence-active",
+                {(mode === "original"
+                  ? directSourceBullets.length
+                  : directOptimizedBullets.length) > 0 ? (
+                  <ul className="mt-2 space-y-1.5 list-disc pl-5">
+                    {mode === "original"
+                      ? directSourceBullets.map((b, index) =>
+                          renderOriginalBullet(
+                            b,
+                            `${role.id}:${b.id}:${index}`,
+                          ),
+                        )
+                      : directOptimizedBullets.map((b, index) =>
+                          renderOptimizedBullet(
+                            b,
+                            `${role.id}:${b.id}:${index}`,
+                          ),
+                        )}
+                  </ul>
+                ) : null}
+                {role.teams?.map((team) => {
+                  const bullets =
+                    mode === "original"
+                      ? sourceTeamBullets(role, team)
+                      : optimizedTeamBullets(role, optRole, team);
+                  if (bullets.length === 0) return null;
+                  return (
+                    <div key={team.id} className="mt-2 pl-4 font-sans">
+                      <div className="text-[11px] font-semibold text-ink-700">
+                        {team.name}
+                        {team.title ? (
+                          <span className="font-normal text-ink-500">
+                            {" "}
+                            · {team.title}
+                          </span>
+                        ) : null}
+                      </div>
+                      <ul className="mt-1 space-y-1.5 list-disc pl-5 font-serif text-[12.5px] leading-relaxed">
+                        {mode === "original"
+                          ? bullets.map((b, index) =>
+                              renderOriginalBullet(
+                                b as Resume["experience"][number]["bullets"][number],
+                                `${role.id}:${team.id}:${b.id}:${index}`,
+                              ),
+                            )
+                          : bullets.map((b, index) =>
+                              renderOptimizedBullet(
+                                b as OptimizedBullet,
+                                `${role.id}:${team.id}:${b.id}:${index}`,
+                              ),
                             )}
-                          >
-                            {b.text}
-                          </li>
-                        );
-                      })
-                    : (optRole?.bullets ?? []).map((b, index) => {
-                        const isActive = hoveredOptimizedId === b.id;
-                        const isFocused = focusedBulletId === b.id;
-                        return (
-                          <li
-                            key={`${role.id}:${b.id}:${index}`}
-                            ref={isFocused ? focusedRef : undefined}
-                            onMouseEnter={() => setHoveredOptimizedId(b.id)}
-                            onMouseLeave={() => setHoveredOptimizedId(null)}
-                            className={cn(
-                              "transition-all rounded-md px-1 -mx-1 cursor-default",
-                              (isFocused || (evidenceMode && isActive)) &&
-                                "evidence-active",
-                            )}
-                          >
-                            {b.text}
-                          </li>
-                        );
-                      })}
-                </ul>
+                      </ul>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
