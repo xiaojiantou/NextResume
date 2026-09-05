@@ -118,11 +118,83 @@ function roleTeams(value: unknown): ParsedRoleTeam[] {
     );
 }
 
+const MONTH_PATTERN =
+  "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\\.?";
+const DATE_PATTERN = `(?:(?:${MONTH_PATTERN}\\s+)?\\d{4}|\\d{1,2}/\\d{4})`;
+const TRAILING_DATE_RANGE = new RegExp(
+  `[\\s(|,]*(${DATE_PATTERN})\\s*(?:-|–|—|to)\\s*(${DATE_PATTERN}|Present|Current|Now|Ongoing)\\)?\\s*$`,
+  "i",
+);
+const SUB_BULLET_MARKER = /^\s*[-–—•·▪◦*]\s+/u;
+
+/**
+ * A model sometimes flattens a nested entry inside a company — a project or
+ * product with its own date range followed by dash-prefixed sub-bullets —
+ * into the role's achievement list. Rebuild those entries as teams so the
+ * heading line is never rendered as an achievement.
+ */
+function recoverInlineTeams(
+  directBullets: ResumeBullet[],
+  idPrefix: string,
+): { bullets: ResumeBullet[]; teams: ParsedRoleTeam[] } {
+  const isHeading = (bullet: ResumeBullet, next: ResumeBullet | undefined) => {
+    if (SUB_BULLET_MARKER.test(bullet.text)) return false;
+    const match = bullet.text.match(TRAILING_DATE_RANGE);
+    if (!match || match.index === undefined || match.index === 0) return false;
+    return (
+      bullet.text.includes(":") ||
+      (next !== undefined && SUB_BULLET_MARKER.test(next.text))
+    );
+  };
+  if (!directBullets.some((bullet, i) => isHeading(bullet, directBullets[i + 1]))) {
+    return { bullets: directBullets, teams: [] };
+  }
+
+  const bullets: ResumeBullet[] = [];
+  const teams: ParsedRoleTeam[] = [];
+  let current: ParsedRoleTeam | null = null;
+  directBullets.forEach((bullet, i) => {
+    if (isHeading(bullet, directBullets[i + 1])) {
+      const match = bullet.text.match(TRAILING_DATE_RANGE)!;
+      const heading = bullet.text.slice(0, match.index).replace(/[\s|,(–—-]+$/u, "").trim();
+      const colon = heading.indexOf(":");
+      const name = colon > 0 ? heading.slice(0, colon).trim() : heading;
+      const title = colon > 0 ? heading.slice(colon + 1).trim() : "";
+      current = {
+        id: `${idPrefix}-inline-team-${teams.length + 1}`,
+        name,
+        title,
+        location: "",
+        start: match[1].trim(),
+        end: match[2].trim(),
+        bulletIds: [],
+        bullets: [],
+      };
+      teams.push(current);
+      return;
+    }
+    const cleaned = current
+      ? { ...bullet, text: bullet.text.replace(SUB_BULLET_MARKER, "").trim() }
+      : bullet;
+    if (!cleaned.text) return;
+    bullets.push(cleaned);
+    if (current) {
+      current.bulletIds.push(cleaned.id);
+      current.bullets.push(cleaned);
+    }
+  });
+  return { bullets, teams: teams.filter((team) => team.bulletIds.length > 0) };
+}
+
 function roles(value: unknown): ResumeRole[] {
   return array(value).map((raw, index) => {
     const item = record(raw);
-    const directBullets = bullets(item.bullets, `role-${index + 1}-bullet`);
-    const parsedTeams = roleTeams(item.teams);
+    const recovered = recoverInlineTeams(
+      bullets(item.bullets, `role-${index + 1}-bullet`),
+      `role-${index + 1}`,
+    );
+    const directBullets = recovered.bullets;
+    const parsedTeams = [...recovered.teams, ...roleTeams(item.teams)];
     const allBullets = [...directBullets];
     const seenBulletIds = new Set(allBullets.map((bullet) => bullet.id));
     for (const team of parsedTeams) {

@@ -210,6 +210,78 @@ test("company teams keep their achievements grouped through resolution", () => {
   ]);
 });
 
+test("dated project headings flattened into a role's bullets become teams", () => {
+  const resume = normalizeParsedResume({
+    experience: [
+      {
+        id: "r1",
+        company: "Howbe LLC",
+        title: "Founder",
+        start: "July 2025",
+        end: "Present",
+        bullets: [
+          { id: "b1", text: "Founded the company." },
+          {
+            id: "b2",
+            text: "IOLTA Ledger: AI-Powered Trust Accounting & Compliance for Law Firms Jul 2026 - Present",
+          },
+          { id: "b3", text: "– Solo designed, built, and operate a legal trust accounting SaaS." },
+          { id: "b4", text: "– Engineered a Plaid bank-feed pipeline." },
+          { id: "b5", text: "NextResume: AI Resume Tailoring & Optimization Jun 2026 - Present" },
+          { id: "b6", text: "– Built an AI resume optimization app on Next.js 15." },
+        ],
+      },
+    ],
+  });
+  const role = resume.experience[0];
+  assert.deepEqual(
+    role.bullets.map((bullet) => bullet.text),
+    [
+      "Founded the company.",
+      "Solo designed, built, and operate a legal trust accounting SaaS.",
+      "Engineered a Plaid bank-feed pipeline.",
+      "Built an AI resume optimization app on Next.js 15.",
+    ],
+  );
+  assert.deepEqual(
+    role.teams?.map(({ id: _id, ...team }) => team),
+    [
+      {
+        name: "IOLTA Ledger",
+        title: "AI-Powered Trust Accounting & Compliance for Law Firms",
+        location: "",
+        start: "Jul 2026",
+        end: "Present",
+        bulletIds: ["b3", "b4"],
+      },
+      {
+        name: "NextResume",
+        title: "AI Resume Tailoring & Optimization",
+        location: "",
+        start: "Jun 2026",
+        end: "Present",
+        bulletIds: ["b6"],
+      },
+    ],
+  );
+
+  // Ordinary achievements that merely mention years are left alone.
+  const plain = normalizeParsedResume({
+    experience: [
+      {
+        id: "r1",
+        company: "Acme",
+        bullets: [
+          { id: "b1", text: "Led the 2023 - 2024 migration to Kubernetes." },
+          { id: "b2", text: "Cut costs 30% in 2024." },
+        ],
+      },
+    ],
+  });
+  assert.equal(plain.experience[0].teams, undefined);
+  assert.equal(plain.experience[0].bullets.length, 2);
+});
+
 test("a rewrite citing a team bullet as evidence stays with the bullet it rewrites", () => {
   const role = {
     bullets: [
