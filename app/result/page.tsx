@@ -134,6 +134,13 @@ function describeFailure(status: number): string {
 }
 
 
+// A remount while a rewrite is still in flight (the redeem/personalize flow
+// re-enters this page) used to fire a second full rewrite for the same
+// resume; the two ran concurrently and the loser's timeout overwrote the
+// winner's result. Module scope survives the remount, so the new instance
+// joins the request already running instead.
+const inFlightOptimize = new Map<string, Promise<void>>();
+
 export default function ResultPage() {
   return (
     <Suspense
@@ -346,6 +353,24 @@ function ResultPageInner() {
     const sourceJob = source?.job ?? job;
     const sourceReport = source?.report ?? report;
     if (!sourceResume || !sourceJob || !sourceReport) return;
+    const inFlightKey = `${modelId}|${structureMode}`;
+    const joined = inFlightOptimize.get(inFlightKey);
+    if (joined) {
+      setGenerating(true);
+      try {
+        await joined;
+      } finally {
+        setGenerating(false);
+      }
+      return;
+    }
+    let finish: () => void = () => {};
+    inFlightOptimize.set(
+      inFlightKey,
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
     setGenerating(true);
     setError(null);
     setErrorDetails([]);
@@ -386,6 +411,8 @@ function ResultPageInner() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Optimization failed.");
     } finally {
+      inFlightOptimize.delete(inFlightKey);
+      finish();
       setGenerating(false);
     }
   };

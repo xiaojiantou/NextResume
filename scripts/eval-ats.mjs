@@ -89,12 +89,12 @@ function sliceTemplate(src, decl, end) {
 const jobRouteSrc = readSource("app/api/parse-job/route.ts");
 const SYSTEM = sliceTemplate(jobRouteSrc, "const SYSTEM = `", "`;\n\nexport async function POST");
 
-const optimizeRouteSrc = readSource("app/api/optimize/route.ts");
-const OPTIMIZE_SYSTEM = sliceTemplate(
-  optimizeRouteSrc,
-  "const FULL_SYSTEM = `",
-  "`;\n\nconst PRESERVE_SYSTEM",
-);
+import {
+  assembleOptimization,
+  buildChunkPrompt,
+  chunkKey,
+  planRewriteChunks,
+} from "../lib/optimizeChunks.ts";
 
 async function complete({ system, user, maxTokens }) {
   const res = await fetch(`${BASE}/chat/completions`, {
@@ -132,13 +132,29 @@ function parseJob(text) {
 // The one deliberate omission is reviewSemanticGrounding, which is a second
 // model call per attempt; issue counts here are therefore a lower bound.
 async function rewriteOnce(resume, job, report) {
-  const raw = await complete({
-    system: OPTIMIZE_SYSTEM,
-    user: `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}\n\nUser-locked content ids (return their text verbatim):\n[]\n\nLocked wording baseline:\nnull`,
-    maxTokens: 7000,
-  });
+  const chunks = planRewriteChunks(resume, "optimize");
+  const results = new Map(
+    await Promise.all(
+      chunks.map(async (chunk) => [
+        chunkKey(chunk),
+        await complete(
+          buildChunkPrompt({
+            chunk,
+            resume,
+            job,
+            report,
+            structureMode: "optimize",
+            lockedContentIds: [],
+            baselineOptimization: null,
+          }),
+        ),
+      ]),
+    ),
+  );
 
-  const normalized = normalizeOptimization(raw);
+  const normalized = normalizeOptimization(
+    assembleOptimization(resume, "optimize", results),
+  );
   const grounded = reconcileGroundedSkills(
     resume,
     normalized.skills,

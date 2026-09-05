@@ -3,6 +3,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import {
+  assembleOptimization,
+  buildChunkPrompt,
+  chunkKey,
+  chunksForIssues,
+  mapWithConcurrency,
+  planRewriteChunks,
+} from "@/lib/optimizeChunks";
+import {
   normalizeOptimization,
   validateOptimization,
 } from "@/lib/optimizeContract";
@@ -33,153 +41,16 @@ import { reviewSemanticGrounding } from "@/lib/semanticResumeValidation";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-// A 7000-token rewrite on a slow model runs 60-90s, and we allow 3 correction
-// rounds — 90s of platform budget guaranteed a FUNCTION_INVOCATION_TIMEOUT,
-// which Vercel answers with an HTML 504 the client cannot parse. Budget the
-// loop ourselves and leave headroom to serialize a real JSON error.
+// The rewrite runs as one small completion per resume entry, in parallel
+// (see lib/optimizeChunks.ts), so a round is bounded by the slowest entry
+// rather than the whole document. The loop is still budgeted below Vercel's
+// maxDuration: a platform FUNCTION_INVOCATION_TIMEOUT answers with an HTML 504
+// the client cannot parse, so leave headroom to serialize a real JSON error.
 const TOTAL_BUDGET_MS = 270_000;
-const ATTEMPT_TIMEOUT_MS = 110_000;
-// Below this there is no point starting another generation; report instead.
-const MIN_ATTEMPT_MS = 25_000;
-
-const FULL_SYSTEM = `You rewrite a resume to be tailored to a specific job description. This is the most important rule:
-
-EVERY rewritten bullet MUST be grounded in the candidate's ACTUAL experience. You are forbidden from inventing skills, companies, technologies, metrics, or responsibilities the candidate did not demonstrate. Every rewrite cites the original bullet ID (from the input resume) that justifies it.
-
-Output ONLY valid JSON matching this schema:
-
-{
-  "summary": string,
-  "title": string,
-  "skills": string[],
-  "skillEvidence": [{
-    // ONLY for a skill you are adding. See the skills rules below — a skill
-    // copied from the input needs no entry. Usually this array is empty or
-    // holds one or two items.
-    "skill": string,
-    "grounding": "indirect",
-    "skillType": "capability" | "domain" | "soft",
-    "evidence": string[],
-    "rationale": string
-  }],
-  "roles": [
-    {
-      "id": string,
-      "bullets": [
-        {
-          "id": string,
-          "text": string,
-          "evidence": string[],
-          "matchedKeywords": string[],
-          "rationale": string,
-          "relevance": number,
-          "suggestion": "keep" | "trim" | "cut"
-        }
-      ]
-    }
-  ],
-  "projects": [
-    {
-      "id": string,
-      "bullets": [
-        // same bullet shape as roles
-      ]
-    }
-  ],
-  "sectionOrder": ["summary", "skills", "experience", "projects", "education", "additional:<source-section-id>"],
-  "sectionLabels": {
-    "summary": "Summary" | "Professional Summary" | "Research Profile",
-    "skills": "Skills" | "Core Skills" | "Technical Skills" | "Core Competencies",
-    "experience": "Experience" | "Professional Experience" | "Work Experience" | "Research Experience",
-    "projects": "Projects" | "Selected Projects" | "Technical Projects" | "Research Projects",
-    "education": "Education" | "Academic Background"
-  }
-}
-
-Hard rules — content preservation:
-- Rewrite bullets ONE-TO-ONE. Every role and every project from the input appears in the output with the SAME id and the SAME number of bullets, and each output bullet reuses the id of the input bullet it rewrites. NEVER merge, drop, or add bullets. The user decides what to cut, not you.
-- Some input roles include "teams" that group achievements inside the same company. Treat team names as source context only. Do not output "teams"; return every team achievement as part of its parent role's flat "bullets" list using the same bullet id.
-- Instead of cutting, advise: set "relevance" (0-100, how much this bullet supports THIS job description) and "suggestion" ("keep" for strong matches, "trim" if it could be shortened, "cut" only if it is irrelevant to this job). "rationale" is 1 sentence explaining the rewrite or the cut advice.
-- "evidence" must reference REAL bullet IDs from the input resume. Never invent ids.
-
-Hard rules — factual integrity:
-- A metric (number, percentage, dollar amount, latency) must stay attached to the exact action that produced it in the original bullet. Never move a metric onto a different action, tool, or system than the original credits.
-- NEVER introduce a number the cited evidence does not already contain — no estimates, no approximations, no rounding a figure the source never stated. If the original bullet has no metric, stay qualitative.
-- Version and product names carry digits (S3, EC2, p99, GPT-4, OAuth 2.0). Use one only if that exact name appears in the bullet you are rewriting.
-
-Hard rules — writing style:
-- Weave matched keywords into the factual claim itself — the tool used, the method applied, the thing built. NEVER append meta-commentary clauses such as "showcasing proficiency in X", "demonstrating expertise in Y", "highlighting Z", "proving ability to W". A bullet ends with a concrete outcome or fact, never with a comment about the candidate's skills.
-- Start bullets with verbs from this set first: Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered. Vary sentence structure across bullets.
-
-Hard rules — keyword coverage:
-- The ATS report lists missingKeywords. Walk that list. For each one, ask whether the resume ALREADY demonstrates the same thing under different wording — "K8s" for Kubernetes, "REST endpoints" for API development, "on-call" for production support. Where it does, say it in the posting's wording instead of the candidate's. That is a naming change, not a new claim, and it is where most of the real gain lives.
-- Where the resume genuinely does not demonstrate a missing keyword, LEAVE IT OUT. An honest gap costs the candidate far less than a fabricated match. Do not pad the summary or skills with terms nothing in the experience supports.
-
-Hard rules — headline, skills, and summary:
-- "title" is the headline that sits under the candidate's name. It is the field recruiters filter an ATS on, so it must speak to THIS posting, not to the candidate's last job. Set it to the posting's exact job title when the candidate's experience supports that role. If the posting's seniority would overstate them, keep the posting's role words and drop only the level ("Senior Backend Platform Engineer" -> "Backend Platform Engineer"). Never claim a specialization the resume does not evidence, and never put a company name in it.
-- "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
-- Return a skillEvidence entry ONLY for a skill you are ADDING — one whose words are not already in the input resume. A skill you copied from the input needs no entry: it is verified against the source text directly, and an entry for it is discarded unread. Most rewrites add nothing and return [].
-- An added skill must be a "capability", "domain" or "soft" skill, must cite 1-3 real source bullet IDs in "evidence", and must explain the support in "rationale". A tool, framework, platform, credential or language can never be added — if the resume does not name it, it does not go in.
-- "summary": if the input resume has a summary, rewrite THAT summary in place with concise wording; do not prepend a second summary, do not echo the old summary plus a new one, and keep it to 1-2 sentences grounded only in real experience.
-- If the input resume has no summary, return "" unless a short summary would materially improve role positioning for this specific job. When you create one, keep it to 1-2 concise sentences grounded only in real experience; the user can still choose whether to include it.
-
-Hard rules — organization:
-- sectionOrder must contain every non-empty source section exactly once. Reorder sections to lead with the strongest evidence for the target role. Use additional:<id> for every source additional section. The renderer maps supported source extras only into canonical Awards, Certifications, Publications, Languages, or Leadership & Volunteering sections; it never creates an ambiguous Additional Information section.
-- Choose sectionLabels only from the exact allowed values in the schema. Use role-relevant conventional headings; do not invent headings.
-- Reordering and relabeling never changes the factual owner of an entry or bullet.`;
-
-const PRESERVE_SYSTEM = `You rewrite resume language for a target job while preserving the source content structure exactly.
-
-Output ONLY valid JSON matching:
-{
-  "summary": string,
-  "title": string,
-  "skills": string[],
-  "roles": [{
-    "id": string,
-    "bullets": [{
-      "id": string,
-      "text": string,
-      "evidence": string[],
-      "matchedKeywords": string[],
-      "rationale": string
-    }]
-  }],
-  "projects": [{
-    "id": string,
-    "bullets": [{
-      "id": string,
-      "text": string,
-      "evidence": string[],
-      "matchedKeywords": string[],
-      "rationale": string
-    }]
-  }],
-  "additionalSections": [{
-    "id": string,
-    "items": [{
-      "id": string,
-      "bullets": [{
-        "id": string,
-        "text": string,
-        "evidence": string[],
-        "matchedKeywords": string[],
-        "rationale": string
-      }]
-    }]
-  }]
-}
-
-Non-negotiable rules:
-- Return every role, project, additional section, item, and bullet exactly once, in source order.
-- Every output bullet id MUST equal its one source bullet id. Its evidence MUST be exactly [that same id]. Never merge, split, add, delete, or move bullets.
-- Some input roles include "teams" that group achievements inside the same company. Treat team names as source context only. Do not output "teams"; return every team achievement as part of its parent role's flat "bullets" list using the same bullet id.
-- Keep every source skill. You may reorder skills and normalize capitalization only. Never add or remove one.
-- If the source summary is present, rewrite that summary in place with concise wording; do not add a second summary above it. If the source summary is empty, keep it empty.
-- If the source professional title is empty, keep it empty. If present, rewrite it without adding unsupported facts.
-- Never alter or infer companies, schools, historical job titles, degrees, project names, dates, locations, awards, certificates, publications, organizations, metrics, tools, or results.
-- Every number in a rewrite must already appear in that same source bullet.
-- Use concise, natural English. Keep each bullet non-empty and improve relevance only within its own evidence.`;
+const CHUNK_TIMEOUT_MS = 75_000;
+const CHUNK_CONCURRENCY = 5;
+// Below this there is no point starting another round; report instead.
+const MIN_ATTEMPT_MS = 20_000;
 
 const PREVIEW_SYSTEM = `You rewrite a SINGLE resume bullet to be tailored to a specific job description. The bullet you are rewriting is the candidate's weakest one for this role — show them how a strong rewrite would look.
 
@@ -320,7 +191,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    let feedback = "";
+    const chunks = planRewriteChunks(resume, structureMode);
+    const results = new Map<string, unknown>();
+    let pending = chunks;
+    let feedbackByChunk = new Map<string, string[]>();
     let lastIssues: string[] = [];
     let ranOutOfTime = false;
     const attempts = 3;
@@ -334,25 +208,31 @@ export async function POST(req: NextRequest) {
       const controller = new AbortController();
       const attemptTimer = setTimeout(
         () => controller.abort(),
-        Math.min(budgetLeft, ATTEMPT_TIMEOUT_MS),
+        Math.min(budgetLeft, CHUNK_TIMEOUT_MS),
       );
-      let raw: unknown;
+      const startedAt = Date.now();
       try {
-        raw = await jsonCompletion<unknown>({
-          system:
-            structureMode === "preserve" ? PRESERVE_SYSTEM : FULL_SYSTEM,
-          user: `Original resume:\n${JSON.stringify(resume)}\n\nJob analysis:\n${JSON.stringify(job)}\n\nATS report (gaps to close):\n${JSON.stringify(report)}\n\nUser-locked content ids (return their text verbatim):\n${JSON.stringify(lockedContentIds)}\n\nLocked wording baseline:\n${JSON.stringify(baselineOptimization)}${
-            feedback
-              ? `\n\nYour previous response violated these constraints. Correct every issue without inventing or dropping source content:\n${feedback}`
-              : ""
-          }`,
-          model,
-          maxTokens: 7000,
-          signal: controller.signal,
+        await mapWithConcurrency(pending, CHUNK_CONCURRENCY, async (chunk) => {
+          const prompt = buildChunkPrompt({
+            chunk,
+            resume,
+            job,
+            report,
+            structureMode,
+            lockedContentIds,
+            baselineOptimization,
+            feedback: feedbackByChunk.get(chunkKey(chunk)) ?? [],
+          });
+          const raw = await jsonCompletion<unknown>({
+            ...prompt,
+            model,
+            signal: controller.signal,
+          });
+          results.set(chunkKey(chunk), raw);
         });
       } catch (attemptFailure) {
-        // A retry of a generation that already blew the per-attempt ceiling
-        // just burns the rest of the budget, so stop and say so.
+        // A retry of a round that already blew the per-round ceiling just
+        // burns the rest of the budget, so stop and say so.
         if (controller.signal.aborted) {
           ranOutOfTime = true;
           break;
@@ -361,7 +241,12 @@ export async function POST(req: NextRequest) {
       } finally {
         clearTimeout(attemptTimer);
       }
-      const normalized = normalizeOptimization(raw);
+      console.info(
+        `optimize round ${attempt}: ${pending.length} chunk(s) in ${((Date.now() - startedAt) / 1000).toFixed(1)}s (${structureMode}, model=${model ?? "default"})`,
+      );
+      const normalized = normalizeOptimization(
+        assembleOptimization(resume, structureMode, results),
+      );
       if (structureMode === "optimize") {
         const grounded = reconcileGroundedSkills(
           resume,
@@ -410,7 +295,16 @@ export async function POST(req: NextRequest) {
       }
       if (issues.length > 0) {
         lastIssues = issues;
-        feedback = issues.slice(0, 20).map((issue) => `- ${issue}`).join("\n");
+        feedbackByChunk = chunksForIssues({
+          resume,
+          candidate: opt,
+          issues,
+          chunks,
+        });
+        pending = chunks.filter((chunk) =>
+          feedbackByChunk.has(chunkKey(chunk)),
+        );
+        if (pending.length === 0) pending = chunks;
         continue;
       }
       opt.structureMode = structureMode;
