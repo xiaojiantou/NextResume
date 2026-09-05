@@ -5,6 +5,7 @@
 // show. That makes style a presentation choice only.
 import type {
   Optimization,
+  OptimizedBullet,
   CoreResumeSection,
   Resume,
   ResumeAdditionalItem,
@@ -176,6 +177,31 @@ function dedupeTextValues(values: string[]): string[] {
   });
 }
 
+/**
+ * Which source bullet each optimized bullet rewrites, one-to-one. The bullet's
+ * own id wins; evidence is only a fallback for a model that renamed ids, and
+ * only its first source id counts — a rewrite may cite a second bullet as
+ * supporting evidence without becoming that bullet. `null` means no source
+ * bullet could be claimed.
+ */
+export function resolveOptimizedBulletSourceIds(
+  role: Pick<Resume["experience"][number], "bullets">,
+  bullets: ReadonlyArray<Pick<OptimizedBullet, "id" | "evidence">>,
+): Array<string | null> {
+  const sourceIds = new Set(role.bullets.map((bullet) => bullet.id));
+  const claimed = new Set<string>();
+  return bullets.map((bullet, index) => {
+    const sourceId =
+      (sourceIds.has(bullet.id) ? bullet.id : "") ||
+      (bullet.evidence ?? []).find((id) => sourceIds.has(id)) ||
+      role.bullets[index]?.id ||
+      "";
+    if (!sourceId || claimed.has(sourceId)) return null;
+    claimed.add(sourceId);
+    return sourceId;
+  });
+}
+
 function resolveRoleBullets(
   role: Resume["experience"][number],
   opt: Optimization["roles"][number] | undefined,
@@ -184,7 +210,6 @@ function resolveRoleBullets(
   ordered: Array<{ sourceId: string; text: string }>;
   unmapped: string[];
 } {
-  const sourceIds = new Set(role.bullets.map((bullet) => bullet.id));
   if (!opt) {
     const ordered = role.bullets.map((bullet) => ({
       sourceId: bullet.id,
@@ -201,16 +226,13 @@ function resolveRoleBullets(
 
   const bySourceId = new Map<string, string>();
   const usedOptimizedIndexes = new Set<number>();
-  opt.bullets.forEach((bullet, index) => {
-    const sourceId =
-      (sourceIds.has(bullet.id) ? bullet.id : "") ||
-      (bullet.evidence ?? []).find((id) => sourceIds.has(id)) ||
-      role.bullets[index]?.id ||
-      "";
-    if (!sourceId || bySourceId.has(sourceId)) return;
-    bySourceId.set(sourceId, bullet.text);
-    usedOptimizedIndexes.add(index);
-  });
+  resolveOptimizedBulletSourceIds(role, opt.bullets).forEach(
+    (sourceId, index) => {
+      if (!sourceId) return;
+      bySourceId.set(sourceId, opt.bullets[index].text);
+      usedOptimizedIndexes.add(index);
+    },
+  );
 
   const ordered = role.bullets.flatMap((bullet) => {
     const text = bySourceId.get(bullet.id);

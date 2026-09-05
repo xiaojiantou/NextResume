@@ -9,6 +9,7 @@ import { normalizeResumeLinks } from "@/lib/resumeLinks";
 import {
   detectResumeLanguage,
   getResumeSectionLabels,
+  resolveOptimizedBulletSourceIds,
 } from "@/lib/pdf/shared";
 
 type Mode = "original" | "optimized";
@@ -120,38 +121,46 @@ export function ResumeView({
     const ids = new Set(team.bulletIds);
     return role.bullets.filter((bullet) => ids.has(bullet.id));
   };
-  const optimizedMatchesIds = (
-    bullet: OptimizedBullet,
-    ids: ReadonlySet<string>,
-  ) => ids.has(bullet.id) || bullet.evidence.some((id) => ids.has(id));
+  // Same one-to-one mapping the exported PDF uses, so a rewrite that cites a
+  // team's bullet as supporting evidence stays with the entry it rewrites.
+  const optimizedBulletsBySource = (
+    role: Resume["experience"][number],
+    optRole: Optimization["roles"][number] | undefined,
+  ) => {
+    const bullets = optRole?.bullets ?? [];
+    const sourceIds = resolveOptimizedBulletSourceIds(role, bullets);
+    const bySourceId = new Map<string, OptimizedBullet>();
+    const unmapped: OptimizedBullet[] = [];
+    bullets.forEach((bullet, index) => {
+      const sourceId = sourceIds[index];
+      if (sourceId) bySourceId.set(sourceId, bullet);
+      else unmapped.push(bullet);
+    });
+    return { bySourceId, unmapped };
+  };
   const optimizedTeamBullets = (
     role: Resume["experience"][number],
     optRole: Optimization["roles"][number] | undefined,
     team: NonNullable<Resume["experience"][number]["teams"]>[number],
   ) => {
-    const ids = new Set(team.bulletIds);
-    const sourceOrder = new Map(
-      role.bullets.map((bullet, index) => [bullet.id, index]),
-    );
-    return (optRole?.bullets ?? [])
-      .filter((bullet) => optimizedMatchesIds(bullet, ids))
-      .sort((left, right) => {
-        const leftId = [left.id, ...left.evidence].find((id) => ids.has(id));
-        const rightId = [right.id, ...right.evidence].find((id) => ids.has(id));
-        return (
-          (sourceOrder.get(leftId ?? "") ?? Number.MAX_SAFE_INTEGER) -
-          (sourceOrder.get(rightId ?? "") ?? Number.MAX_SAFE_INTEGER)
-        );
-      });
+    const { bySourceId } = optimizedBulletsBySource(role, optRole);
+    return team.bulletIds
+      .map((id) => bySourceId.get(id))
+      .filter((bullet): bullet is OptimizedBullet => Boolean(bullet));
   };
   const optimizedDirectBullets = (
     role: Resume["experience"][number],
     optRole: Optimization["roles"][number] | undefined,
   ) => {
     const teamIds = roleTeamBulletIds(role);
-    return (optRole?.bullets ?? []).filter(
-      (bullet) => !optimizedMatchesIds(bullet, teamIds),
-    );
+    const { bySourceId, unmapped } = optimizedBulletsBySource(role, optRole);
+    return [
+      ...role.bullets
+        .filter((bullet) => !teamIds.has(bullet.id))
+        .map((bullet) => bySourceId.get(bullet.id))
+        .filter((bullet): bullet is OptimizedBullet => Boolean(bullet)),
+      ...unmapped,
+    ];
   };
   const experienceGroups = (() => {
     if (!resume.experienceGroups?.length) {
@@ -367,15 +376,27 @@ export function ResumeView({
                   if (bullets.length === 0) return null;
                   return (
                     <div key={team.id} className="mt-2 pl-4 font-sans">
-                      <div className="text-[11px] font-semibold text-ink-700">
-                        {team.name}
-                        {team.title ? (
-                          <span className="font-normal text-ink-500">
-                            {" "}
-                            · {team.title}
-                          </span>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <div className="text-[11px] font-semibold text-ink-700">
+                          {team.name}
+                          {team.title ? (
+                            <span className="font-normal text-ink-500">
+                              {" "}
+                              · {team.title}
+                            </span>
+                          ) : null}
+                        </div>
+                        {team.start || team.end ? (
+                          <div className="shrink-0 text-[11px] text-ink-500">
+                            {[team.start, team.end].filter(Boolean).join(" — ")}
+                          </div>
                         ) : null}
                       </div>
+                      {team.location ? (
+                        <div className="text-[11px] text-ink-400">
+                          {team.location}
+                        </div>
+                      ) : null}
                       <ul className="mt-1 space-y-1.5 list-disc pl-5 font-serif text-[12.5px] leading-relaxed">
                         {mode === "original"
                           ? bullets.map((b, index) =>

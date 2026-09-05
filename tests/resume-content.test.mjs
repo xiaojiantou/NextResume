@@ -13,6 +13,7 @@ import {
 import {
   compactAdditionalItemLabel,
   isCompactAdditionalSection,
+  resolveOptimizedBulletSourceIds,
   resolveResumeContent,
 } from "../lib/pdf/shared.ts";
 import { partitionResumeForPages } from "../lib/pdf/balancedPages.ts";
@@ -207,6 +208,34 @@ test("company teams keep their achievements grouped through resolution", () => {
     "Built reliable platform APIs.",
     "Improved platform API reliability.",
   ]);
+});
+
+test("a rewrite citing a team bullet as evidence stays with the bullet it rewrites", () => {
+  const role = {
+    bullets: [
+      { id: "b1", text: "Led company rollout." },
+      { id: "b2", text: "Built platform APIs." },
+      { id: "b3", text: "Improved API reliability." },
+    ],
+  };
+  assert.deepEqual(
+    resolveOptimizedBulletSourceIds(role, [
+      { id: "b1", evidence: ["b1", "b2"] },
+      { id: "b2", evidence: ["b2"] },
+      { id: "b3", evidence: ["b3", "b1"] },
+    ]),
+    ["b1", "b2", "b3"],
+  );
+  // Renamed ids fall back to the first cited source bullet, then position;
+  // a source bullet is claimed at most once.
+  assert.deepEqual(
+    resolveOptimizedBulletSourceIds(role, [
+      { id: "x1", evidence: ["b3", "b1"] },
+      { id: "x2", evidence: [] },
+      { id: "x3", evidence: ["b3"] },
+    ]),
+    ["b3", "b2", null],
+  );
 });
 
 test("summary-like header spillover is removed from contact fields", () => {
