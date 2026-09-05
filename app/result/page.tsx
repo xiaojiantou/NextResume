@@ -104,6 +104,19 @@ const REWRITE_PROGRESS_STAGES = [
 
 const REWRITE_STAGE_MS = 5_000;
 
+// Nearly all of the wait is the model generating the rewrite (60-90s on a
+// slow model, up to three correction rounds). The checks and scoring after it
+// are deterministic and finish in seconds. The bar therefore stops advancing
+// on the rewrite stage and shows elapsed time there — parking it on "Scoring
+// the result" made an instant step look like the bottleneck.
+const REWRITE_HOLD_STAGE = 2;
+
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 // A platform-level failure (gateway timeout, crashed function) answers with an
 // HTML body, so `data.error` is undefined and the user used to get a bare
 // "Optimization failed" with nothing to act on. Name the failure by status.
@@ -257,6 +270,7 @@ function ResultPageInner() {
   const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [hydrating, setHydrating] = useState(false);
   const [rewriteStage, setRewriteStage] = useState(0);
+  const [rewriteElapsed, setRewriteElapsed] = useState(0);
 
   const ran = useRef(false);
   const personalizeRan = useRef(false);
@@ -926,19 +940,26 @@ function ResultPageInner() {
   // Runs alongside runOptimize (not blocking it) — the personalized style
   // takes far longer than the fixed templates, so it shouldn't hold up the
   // rest of the page. Only fires once per resume, at most.
-  // Advance the rewrite stages while that screen is up, holding on the last
-  // one until the request resolves.
+  // Advance the rewrite stages while that screen is up, holding on the
+  // model-bound stage until the request resolves, and count elapsed time so
+  // the wait reads as progress rather than a hang.
   useEffect(() => {
     if (!rewriting) {
       setRewriteStage(0);
+      setRewriteElapsed(0);
       return;
     }
-    const timer = window.setInterval(() => {
-      setRewriteStage((stage) =>
-        Math.min(stage + 1, REWRITE_PROGRESS_STAGES.length - 1),
-      );
+    const startedAt = Date.now();
+    const stageTimer = window.setInterval(() => {
+      setRewriteStage((stage) => Math.min(stage + 1, REWRITE_HOLD_STAGE));
     }, REWRITE_STAGE_MS);
-    return () => window.clearInterval(timer);
+    const elapsedTimer = window.setInterval(() => {
+      setRewriteElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1_000);
+    return () => {
+      window.clearInterval(stageTimer);
+      window.clearInterval(elapsedTimer);
+    };
   }, [rewriting]);
 
   useEffect(() => {
@@ -1302,8 +1323,18 @@ function ResultPageInner() {
                 <span className="text-ink-300 tabular-nums">
                   {" · "}
                   {rewriteStage + 1}/{REWRITE_PROGRESS_STAGES.length}
+                  {rewriteStage === REWRITE_HOLD_STAGE && (
+                    <> · {formatElapsed(rewriteElapsed)}</>
+                  )}
                 </span>
               </div>
+              {rewriteStage === REWRITE_HOLD_STAGE && (
+                <p className="mt-3 text-xs text-ink-400 max-w-xs mx-auto">
+                  This is the slow part: the model writes the whole resume in
+                  one pass, which can take a few minutes. The remaining checks
+                  and scoring finish in seconds.
+                </p>
+              )}
             </div>
 
           </div>
