@@ -1,5 +1,6 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import { Fragment } from "react";
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import { ContactText, contactEntries } from "./ContactLine";
 import type { Optimization, Resume, ResumePageSpec } from "@/lib/types";
@@ -103,14 +104,6 @@ function createStyles(
       fontSize: body(),
       color: palette.text,
       lineHeight: lh(1.5),
-    },
-    experienceGroup: { marginTop: px(10) },
-    experienceGroupLabel: {
-      fontSize: fs(8.4),
-      fontFamily: "Helvetica-Bold",
-      color: palette.accent,
-      marginBottom: px(2),
-      textTransform: "uppercase",
     },
     roleBlock: { marginTop: px(12) },
     roleHeader: {
@@ -300,23 +293,16 @@ export function ResumePdfMinimal({
       {block.teams?.map(renderTeam)}
     </View>
   );
-  const renderExperienceContent = () =>
+  // Each source employment heading ("Professional Experience", "Earlier
+  // Experience") is a peer section, not a sub-label inside one.
+  const experienceSections =
     experienceGroups.length > 0
-      ? experienceGroups.map((group) => (
-          <View key={group.id} style={styles.experienceGroup}>
-            {group.title ? (
-              <Text
-                style={styles.experienceGroupLabel}
-                wrap={false}
-                minPresenceAhead={48}
-              >
-                {group.title}
-              </Text>
-            ) : null}
-            {group.blocks.map(renderBlock)}
-          </View>
-        ))
-      : experience.map(renderBlock);
+      ? experienceGroups.map((group) => ({
+          key: group.id,
+          label: group.title || labels.experience,
+          blocks: group.blocks,
+        }))
+      : [{ key: "experience", label: labels.experience, blocks: experience }];
   const renderSection = (ref: (typeof sectionOrder)[number]) => {
     if (ref === "summary") {
       return summary ? (
@@ -361,14 +347,21 @@ export function ResumePdfMinimal({
       ) : null;
     }
     if (ref === "experience" || ref === "projects") {
-      const blocks = ref === "experience" ? experience : projects;
-      return blocks.length > 0 ? (
-        <View key={ref} style={styles.section}>
-          <Text style={styles.sectionTag} minPresenceAhead={48}>{labels[ref]}</Text>
-          {ref === "experience"
-            ? renderExperienceContent()
-            : blocks.map(renderBlock)}
-        </View>
+      const sections =
+        ref === "experience"
+          ? experienceSections
+          : [{ key: ref, label: labels.projects, blocks: projects }];
+      return sections.some((section) => section.blocks.length > 0) ? (
+        <Fragment key={ref}>
+          {sections.map((section) => (
+            <View key={section.key} style={styles.section}>
+              <Text style={styles.sectionTag} minPresenceAhead={48}>
+                {section.label}
+              </Text>
+              {section.blocks.map(renderBlock)}
+            </View>
+          ))}
+        </Fragment>
       ) : null;
     }
     if (ref === "education") {

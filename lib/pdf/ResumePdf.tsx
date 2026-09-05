@@ -1,5 +1,6 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import { Fragment } from "react";
 import {
   Document,
   Page,
@@ -103,14 +104,6 @@ function createStyles(
       borderBottomColor: palette.border,
     },
     section: { marginTop: px(16) },
-    experienceGroup: { marginTop: px(9) },
-    experienceGroupLabel: {
-      fontSize: fs(8.7),
-      fontFamily: "Helvetica-Bold",
-      color: palette.accent,
-      textTransform: "uppercase",
-      marginBottom: px(2),
-    },
     summary: { fontSize: body(), color: palette.text, lineHeight: lh(1.5) },
     skills: {
       fontSize: body(),
@@ -334,23 +327,16 @@ export function ResumePdf({
       {role.teams?.map(renderTeam)}
     </View>
   );
-  const renderExperienceContent = () =>
+  // Each source employment heading ("Professional Experience", "Earlier
+  // Experience") is a peer section, not a sub-label inside one.
+  const experienceSections =
     experienceGroups.length > 0
-      ? experienceGroups.map((group) => (
-          <View key={group.id} style={styles.experienceGroup}>
-            {group.title ? (
-              <Text
-                style={styles.experienceGroupLabel}
-                wrap={false}
-                minPresenceAhead={48}
-              >
-                {group.title}
-              </Text>
-            ) : null}
-            {group.blocks.map(renderExperienceRole)}
-          </View>
-        ))
-      : experience.map(renderExperienceRole);
+      ? experienceGroups.map((group) => ({
+          key: group.id,
+          label: group.title || labels.experience,
+          blocks: group.blocks,
+        }))
+      : [{ key: "experience", label: labels.experience, blocks: experience }];
   const renderSection = (ref: (typeof sectionOrder)[number]) => {
     if (ref === "summary") {
       return summary ? (
@@ -386,10 +372,16 @@ export function ResumePdf({
     }
     if (ref === "experience") {
       return experience.length > 0 ? (
-        <View key={ref} style={styles.section}>
-          <Text style={styles.sectionLabel} minPresenceAhead={48}>{labels.experience}</Text>
-          {renderExperienceContent()}
-        </View>
+        <Fragment key={ref}>
+          {experienceSections.map((section) => (
+            <View key={section.key} style={styles.section}>
+              <Text style={styles.sectionLabel} minPresenceAhead={48}>
+                {section.label}
+              </Text>
+              {section.blocks.map(renderExperienceRole)}
+            </View>
+          ))}
+        </Fragment>
       ) : null;
     }
     if (ref === "projects") {

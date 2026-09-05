@@ -245,6 +245,96 @@ function experienceGroups(value: unknown): ResumeExperienceGroup[] {
     .filter((group) => group.title && group.roleIds.length > 0);
 }
 
+const EXPERIENCE_HEADING = new RegExp(
+  "^(?:[A-Za-z&/,-]+\\s+){0,3}(?:experience|employment|internships?|history)\\s*:?$",
+  "i",
+);
+
+const normalizedText = (value: string) =>
+  value.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * The model is asked to report multiple employment headings ("Professional
+ * Experience" followed by "Earlier Experience") as experienceGroups, but it
+ * often flattens them into one list. The headings are still visible in the
+ * source text, so locate them there and file each role under the last heading
+ * that precedes its company name. Only replaces what the model returned when
+ * the text shows more headings than the model did.
+ */
+export function recoverExperienceGroupsFromText(
+  resume: Resume,
+  sourceText: string,
+): Resume {
+  const lines = sourceText.split(/\r?\n/u);
+  const headings: Array<{ title: string; position: number }> = [];
+  let offset = 0;
+  const normalizedLines: string[] = [];
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const normalizedLine = normalizedText(line);
+    normalizedLines.push(normalizedLine);
+    if (
+      line.length > 0 &&
+      line.length <= 48 &&
+      !/\d/.test(line) &&
+      !/^[-–—•·▪◦*]/.test(line) &&
+      EXPERIENCE_HEADING.test(line)
+    ) {
+      headings.push({ title: line.replace(/:$/, "").trim(), position: offset });
+    }
+    offset += normalizedLine.length + 1;
+  }
+  if (headings.length < 2) return resume;
+
+  const haystack = normalizedLines.join("\n");
+  let cursor = 0;
+  const positions = resume.experience.map((role) => {
+    for (const needle of [role.company, role.title].map(normalizedText)) {
+      if (needle.length < 3) continue;
+      const found = haystack.indexOf(needle, cursor);
+      const index = found >= 0 ? found : haystack.indexOf(needle);
+      if (index >= 0) {
+        cursor = Math.max(cursor, index);
+        return index;
+      }
+    }
+    return -1;
+  });
+
+  const fallbackTitle = resume.sectionLabels?.experience ?? "Experience";
+  const buckets: Array<{ title: string; roleIds: string[] }> = [];
+  let previous: { title: string; roleIds: string[] } | null = null;
+  resume.experience.forEach((role, index) => {
+    const position = positions[index];
+    let title: string;
+    if (position < 0) {
+      title = previous?.title ?? fallbackTitle;
+    } else {
+      const heading = [...headings]
+        .reverse()
+        .find((candidate) => candidate.position < position);
+      title = heading?.title ?? fallbackTitle;
+    }
+    if (previous && normalizedText(previous.title) === normalizedText(title)) {
+      previous.roleIds.push(role.id);
+    } else {
+      previous = { title, roleIds: [role.id] };
+      buckets.push(previous);
+    }
+  });
+  if (buckets.length < 2 || buckets.length <= (resume.experienceGroups?.length ?? 0)) {
+    return resume;
+  }
+  return {
+    ...resume,
+    experienceGroups: buckets.map((bucket, index) => ({
+      id: `eg${index + 1}`,
+      title: bucket.title,
+      roleIds: bucket.roleIds,
+    })),
+  };
+}
+
 function projects(value: unknown): ResumeProject[] {
   return array(value).map((raw, index) => {
     const item = record(raw);

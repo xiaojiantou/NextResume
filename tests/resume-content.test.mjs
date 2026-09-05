@@ -4,6 +4,7 @@ import {
   attachResumeStructureMetadata,
   mergeParsedResumes,
   normalizeParsedResume,
+  recoverExperienceGroupsFromText,
   splitResumeText,
 } from "../lib/resumeParser.ts";
 import {
@@ -208,6 +209,61 @@ test("company teams keep their achievements grouped through resolution", () => {
     "Built reliable platform APIs.",
     "Improved platform API reliability.",
   ]);
+});
+
+test("employment headings the model flattened are recovered from the source text", () => {
+  const text = [
+    "Sharon Li",
+    "PROFESSIONAL EXPERIENCE",
+    "Howbe, LLC | Founder, CEO",
+    "July 2025 - Present",
+    "• Built things.",
+    "Acme Corp | Senior Engineer",
+    "2021 - 2025",
+    "• Shipped things.",
+    "Earlier Experience",
+    "Globex | Engineer",
+    "2018 - 2021",
+    "• Learned things.",
+    "Initech | Intern",
+    "2017",
+    "• Fetched coffee.",
+    "EDUCATION",
+    "State University",
+  ].join("\n");
+  const resume = normalizeParsedResume({
+    sectionLabels: { experience: "PROFESSIONAL EXPERIENCE" },
+    experience: [
+      { id: "r1", company: "Howbe, LLC", title: "Founder, CEO", bullets: [{ id: "b1", text: "Built things." }] },
+      { id: "r2", company: "Acme Corp", title: "Senior Engineer", bullets: [{ id: "b2", text: "Shipped things." }] },
+      { id: "r3", company: "Globex", title: "Engineer", bullets: [{ id: "b3", text: "Learned things." }] },
+      { id: "r4", company: "Initech", title: "Intern", bullets: [{ id: "b4", text: "Fetched coffee." }] },
+    ],
+  });
+  assert.deepEqual(resume.experienceGroups, []);
+
+  const recovered = recoverExperienceGroupsFromText(resume, text);
+  assert.deepEqual(recovered.experienceGroups, [
+    { id: "eg1", title: "PROFESSIONAL EXPERIENCE", roleIds: ["r1", "r2"] },
+    { id: "eg2", title: "Earlier Experience", roleIds: ["r3", "r4"] },
+  ]);
+
+  // A single employment heading is not a grouping — nothing changes.
+  const single = recoverExperienceGroupsFromText(
+    resume,
+    text.replace("Earlier Experience\n", ""),
+  );
+  assert.deepEqual(single.experienceGroups, []);
+
+  // Bullets mentioning "experience" and dated lines are not headings.
+  const noisy = recoverExperienceGroupsFromText(
+    resume,
+    text
+      .replace("Earlier Experience\n", "")
+      .replace("• Built things.", "• Built things with 5 years of experience")
+      .replace("• Shipped things.", "Experience 2019"),
+  );
+  assert.deepEqual(noisy.experienceGroups, []);
 });
 
 test("dated project headings flattened into a role's bullets become teams", () => {

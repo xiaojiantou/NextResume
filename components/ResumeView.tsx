@@ -268,16 +268,14 @@ export function ResumeView({
       )}
 
       {resume.experience.length > 0 && (
-      <section className="mt-5" style={{ order: sectionRank("experience", 30) }}>
-        <SectionLabel>{labels.experience}</SectionLabel>
+      experienceGroups.map((group) => (
+      <section
+        key={group.id}
+        className="mt-5"
+        style={{ order: sectionRank("experience", 30) }}
+      >
+        <SectionLabel>{group.title || labels.experience}</SectionLabel>
         <div className="space-y-5 mt-2">
-          {experienceGroups.map((group) => (
-            <div key={group.id} className="space-y-5">
-              {group.title ? (
-                <div className="font-sans text-[11px] font-semibold uppercase tracking-widest text-accent-700">
-                  {group.title}
-                </div>
-              ) : null}
               {group.roles.map((role) => {
             const optRole = optimization?.roles.find((o) => o.id === role.id);
             const directSourceBullets = role.bullets.filter(
@@ -418,10 +416,9 @@ export function ResumeView({
               </div>
             );
           })}
-            </div>
-          ))}
         </div>
       </section>
+      ))
       )}
 
       {resume.projects && resume.projects.length > 0 && (

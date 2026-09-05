@@ -42,6 +42,73 @@ export function EditableResumeCanvas({
 
   const skillContentId = (skill: string) =>
     `skill:${skill.trim().toLocaleLowerCase().replace(/\s+/g, " ")}`;
+  const skillKey = (skill: string) =>
+    skill.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
+  // The source's own categories are content the reader navigates by, so the
+  // editor shows them the way the resume does. Skills the categories never
+  // claimed (or that came from a resume without categories) follow unlabeled.
+  const skillSections = (() => {
+    const present = new Set(resume.skills.map(skillKey));
+    const claimed = new Set<string>();
+    const sections = (resume.skillGroups ?? [])
+      .map((group, index) => ({
+        key: `group-${index}`,
+        label: group.label,
+        skills: group.skills.filter((skill) => {
+          const key = skillKey(skill);
+          if (!present.has(key) || claimed.has(key)) return false;
+          claimed.add(key);
+          return true;
+        }),
+      }))
+      .filter((section) => section.skills.length > 0);
+    const unclaimed = resume.skills.filter(
+      (skill) => !claimed.has(skillKey(skill)),
+    );
+    if (sections.length === 0) {
+      return [{ key: "all", label: "", skills: resume.skills }];
+    }
+    return unclaimed.length > 0
+      ? [...sections, { key: "unclaimed", label: "", skills: unclaimed }]
+      : sections;
+  })();
+  const removeSkill = (skill: string) => {
+    const key = skillKey(skill);
+    onResumeChange({
+      ...resume,
+      skills: resume.skills.filter((candidate) => skillKey(candidate) !== key),
+      ...(resume.skillGroups
+        ? {
+            skillGroups: resume.skillGroups
+              .map((group) => ({
+                ...group,
+                skills: group.skills.filter(
+                  (candidate) => skillKey(candidate) !== key,
+                ),
+              }))
+              .filter((group) => group.skills.length > 0),
+          }
+        : {}),
+    });
+  };
+  const addSkill = (skill: string, groupLabel: string) => {
+    if (resume.skills.some((candidate) => skillKey(candidate) === skillKey(skill))) {
+      return;
+    }
+    onResumeChange({
+      ...resume,
+      skills: [...resume.skills, skill],
+      ...(groupLabel && resume.skillGroups
+        ? {
+            skillGroups: resume.skillGroups.map((group) =>
+              group.label === groupLabel
+                ? { ...group, skills: [...group.skills, skill] }
+                : group,
+            ),
+          }
+        : {}),
+    });
+  };
 
   const KeepButton = ({
     contentId,
@@ -395,57 +462,61 @@ export function EditableResumeCanvas({
       {/* Skills */}
       <div className="card p-6">
         <h3 className="text-sm font-semibold text-ink-900 mb-4">Skills</h3>
-        <div className="flex flex-wrap gap-2">
-          {resume.skills.map((skill, idx) => (
-            <div
-              key={`${skill}-${idx}`}
-              className="inline-flex min-h-11 items-center rounded-full border border-ink-200 bg-ink-50 pl-3 text-sm font-sans text-ink-900 transition hover:border-ink-300 hover:bg-white"
-            >
-              <span className="py-2">{skill}</span>
-              <KeepButton contentId={skillContentId(skill)} compact />
-              <button
-                type="button"
-                aria-label={`Remove ${skill}`}
-                onClick={() => {
-                  const updated = resume.skills.filter((_, i) => i !== idx);
-                  onResumeChange({ ...resume, skills: updated });
-                }}
-                className="grid min-h-11 min-w-11 place-items-center rounded-full text-ink-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
-              >
-                <X size={14} />
-              </button>
+        <div className="space-y-4">
+          {skillSections.map((section) => (
+            <div key={section.key}>
+              {section.label ? (
+                <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-ink-500">
+                  {section.label}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                {section.skills.map((skill, idx) => (
+                  <div
+                    key={`${skill}-${idx}`}
+                    className="inline-flex min-h-11 items-center rounded-full border border-ink-200 bg-ink-50 pl-3 text-sm font-sans text-ink-900 transition hover:border-ink-300 hover:bg-white"
+                  >
+                    <span className="py-2">{skill}</span>
+                    <KeepButton contentId={skillContentId(skill)} compact />
+                    <button
+                      type="button"
+                      aria-label={`Remove ${skill}`}
+                      onClick={() => removeSkill(skill)}
+                      className="grid min-h-11 min-w-11 place-items-center rounded-full text-ink-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newSkill = prompt(
+                      section.label
+                        ? `Add a skill under "${section.label}":`
+                        : "Add new skill:",
+                    )?.trim();
+                    if (newSkill) addSkill(newSkill, section.label);
+                  }}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-dashed border-ink-300 px-4 text-sm font-medium text-ink-600 transition hover:border-accent-400 hover:bg-accent-50 hover:text-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+                >
+                  <Plus size={14} /> Add Skill
+                </button>
+              </div>
             </div>
           ))}
-          <button
-            type="button"
-            onClick={() => {
-              const newSkill = prompt("Add new skill:");
-              if (newSkill) {
-                onResumeChange({
-                  ...resume,
-                  skills: [...resume.skills, newSkill],
-                });
-              }
-            }}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-dashed border-ink-300 px-4 text-sm font-medium text-ink-600 transition hover:border-accent-400 hover:bg-accent-50 hover:text-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
-          >
-            <Plus size={14} /> Add Skill
-          </button>
         </div>
       </div>
 
       {/* Experience */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-ink-900">Experience</h3>
-        </div>
+      <div className="space-y-6">
         {experienceGroups.map((group) => (
           <div key={group.id} className="space-y-4">
-            {group.title ? (
-              <div className="text-xs font-semibold uppercase tracking-widest text-accent-700">
-                {group.title}
-              </div>
-            ) : null}
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink-900">
+                {group.title || "Experience"}
+              </h3>
+            </div>
             {group.roles.map((role) => (
           <div key={role.id} className="card p-6 border-l-4 border-l-accent-500">
             <div className="mb-3 flex justify-end">

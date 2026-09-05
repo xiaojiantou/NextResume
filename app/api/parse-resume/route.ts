@@ -8,6 +8,7 @@ import { extractPdfLayout, needsVisualColumnCheck } from "@/lib/pdfLayout";
 import {
   mergeParsedResumes,
   normalizeParsedResume,
+  recoverExperienceGroupsFromText,
   splitResumeText,
   attachResumeStructureMetadata,
 } from "@/lib/resumeParser";
@@ -260,7 +261,7 @@ export async function POST(req: NextRequest) {
       parsed.push(...results);
     }
     const resume = attachResumeStructureMetadata({
-      resume: mergeParsedResumes(parsed),
+      resume: recoverExperienceGroupsFromText(mergeParsedResumes(parsed), text),
       sourceText: text,
       layout,
       visualGuide,
