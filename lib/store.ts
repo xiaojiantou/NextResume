@@ -161,6 +161,7 @@ type Actions = {
   clearFitVariantsForStyle: (style: PdfStyle) => void;
 
   setEvidenceAnswer: (bulletId: string, question: string, answer: string, sourceText?: string) => void;
+  removeConfirmedEstimate: (bulletId: string, metric: ConfirmedEstimate["metric"]) => void;
   setConfirmedEstimate: (bulletId: string, sourceText: string, question: string, estimate: ConfirmedEstimate) => void;
   incrementVoiceCount: () => void;
 
@@ -226,13 +227,23 @@ export const useFlow = create<State & Actions>()(
         evidenceAnswers: { ...state.evidenceAnswers, [bulletId]: {
           ...state.evidenceAnswers[bulletId], question, answer: answer.slice(0, 3000), sourceText,
           estimates: state.evidenceAnswers[bulletId]?.sourceText === sourceText ? state.evidenceAnswers[bulletId]?.estimates : [],
+          removedEstimates: state.evidenceAnswers[bulletId]?.sourceText === sourceText ? state.evidenceAnswers[bulletId]?.removedEstimates : [],
         } },
       })),
+      removeConfirmedEstimate: (bulletId, metric) => set(state => {
+        const previous = state.evidenceAnswers[bulletId];
+        if (!previous) return {};
+        return { evidenceAnswers: { ...state.evidenceAnswers, [bulletId]: {
+          ...previous, estimates: (previous.estimates ?? []).filter(estimate => estimate.metric !== metric),
+          removedEstimates: [...new Set([...(previous.removedEstimates ?? []), metric])],
+        } } };
+      }),
       setConfirmedEstimate: (bulletId, sourceText, question, estimate) => set((state) => {
         const previous = state.evidenceAnswers[bulletId];
         const sameSource = previous?.sourceText === sourceText;
         return { evidenceAnswers: { ...state.evidenceAnswers, [bulletId]: {
           question, sourceText, answer: sameSource ? previous.answer : "",
+          removedEstimates: (sameSource ? previous.removedEstimates ?? [] : []).filter(metric => metric !== estimate.metric),
           estimates: [...(sameSource ? previous.estimates ?? [] : []).filter(item => item.metric !== estimate.metric), estimate],
         } } };
       }),

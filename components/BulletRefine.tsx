@@ -101,7 +101,7 @@ export function BulletRefine({
   onQuotaConsume: () => void;
   onClose: () => void;
 }) {
-  const { evidenceAnswers, setEvidenceAnswer, setConfirmedEstimate } = useFlow();
+  const { evidenceAnswers, setEvidenceAnswer, setConfirmedEstimate, removeConfirmedEstimate } = useFlow();
   const storedAnswer = evidenceAnswers[bullet.id];
   const savedAnswer = !storedAnswer?.sourceText || storedAnswer.sourceText === (sourceText || bullet.text) ? storedAnswer : undefined;
   const confirmedEstimates = savedAnswer?.estimates ?? [];
@@ -198,7 +198,8 @@ export function BulletRefine({
         headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
         body: JSON.stringify({
           instruction: instruction.trim() || "Strengthen this bullet using the confirmed evidence.",
-          confirmedEvidence: { sourceText: sourceText || bullet.text, notes: answer, estimates: confirmedEstimates },
+          priorEvidence: suggested?.evidenceLedger ?? bullet.evidenceLedger,
+          confirmedEvidence: { sourceText: sourceText || bullet.text, notes: answer, estimates: confirmedEstimates, removedEstimates: savedAnswer?.removedEstimates },
           // Refine from the version on screen, not always the original.
           current: suggested?.text ?? bullet.text,
           originalBullet: sourceText || bullet.text,
@@ -214,7 +215,7 @@ export function BulletRefine({
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Rewrite failed");
       setTurns((prev) => {
-        const next = [...prev, { instruction: text, bullet: data.bullet }];
+        const next = [...prev, { instruction: instruction.trim() || "Strengthen this bullet using the confirmed evidence.", bullet: data.bullet }];
         setShown(next.length - 1);
         return next;
       });
@@ -372,7 +373,13 @@ export function BulletRefine({
 
       {confirmedEstimates.length > 0 && (
         <div className="mt-3 text-xs text-ink-600">
-          {confirmedEstimates.map(estimate => <p key={estimate.metric}>Confirmed estimate: {estimate.description}</p>)}
+          {confirmedEstimates.map(estimate => <div key={estimate.metric} className="flex items-start justify-between gap-2">
+            <p>Confirmed estimate: {estimate.description}</p>
+            <button type="button" className="text-ink-500 underline" onClick={() => {
+              removeConfirmedEstimate(bullet.id, estimate.metric);
+              setInstruction(current => [current, `Remove the previous ${IMPACT_METRICS[estimate.metric].label.toLowerCase()} estimate; I no longer want to claim it.`].filter(Boolean).join("\n"));
+            }}>Remove</button>
+          </div>)}
         </div>
       )}
 

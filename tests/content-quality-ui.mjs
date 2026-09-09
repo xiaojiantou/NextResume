@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { DEFAULT_MODEL_ID } from '../lib/models.ts';
+import { refinementEvidenceLedger, normalizePriorEvidence } from '../lib/evidenceLedger.ts';
 const resume = JSON.parse(readFileSync('eval/resumes/example-platform.json', 'utf8'));
 const bullet = resume.experience[0].bullets[0];
 const optimization = {
@@ -18,6 +19,7 @@ try {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   let submitted;
+  let rejectNext = true;
   await page.setRequestInterception(true);
   page.on('request', request => {
     if (request.url().includes('/api/')) {
@@ -25,7 +27,13 @@ try {
         void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ snapshot: state, order: { status: 'paid' } }) });
       } else if (request.url().includes('/api/refine-bullet')) {
         submitted = JSON.parse(request.postData());
-        void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ bullet: { ...bullet, text: 'Built the routing service and its validation checks.', evidence: [bullet.id, 'voice-transcript'], matchedKeywords: [], rationale: 'Includes the confirmed contribution.' } }) });
+        if (rejectNext) {
+          rejectNext = false;
+          void request.respond({ status: 422, contentType: 'application/json', body: JSON.stringify({ error: 'This rewrite needs a correction: Keep approximate wording. Your current bullet is unchanged.' }) });
+          return;
+        }
+        const evidenceLedger = refinementEvidenceLedger({ source: submitted.originalBullet, prior: normalizePriorEvidence(submitted.priorEvidence), notes: submitted.confirmedEvidence.notes, estimates: submitted.confirmedEvidence.estimates, instructions: [submitted.instruction], now: '2026-09-09T12:00:00Z' });
+        void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ bullet: { ...bullet, text: 'Built the routing service and its validation checks.', evidenceLedger, evidence: [bullet.id, 'voice-transcript'], matchedKeywords: [], rationale: 'Includes the confirmed contribution.' } }) });
       } else void request.respond({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'API mocked for UI test' }) });
     } else void request.continue();
   });
@@ -58,6 +66,10 @@ try {
   await page.evaluate(() => [...document.querySelectorAll('label')].find(el => el.textContent.includes('I confirm these inputs')).querySelector('input').click());
   await clickText('Use confirmed estimate');
   await clickText('Rewrite');
+  await page.waitForFunction(() => document.body.innerText.includes('This rewrite needs a correction:'));
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Use this bullet')), false);
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('nextresume-flow')).state.optimization.roles[0].bullets[0].text), bullet.text);
+  await clickText('Rewrite');
   await page.waitForFunction(() => document.body.innerText.includes('Includes the confirmed contribution.'));
   assert.match(submitted.confirmedEvidence.notes, /I implemented the routing logic and validation checks/);
   assert.equal(submitted.originalBulletId, bullet.id);
@@ -72,8 +84,17 @@ try {
   assert.equal(accepted.decisionHistory.at(-1).action, 'accept');
   assert.match(saved.evidenceAnswers[bullet.id].answer, /I implemented the routing logic and validation checks/);
   assert.equal(saved.evidenceAnswers[bullet.id].estimates[0].value, 30);
+  assert.ok(accepted.evidenceLedger.some(record => record.kind === 'instruction'));
+  await clickText('Refine');
+  await clickText('Remove');
+  await clickText('Rewrite');
+  await page.waitForFunction(() => document.body.innerText.includes('Includes the confirmed contribution.'));
+  assert.match(submitted.instruction, /Remove the previous/);
+  assert.equal(submitted.confirmedEvidence.estimates.length, 0);
+  assert.deepEqual(submitted.confirmedEvidence.removedEstimates, ['hours_saved']);
+  assert.ok(submitted.priorEvidence.some(record => record.kind === 'confirmed_estimate'));
   await page.setViewport({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   assert.deepEqual(errors, []);
-  console.log('PASS: review labels, optional question, saved answer after reload, refinement payload, acceptance and lock, mobile width, no runtime errors.');
+  console.log('PASS: review rejection keeps current text, evidence persistence, acceptance and lock, reopened evidence replay, estimate removal correction, mobile width, no runtime errors.');
 } finally { await browser.close(); }
