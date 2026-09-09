@@ -8,7 +8,7 @@ const resume = JSON.parse(readFileSync('eval/resumes/example-platform.json', 'ut
 const bullet = resume.experience[0].bullets[0];
 const optimization = {
   title: resume.title, summary: resume.summary, skills: resume.skills,
-  roles: resume.experience.map(role => ({ id: role.id, bullets: role.bullets.map(b => ({ ...b, evidence: [b.id], matchedKeywords: [], rationale: 'Original retained.', contentReview: { text: b.text, sourceText: b.text, status: 'retained', reason: 'Preserves the specific result and method.', dimensions: [], ...(b.id === bullet.id ? { question: 'Which part of this work did you personally implement?' } : {}) } })) })),
+  roles: resume.experience.map(role => ({ id: role.id, bullets: role.bullets.map(b => ({ ...b, evidence: [b.id], matchedKeywords: [], rationale: 'Original retained.', contentReview: { text: b.text, sourceText: b.text, status: 'retained', reason: 'Preserves the specific result and method.', dimensions: [], ...(b.id === bullet.id ? { question: 'Which part of this work did you personally implement?', impactMetrics: ['hours_saved'] } : {}) } })) })),
   projects: [], sectionOrder: ['summary','skills','experience','projects','education'], sectionLabels: { experience: 'Experience' }, structureMode: 'optimize',
 };
 const state = { resume, optimization, paid: true, selectedModel: DEFAULT_MODEL_ID, optimizationModel: DEFAULT_MODEL_ID, optimizationStructureMode: 'optimize', contentStructure: 'optimize', targetPages: 'auto', pdfStyle: 'classic', job: { title: 'Backend Engineer', requiredKeywords: [], niceToHaveKeywords: [], responsibilities: [], seniority: 'mid' }, report: { overallBefore: 70, overallAfter: 75, missingKeywords: [], presentKeywords: [], categoriesBefore: [], categoriesAfter: [] }, evidenceAnswers: {} };
@@ -48,17 +48,29 @@ try {
   await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent.startsWith('Add evidence:')).click());
   await page.waitForSelector(selector);
   assert.equal(await page.$eval(selector, el => el.value), 'I implemented the routing logic and validation checks.');
+  await page.evaluate(() => [...document.querySelectorAll('summary')].find(el => el.textContent.includes('Estimate impact:')).click());
+  for (const [label, value] of [['Minutes per task before', '60'], ['Minutes per task after', '15'], ['Runs per month', '40']]) {
+    const input = await page.evaluateHandle(label => [...document.querySelectorAll('label')].find(el => el.textContent.trim() === label).querySelector('input'), label);
+    await input.asElement().type(value);
+  }
+  await page.waitForFunction(() => document.body.innerText.includes('Approximately 30 hours saved per month'));
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Use confirmed estimate').disabled), true);
+  await page.evaluate(() => [...document.querySelectorAll('label')].find(el => el.textContent.includes('I confirm these inputs')).querySelector('input').click());
+  await clickText('Use confirmed estimate');
   await clickText('Rewrite');
   await page.waitForFunction(() => document.body.innerText.includes('Includes the confirmed contribution.'));
   assert.match(submitted.instruction, /I implemented the routing logic and validation checks/);
   assert.equal(submitted.originalBulletId, bullet.id);
+  assert.match(submitted.instruction, /Approximately 30 hours saved per month/);
+  assert.match(submitted.instruction, /do not present it as directly measured/);
   await clickText('Use this bullet');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('nextresume-flow')).state);
   const accepted = saved.optimization.roles[0].bullets[0];
   assert.equal(accepted.text, 'Built the routing service and its validation checks.');
   assert.ok(saved.lockedContentIds.includes(bullet.id));
   assert.equal(accepted.contentReview, undefined);
-  assert.equal(saved.evidenceAnswers[bullet.id].answer, 'I implemented the routing logic and validation checks.');
+  assert.match(saved.evidenceAnswers[bullet.id].answer, /I implemented the routing logic and validation checks/);
+  assert.match(saved.evidenceAnswers[bullet.id].answer, /Approximately 30 hours saved per month/);
   await page.setViewport({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   assert.deepEqual(errors, []);

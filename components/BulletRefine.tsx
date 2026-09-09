@@ -13,6 +13,8 @@ import {
   Square,
   X,
 } from "lucide-react";
+import { ImpactEstimator } from "@/components/ImpactEstimator";
+import { IMPACT_METRICS } from "@/lib/resumeImpact";
 import { cn } from "@/lib/cn";
 import { currentContentReview } from "@/lib/contentQuality";
 import { orderAuthHeaders, useFlow } from "@/lib/store";
@@ -101,7 +103,10 @@ export function BulletRefine({
 }) {
   const { evidenceAnswers, setEvidenceAnswer } = useFlow();
   const savedAnswer = evidenceAnswers[bullet.id];
-  const question = currentContentReview(bullet)?.question || savedAnswer?.question;
+  const review = currentContentReview(bullet);
+  const impactMetrics = review?.impactMetrics ?? [];
+  const question = review?.question || savedAnswer?.question ||
+    (impactMetrics[0] ? IMPACT_METRICS[impactMetrics[0]].question : undefined);
   const answer = savedAnswer?.answer || "";
   const [instruction, setInstruction] = useState("");
   const [recording, setRecording] = useState(false);
@@ -355,6 +360,13 @@ export function BulletRefine({
           </div>
         </div>
       )}
+
+      {!atTurnLimit && impactMetrics.map(metric => (
+        <ImpactEstimator key={metric} metric={metric} onConfirm={confirmedAnswer => {
+          const combined = [answer.trim(), confirmedAnswer].filter(Boolean).join("\n\n");
+          setEvidenceAnswer(bullet.id, question || IMPACT_METRICS[metric].question, combined);
+        }} />
+      ))}
 
       {question && !atTurnLimit && (
         <div className="mt-3 rounded-md bg-ink-50 p-3">

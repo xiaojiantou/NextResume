@@ -2591,10 +2591,10 @@ function BulletDiffRow({
                 {review.status === "improved" ? "Content improved" : review.status === "retained" ? "Original retained" : "Content review unavailable"}
               </span>
               <p className="mt-1">{review.reason}</p>
-              {review.question && (
+              {(review.question || review.impactMetrics?.length) && (
                 <button type="button" onClick={() => setRefining(true)} disabled={quotaExhausted}
                   className="mt-2 text-left font-medium text-accent-700 underline underline-offset-2 disabled:opacity-40">
-                  Add evidence: {review.question}
+                  Add evidence: {review.question || "Estimate or fill in relevant impact metrics"}
                 </button>
               )}
             </div>
@@ -2686,7 +2686,7 @@ function BulletDiff({
   const reviews = reviewedBullets.map(currentContentReview);
   const improvedCount = reviews.filter(review => review?.status === "improved").length;
   const retainedCount = reviews.filter(review => review?.status === "retained").length;
-  const needsEvidenceCount = reviews.filter(review => review?.question).length;
+  const needsEvidenceCount = reviews.filter(review => review?.question || review?.impactMetrics?.length).length;
   const unreviewedCount = reviews.filter(review => !review || review.status === "unreviewed").length;
 
   const rowProps = (
