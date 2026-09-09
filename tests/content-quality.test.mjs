@@ -1,0 +1,68 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { parseContentReviews, qualityPairs, selectReviewedContent, currentContentReview, reviewContentQuality } from '../lib/contentQuality.ts';
+const source = { experience: [{ id: 'r1', bullets: [{ id: 'b1', text: 'Assisted with weekly supplier reviews.' }] }], projects: [] };
+const candidate = { roles: [{ id: 'r1', bullets: [{ id: 'b1', text: 'Owned supplier strategy.', evidence: ['b1'], matchedKeywords: ['strategy'], rationale: 'Strong ownership' }] }], projects: [] };
+const pair = qualityPairs(source, candidate);
+test('lost detail or inflated ownership keeps the source and clears claimed keyword gains', () => {
+  const reviews = parseContentReviews({ reviews: [{ id: 'b1', decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Assistance does not establish ownership.', dimensions: [], question: 'What did you personally do during the reviews?' }] }, pair);
+  const result = selectReviewedContent(candidate, reviews).roles[0].bullets[0];
+  assert.equal(result.text, source.experience[0].bullets[0].text);
+  assert.deepEqual(result.matchedKeywords, []);
+  assert.equal(result.contentReview.status, 'retained');
+  assert.match(result.contentReview.question, /personally/);
+  assert.equal(currentContentReview({ ...result, text: 'Manual edit' }), undefined);
+});
+test('missing, duplicate and malformed review decisions cannot endorse output', () => {
+  for (const raw of [null, { reviews: [] }, { reviews: [{ id: 'b1', decision: 'improved', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'better', dimensions: [] }] }, { reviews: [{ id: 'b1' }, { id: 'b1' }] }]) {
+    const result = selectReviewedContent(candidate, parseContentReviews(raw, pair)).roles[0].bullets[0];
+    assert.equal(result.text, pair[0].source);
+    assert.equal(result.contentReview.status, 'unreviewed');
+  }
+});
+test('concrete improvement survives with its explanation; stale review never changes a new candidate', () => {
+  const reviews = parseContentReviews({ reviews: [{ id: 'b1', decision: 'improved', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Makes action clearer.', dimensions: ['clarity'] }] }, pair);
+  assert.equal(selectReviewedContent(candidate, reviews).roles[0].bullets[0].contentReview.status, 'improved');
+  const next = structuredClone(candidate); next.roles[0].bullets[0].text = 'Different text';
+  assert.equal(selectReviewedContent(next, reviews).roles[0].bullets[0].contentReview, undefined);
+});
+test('entry and bullet locks are excluded from quality replacement', () => {
+  assert.deepEqual(qualityPairs(source, candidate, ['r1']), []);
+  assert.deepEqual(qualityPairs(source, candidate, ['b1']), []);
+});
+test('reviewer outage keeps originals and reports unavailable rather than claiming improvement', async () => {
+  const reviews = await reviewContentQuality({ pairs: pair, job: {}, complete: async () => { throw new Error('offline'); } });
+  assert.equal(selectReviewedContent(candidate, reviews).roles[0].bullets[0].contentReview.status, 'unreviewed');
+});
+test('unchanged originals cannot be labeled improved even if the judge says so', () => {
+  const same = [{ ...pair[0], candidate: pair[0].source }];
+  const reviews = parseContentReviews({ reviews: [{ id: 'b1', decision: 'improved', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Clear.', dimensions: ['clarity'] }] }, same);
+  assert.equal(reviews.get('b1').status, 'retained');
+});
+
+test('factual audit overrides a contradictory improvement decision', () => {
+  for (const flag of ['supported', 'detailsPreserved', 'causalityPreserved']) {
+    const review = { id: 'b1', decision: 'improved', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'New outcome is not in the source.', dimensions: ['impact'], [flag]: false };
+    const result = selectReviewedContent(candidate, parseContentReviews({ reviews: [review] }, pair));
+    assert.equal(result.roles[0].bullets[0].text, pair[0].source);
+  }
+});
+
+test('long resumes use bounded batches and preserve reviews when another batch fails', async () => {
+  const pairs = Array.from({ length: 20 }, (_, i) => ({ id: `b${i}`, source: 'Original', candidate: 'Revised' }));
+  let active = 0, peak = 0;
+  const reviews = await reviewContentQuality({ pairs, job: {}, complete: async ({ user }) => {
+    const { bullets } = JSON.parse(user);
+    assert.ok(bullets.length <= 8);
+    active++; peak = Math.max(peak, active);
+    await new Promise(resolve => setTimeout(resolve, 5));
+    active--;
+    if (bullets.some(b => b.id === 'b8')) throw new Error('one batch failed');
+    return { reviews: bullets.map(b => ({ id: b.id, decision: 'improved', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Clarifies the action.', dimensions: ['clarity'] })) };
+  } });
+  assert.equal(peak, 2);
+  assert.equal(reviews.size, 20);
+  assert.equal(reviews.get('b0').status, 'improved');
+  assert.equal(reviews.get('b8').status, 'unreviewed');
+  assert.equal(reviews.get('b19').status, 'improved');
+});

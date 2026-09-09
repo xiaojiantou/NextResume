@@ -1,5 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import { CONTENT_WRITING_STANDARD } from "./contentQuality.ts";
+
 // The rewrite is generated one resume entry at a time, in parallel, instead
 // of as one whole-document completion. A single 7000-token generation took
 // 60-120s on the default model, and every validation miss regenerated the
@@ -59,11 +61,11 @@ const FACTUAL_INTEGRITY = `Hard rules — factual integrity:
 
 const WRITING_STYLE = `Hard rules — writing style:
 - Weave matched keywords into the factual claim itself — the tool used, the method applied, the thing built. NEVER append meta-commentary clauses such as "showcasing proficiency in X", "demonstrating expertise in Y", "highlighting Z", "proving ability to W". A bullet ends with a concrete outcome or fact, never with a comment about the candidate's skills.
-- Start bullets with verbs from this set first: Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered. Vary sentence structure across bullets.
+- Start with an accurate action verb supported by the source. Vary sentence structure without inflating ownership.
 - State a job keyword once where it is load-bearing; do not repeat the same term across several bullets — ATS keyword-stuffing filters flag that density.`;
 
 const KEYWORD_COVERAGE = `Hard rules — keyword coverage:
-- The ATS gaps list the job's missing keywords. Walk that list. For each one, ask whether this entry ALREADY demonstrates the same thing under different wording — "K8s" for Kubernetes, "REST endpoints" for API development, "on-call" for production support. Where it does, say it in the posting's wording instead of the candidate's. That is a naming change, not a new claim, and it is where most of the real gain lives.
+- The ATS gaps list the job's missing keywords. Walk that list. For each one, ask whether this entry ALREADY demonstrates the same thing under different wording — "K8s" for Kubernetes, "REST endpoints" for API development, "on-call" for production support. Where it does, say it in the posting's wording instead of the candidate's. This is a naming change, not a new claim. It is secondary to communicating the candidate's concrete contribution and supported results.
 - Where the entry genuinely does not demonstrate a missing keyword, LEAVE IT OUT. An honest gap costs the candidate far less than a fabricated match.`;
 
 const BULLET_SCHEMA = `{ "id": string, "text": string, "evidence": string[], "matchedKeywords": string[], "rationale": string }`;
@@ -89,9 +91,11 @@ ${FACTUAL_INTEGRITY}
 
 ${WRITING_STYLE}
 
+${CONTENT_WRITING_STANDARD}
+
 ${KEYWORD_COVERAGE}`;
 
-const ENTRY_PRESERVE_SYSTEM = `You rewrite the achievements of ONE entry from a candidate's resume for a target job while preserving the source content exactly.
+const ENTRY_PRESERVE_SYSTEM = `You rewrite the achievements of ONE entry from a candidate's resume for a target job while preserving all source facts and structure. Improve the wording substantially when the evidence supports it.
 
 Output ONLY valid JSON matching this schema:
 
@@ -105,10 +109,11 @@ Non-negotiable rules:
 - The entry may include "teams" that group achievements inside the same company. Treat team names as source context only. Do not output "teams"; return every team achievement in the flat "bullets" list using the same bullet id.
 - Never alter or infer companies, job titles, project names, dates, locations, metrics, tools, or results.
 - Every number in a rewrite must already appear in that same source bullet.
+${CONTENT_WRITING_STANDARD}
 - Use concise, natural English. Keep each bullet non-empty and improve relevance only within its own evidence.
 - Weave job keywords into the factual claim itself; never append meta-commentary such as "showcasing proficiency in X".`;
 
-const ADDITIONAL_PRESERVE_SYSTEM = `You rewrite the bullets of ONE additional resume section (awards, certifications, publications, volunteering, or similar) for a target job while preserving the source content exactly.
+const ADDITIONAL_PRESERVE_SYSTEM = `You rewrite the bullets of ONE additional resume section (awards, certifications, publications, volunteering, or similar) for a target job while preserving all source facts and structure. Improve the wording substantially when the evidence supports it.
 
 Output ONLY valid JSON matching this schema:
 
@@ -153,6 +158,7 @@ Output ONLY valid JSON matching this schema:
 }
 
 Hard rules — headline, skills, and summary:
+- Position the candidate using their strongest documented role-relevant contribution, method, or result. Prefer specific evidence over generic adjectives such as "results-driven" or "passionate". Do not overstate seniority, ownership, or achieved impact.
 - "title" is the headline that sits under the candidate's name. It is the field recruiters filter an ATS on, so it must speak to THIS posting, not to the candidate's last job. Set it to the posting's exact job title when the candidate's experience supports that role. If the posting's seniority would overstate them, keep the posting's role words and drop only the level ("Senior Backend Platform Engineer" -> "Backend Platform Engineer"). Never claim a specialization the resume does not evidence, and never put a company name in it.
 - "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
 - Return a skillEvidence entry ONLY for a skill you are ADDING — one whose words are not already in the input resume. An added skill must be a "capability", "domain" or "soft" skill, must cite 1-3 real source bullet ids in "evidence", and must explain the support in "rationale". A tool, framework, platform, credential or language can never be added — if the resume does not name it, it does not go in.
@@ -164,7 +170,7 @@ Hard rules — organization:
 - sectionOrder must contain every non-empty source section exactly once. Reorder sections to lead with the strongest evidence for the target role. Use additional:<id> for every source additional section.
 - Choose sectionLabels only from the exact allowed values in the schema. Use role-relevant conventional headings; do not invent headings.`;
 
-const GLOBAL_PRESERVE_SYSTEM = `You rewrite the headline, summary, and skills list of a resume for a target job while preserving the source content exactly. The achievement bullets are rewritten separately; you do not output them.
+const GLOBAL_PRESERVE_SYSTEM = `You rewrite the headline, summary, and skills list of a resume for a target job while preserving all source facts and structure. Improve the wording substantially when the evidence supports it. The achievement bullets are rewritten separately; you do not output them.
 
 Output ONLY valid JSON matching this schema:
 
