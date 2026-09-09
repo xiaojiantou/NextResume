@@ -14,7 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { orderAuthHeaders } from "@/lib/store";
+import { currentContentReview } from "@/lib/contentQuality";
+import { orderAuthHeaders, useFlow } from "@/lib/store";
 
 import type { JobAnalysis, OptimizedBullet } from "@/lib/types";
 
@@ -98,6 +99,10 @@ export function BulletRefine({
   onQuotaConsume: () => void;
   onClose: () => void;
 }) {
+  const { evidenceAnswers, setEvidenceAnswer } = useFlow();
+  const savedAnswer = evidenceAnswers[bullet.id];
+  const question = currentContentReview(bullet)?.question || savedAnswer?.question;
+  const answer = savedAnswer?.answer || "";
   const [instruction, setInstruction] = useState("");
   const [recording, setRecording] = useState(false);
   const [lang, setLang] = useState<DictationLang>("en-US");
@@ -172,7 +177,10 @@ export function BulletRefine({
   };
 
   const submit = async () => {
-    const text = instruction.trim();
+    const text = [
+      answer.trim() ? `Additional facts I confirm about this work:\nQuestion: ${question}\nMy answer: ${answer.trim()}` : "",
+      instruction.trim() || (answer.trim() ? "Strengthen this bullet using these facts and the original evidence." : ""),
+    ].filter(Boolean).join("\n\n");
     if (!text || processing) return;
     stopRecording();
     setProcessing(true);
@@ -348,6 +356,24 @@ export function BulletRefine({
         </div>
       )}
 
+      {question && !atTurnLimit && (
+        <div className="mt-3 rounded-md bg-ink-50 p-3">
+          <label htmlFor={`evidence-${bullet.id}`} className="block text-xs font-medium text-ink-800">
+            {question}
+          </label>
+          <p className="mt-1 text-xs text-ink-500">Optional. Add only details you know. Your answer is saved in this browser; review the suggestion before accepting it.</p>
+          <textarea
+            id={`evidence-${bullet.id}`}
+            value={answer}
+            onChange={(event) => setEvidenceAnswer(bullet.id, question, event.target.value)}
+            maxLength={3000}
+            rows={3}
+            className="mt-2 w-full rounded-md border border-ink-200 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-100"
+            placeholder="Your contribution, method, or observed result…"
+          />
+        </div>
+      )}
+
       {!atTurnLimit && (
         <div className="mt-2.5">
           <div className="relative">
@@ -405,7 +431,7 @@ export function BulletRefine({
             </span>
             <button
               onClick={submit}
-              disabled={processing || !instruction.trim()}
+              disabled={processing || (!instruction.trim() && !answer.trim())}
               className="btn btn-primary !py-1.5 !px-3 text-xs disabled:opacity-40"
             >
               {processing ? (
