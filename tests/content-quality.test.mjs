@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseContentReviews, qualityPairs, selectReviewedContent, currentContentReview, reviewContentQuality } from '../lib/contentQuality.ts';
+import { contentRevisionIssues, parseContentReviews, qualityPairs, selectReviewedContent, currentContentReview, reviewContentQuality } from '../lib/contentQuality.ts';
 const source = { experience: [{ id: 'r1', bullets: [{ id: 'b1', text: 'Assisted with weekly supplier reviews.' }] }], projects: [] };
 const candidate = { roles: [{ id: 'r1', bullets: [{ id: 'b1', text: 'Owned supplier strategy.', evidence: ['b1'], matchedKeywords: ['strategy'], rationale: 'Strong ownership' }] }], projects: [] };
 const pair = qualityPairs(source, candidate);
@@ -65,4 +65,28 @@ test('long resumes use bounded batches and preserve reviews when another batch f
   assert.equal(reviews.get('b0').status, 'improved');
   assert.equal(reviews.get('b8').status, 'unreviewed');
   assert.equal(reviews.get('b19').status, 'improved');
+});
+
+
+test('revision planning requires current evidence, a concrete direction, and an unused retry', () => {
+  const pair = { id: 'b1', source: 'Weak original', candidate: 'Weak original' };
+  const review = { text: pair.candidate, sourceText: pair.source, status: 'retained', reason: 'Task is buried.', dimensions: [], nextStep: 'revise', revisionInstruction: 'Lead with the documented task.' };
+  const plan = next => contentRevisionIssues([pair], new Map([['b1', next]]), new Set());
+  assert.equal(plan(review).length, 1);
+  assert.equal(plan({ ...review, sourceText: 'Different source' }).length, 0);
+  assert.equal(plan({ ...review, text: 'Different candidate' }).length, 0);
+  assert.equal(plan({ ...review, revisionInstruction: '' }).length, 0);
+  assert.equal(plan({ ...review, nextStep: 'ask' }).length, 0);
+  assert.equal(contentRevisionIssues([pair], new Map([['b1', review]]), new Set(['b1'])).length, 0);
+});
+
+
+test('a narrow grammar check catches unchanged explicit tasks the reviewer incorrectly calls strong', () => {
+  const source = 'I was responsible for the task of reviewing pull requests for the mobile team.';
+  const rows = { reviews: [{ id: 'b1', decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, dimensions: [], reason: 'Already strong.', nextStep: 'keep' }] };
+  const review = parseContentReviews(rows, [{ id: 'b1', source, candidate: source }]).get('b1');
+  assert.equal(review.nextStep, 'revise');
+  assert.match(review.revisionInstruction, /reviewing task/);
+  const generic = 'Responsible for sales.';
+  assert.equal(parseContentReviews(rows, [{ id: 'b1', source: generic, candidate: generic }]).get('b1').nextStep, 'keep');
 });

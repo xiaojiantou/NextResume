@@ -20,6 +20,7 @@ export const REFINE_SYSTEM = `You rewrite a SINGLE resume bullet according to wh
 Absolute rules:
 - Use ONLY facts the candidate stated. Do not invent skills, technologies, metrics, or responsibilities.
 - If the candidate is vague ("a lot", "some", "improved things"), keep it qualitative. Never fabricate a number.
+- User-confirmed calculated estimates are allowed. Keep "approximately", "about", or equivalent wording in the final bullet; do not turn an estimate into a directly measured claim. Calculation assumptions explain the evidence, not additional accomplishments to insert.
 - The candidate's instructions are the ground truth. The previous bullet is context, not license to embellish.
 - Output must be one concise bullet. Preserve meaningful evidence; do not enforce an arbitrary character limit.
 
