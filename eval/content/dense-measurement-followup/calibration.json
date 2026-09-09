@@ -1,0 +1,155 @@
+{
+  "at": "2026-09-09T20:30:18.448Z",
+  "model": "deepseek/deepseek-v3.2",
+  "disagreements": [],
+  "reviews": {
+    "dense-faithful-task-opening": {
+      "text": "Updated batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in a replay of the same document set, with the worker count and parser version held fixed.",
+      "sourceText": "I was responsible for updating batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in a replay of the same document set, with the worker count and parser version held fixed.",
+      "status": "improved",
+      "reason": "Removed the weak scaffolding 'I was responsible for' to foreground the actual action, improving clarity and contribution framing without losing any factual details or causal attribution.",
+      "dimensions": [
+        "clarity",
+        "contribution"
+      ],
+      "audit": {
+        "supported": true,
+        "detailsPreserved": true,
+        "causalityPreserved": true
+      },
+      "impactMetrics": [
+        "latency_reduction"
+      ],
+      "nextStep": "keep"
+    },
+    "dense-lost-comparison-set": {
+      "text": "Updated batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in replay tests, with the worker count and parser version held fixed.",
+      "sourceText": "I was responsible for updating batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in a replay of the same document set, with the worker count and parser version held fixed.",
+      "status": "retained",
+      "reason": "The candidate omits the specific condition 'the same document set', replacing it with the more generic 'replay tests'. This loses a key detail about the controlled testing environment, which is critical evidence for a performance engineer.",
+      "dimensions": [],
+      "audit": {
+        "supported": true,
+        "detailsPreserved": false,
+        "causalityPreserved": true
+      },
+      "impactMetrics": [
+        "latency_reduction"
+      ],
+      "nextStep": "revise",
+      "revisionInstruction": "Restore the precise comparison condition 'in a replay of the same document set' to preserve the integrity of the performance measurement."
+    },
+    "dense-lost-sample-denominator": {
+      "text": "Implemented receipt-field normalization, increasing strict field-check passes from 408 to 446 on the same manually labeled receipt set, using the same validation rules before and after.",
+      "sourceText": "Implemented receipt-field normalization; strict field-check passes increased from 408 to 446 on the same set of 480 manually labeled receipts, using the same validation rules before and after.",
+      "status": "retained",
+      "reason": "The candidate omits the sample size '480', which is the denominator for the '408 to 446' pass counts. This changes a precise measurement of improvement (38 more passes out of 480) into a less informative absolute increase.",
+      "dimensions": [],
+      "audit": {
+        "supported": true,
+        "detailsPreserved": false,
+        "causalityPreserved": true
+      },
+      "impactMetrics": [
+        "quality_points"
+      ],
+      "nextStep": "revise",
+      "revisionInstruction": "Reinsert the total sample size 'on the same set of 480 manually labeled receipts' to preserve the complete measurement context."
+    },
+    "dense-estimate-presented-as-measured": {
+      "text": "Automated weekly reconciliation checks, delivering a measured saving of 14 hours per month for the operations team.",
+      "sourceText": "Automated weekly reconciliation checks; the operations team estimated approximately 14 hours saved per month from remembered task durations, without a time-tracking study.",
+      "status": "retained",
+      "reason": "The candidate changes an 'estimated' saving based on 'remembered task durations' into a 'measured saving'. This fabricates a level of rigor not present in the source, which is unsupported.",
+      "dimensions": [],
+      "audit": {
+        "supported": false,
+        "detailsPreserved": false,
+        "causalityPreserved": true
+      },
+      "impactMetrics": [
+        "hours_saved"
+      ],
+      "nextStep": "revise",
+      "revisionInstruction": "Revert to the source's accurate description: 'the operations team estimated approximately 14 hours saved per month from remembered task durations, without a time-tracking study.'"
+    },
+    "dense-strong-measured-original": {
+      "text": "Maintained request monitoring and failure alerts for a translation assistant processing approximately 7 million input tokens and 2 million output tokens per month, based on gateway usage logs.",
+      "sourceText": "Maintained request monitoring and failure alerts for a translation assistant processing approximately 7 million input tokens and 2 million output tokens per month, based on gateway usage logs.",
+      "status": "retained",
+      "reason": "The candidate text is identical to the source, which is already strong, specific, and directly relevant to an AI platform engineer role. No improvement is needed.",
+      "dimensions": [],
+      "audit": {
+        "supported": true,
+        "detailsPreserved": true,
+        "causalityPreserved": true
+      },
+      "impactMetrics": [
+        "monthly_tokens"
+      ],
+      "nextStep": "keep"
+    },
+    "dense-qualitative-task-clarity": {
+      "text": "Documented the account recovery procedure in a shared guide that support staff used when handling locked accounts.",
+      "sourceText": "I was responsible for documenting the account recovery procedure in a shared guide that support staff used when handling locked accounts.",
+      "status": "improved",
+      "reason": "Removed the weak opening 'I was responsible for' to lead with the concrete action 'Documented', improving clarity and contribution framing. All other facts, including the purpose and user, are preserved.",
+      "dimensions": [
+        "clarity",
+        "contribution"
+      ],
+      "audit": {
+        "supported": true,
+        "detailsPreserved": true,
+        "causalityPreserved": true
+      },
+      "impactMetrics": [],
+      "nextStep": "keep"
+    },
+    "dense-preparatory-task-not-ownership": {
+      "text": "Owned queue configuration improvements and deployed the new settings with the platform lead after completing a test plan.",
+      "sourceText": "I was responsible for investigating possible queue settings with the platform lead and drafting a test plan; the proposed settings had not been deployed.",
+      "status": "retained",
+      "reason": "The candidate fabricates ownership ('Owned') and a completed deployment ('deployed the new settings'), neither of which is supported by the source. The source describes preparatory investigation and drafting a plan for settings that 'had not been deployed'.",
+      "dimensions": [],
+      "audit": {
+        "supported": false,
+        "detailsPreserved": false,
+        "causalityPreserved": false
+      },
+      "impactMetrics": [],
+      "nextStep": "revise",
+      "revisionInstruction": "Revert to the factual scope of the work: 'Investigated possible queue settings with the platform lead and drafted a test plan; the proposed settings had not been deployed.'"
+    },
+    "dense-input-output-volume-reassignment": {
+      "text": "Maintained usage dashboards for a writing assistant processing approximately 11 million output tokens and 4 million input tokens per month, as recorded by provider usage logs.",
+      "sourceText": "I was responsible for maintaining usage dashboards for a writing assistant processing approximately 11 million input tokens and 4 million output tokens per month, as recorded by provider usage logs.",
+      "status": "retained",
+      "reason": "The candidate swaps the input and output token volumes (11M output vs. 4M input), reversing the factual relationship stated in the source (11M input, 4M output). This is a loss of a key quantitative detail.",
+      "dimensions": [],
+      "audit": {
+        "supported": true,
+        "detailsPreserved": false,
+        "causalityPreserved": true
+      },
+      "impactMetrics": [
+        "monthly_tokens"
+      ],
+      "nextStep": "revise",
+      "revisionInstruction": "Correct the token volumes to match the source: 'processing approximately 11 million input tokens and 4 million output tokens per month'."
+    }
+  },
+  "calls": [
+    {
+      "phase": "review",
+      "ms": 31591,
+      "usage": {
+        "prompt_tokens": 2702,
+        "completion_tokens": 1233,
+        "total_tokens": 3935,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      }
+    }
+  ]
+}

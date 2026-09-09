@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "packetId": "7312e4a471570e892984cf31c71c8e23c5a8187f15f85470ab2da493e9bc67a3",
+  "runId": "a9d97e71-59ec-4950-8539-46aede00d25a",
+  "status": "pending_human_review",
+  "basis": "Self-attested human exports; reviewer identity is not independently verified. Model scores are excluded.",
+  "coverageRequirement": 2,
+  "reviewers": 0,
+  "ratings": 0,
+  "attemptedCases": 1,
+  "failedCases": [],
+  "overall": {
+    "cases": 1,
+    "attemptedCases": 1,
+    "failedCases": [],
+    "covered": 0,
+    "candidateWins": 0,
+    "sourceWins": 0,
+    "ties": 0,
+    "neither": 0,
+    "mixed": 0,
+    "decisiveComparisons": 0,
+    "decisiveCandidateWinRate": null,
+    "candidatePreferredShareOfCovered": null,
+    "candidateConcernRatings": 0
+  },
+  "byRole": {
+    "backend_ai_engineering": {
+      "cases": 1,
+      "attemptedCases": 1,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    }
+  },
+  "byEvidence": {
+    "measured": {
+      "cases": 1,
+      "attemptedCases": 1,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    }
+  },
+  "cases": [
+    {
+      "itemId": "3ee51747a525b5cf58d3ae5f",
+      "caseId": "dev-ai-inference-measured",
+      "roleFamily": "backend_ai_engineering",
+      "evidenceLevel": "measured",
+      "candidateSide": "B",
+      "sourceHash": "a94efc560abcfad37c7c4b3c788567fc9a0ef873fe50d05341b8137f1290ce0a",
+      "candidateHash": "8867ddc04907ca97792207f2486803079df7bc2f90795ef3d6276043d9a850f9",
+      "unchanged": false,
+      "reviews": 0,
+      "counts": {
+        "candidate": 0,
+        "source": 0,
+        "tie": 0,
+        "neither": 0
+      },
+      "consensus": "pending",
+      "candidateConcerns": 0,
+      "sourceConcerns": 0
+    }
+  ]
+}

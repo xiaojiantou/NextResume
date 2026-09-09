@@ -38,7 +38,7 @@ if (from) {
   process.loadEnvFile('.env.local');
   if (!process.env.NOVITA_API_KEY) throw new Error('NOVITA_API_KEY is required');
   const model = process.env.NOVITA_MODEL || DEFAULT_MODEL_ID;
-  const files = ['lib/optimizationHarness.ts', 'lib/numericRewriteFallback.ts', 'lib/contentQuality.ts', 'lib/optimizeChunks.ts', 'lib/optimizeContract.ts', 'lib/resumeStructure.ts', 'lib/semanticGrounding.ts', 'lib/resumeImpact.ts', 'scripts/eval-uplift.mjs', 'scripts/lib/uplift-evaluation.mjs'];
+  const files = ['lib/optimizationHarness.ts', 'lib/numericRewriteFallback.ts', 'lib/sourceTaskRewrite.ts', 'lib/harnessTrace.ts', 'lib/contentQuality.ts', 'lib/optimizeChunks.ts', 'lib/optimizeContract.ts', 'lib/resumeStructure.ts', 'lib/semanticGrounding.ts', 'lib/resumeImpact.ts', 'scripts/eval-uplift.mjs', 'scripts/lib/uplift-evaluation.mjs'];
   run = { version: 1, runId: randomUUID(), createdAt: new Date().toISOString(), status: 'running', comparison: 'source_vs_production', split, corpusHash: digest(corpus), codeRevision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), codeHashes: Object.fromEntries(files.map(file => [file, digest(readFileSync(file, 'utf8'))])), model, cases: [] };
   for (const c of selected) {
     const calls = [];

@@ -10,6 +10,8 @@ Content quality — improve the substance communicated, not just the vocabulary:
 - Remove weak scaffolding ("responsible for", "worked on", repetitive clauses) when the source states the actual task. Explicitly name that task without upgrading the candidate's responsibility. Do not retain awkward wording merely because it contains no factual errors.
 - Preserve facts and structure, not weak wording. Make the action, object, candidate contribution, and supported result easy to understand.
 - Lead with the strongest documented accomplishment when that improves readability. Keep tools, methods, scope, constraints, and results that distinguish the work.
+- Treat each measurement as a complete claim: value, unit, denominator, period/statistic, approximation, population, and comparison conditions. Preserve every stated condition independently. A fixed model, a fixed cache-hit mix, and the same replayed requests are three different conditions; "controlled testing" does not preserve them all.
+- For dense measured bullets with a weak opening, change the action framing first and leave the measurement clause intact. Do not compress away the evidence to make a shorter sentence. Keep before/after values and separate input/output quantities; do not calculate a percentage or combine volumes merely to make the result sound stronger.
 - Use an accurate action verb. Never turn "helped" or "assisted" into "led", "owned", or "architected" without explicit evidence of that responsibility.
 - Connect the method to its documented result. Never turn an intended benefit into an achieved outcome or transfer a metric to another action.
 - Explain reasonable qualitative value: a shared guide can support onboarding, and runbooks can support incident response. Do not turn a plausible benefit into a measured speedup or assert a completed outcome absent from the evidence.
@@ -37,7 +39,8 @@ Return exactly one review per supplied id.
 - "Used during onboarding" does NOT entail "accelerated ramp-up". "Added logging" does NOT entail "structured logging". "Reduced latency using caching; added logging for debugging" does NOT support "reduced latency by implementing caching and adding logging". Reject these even if they sound more specific or relevant.
 - Any false audit flag requires retain. Only then compare clarity, specificity, candidate contribution, supported impact, and job relevance. Require a concrete gain in at least one dimension and no material regression in another.
 - Choose retain for cosmetic edits, unchanged wording, lost meaningful details, inflated ownership, unsupported facts, or altered causal attribution. Already strong originals should be retained; never require all bullets to change.
-- Accept faithful paraphrases and concise restructuring that removes awkward wording while retaining meaning; this is a clarity gain, even without a new fact. Do not require exact words: "used to onboard new staff" preserves "new staff used it during onboarding". Before calling a detail lost, check whether the candidate expresses it with equivalent wording.
+- Accept faithful paraphrases and concise restructuring that removes awkward wording while retaining meaning; this is a clarity gain, even without a new fact. Removing "I was responsible for [specific task]" in favor of that documented action is a concrete clarity/contribution gain even when the original already contains strong metrics. Do not call that change merely cosmetic if all evidence survives. Do not require exact words: "used to onboard new staff" preserves "new staff used it during onboarding". Before calling a detail lost, check whether the candidate expresses it with equivalent wording.
+- Audit measurement qualifiers separately: retaining the values or saying "controlled test" is insufficient if the source also names an identical request set, sample size, fixed mix, unit denominator, period, or approximation that disappears. detailsPreserved=false for an omitted condition. An otherwise clearer opening does not compensate for that loss.
 - The reason must cite the concrete difference, not generic praise. For retain, explain what the original preserves or what evidence is missing.
 - dimensions lists only actual improvements; use [] for retain.
 - Distinguish an already strong original from an unchanged weak original. An unchanged bullet is not automatically good. nextStep="revise" when the existing source supports a concrete wording improvement; give a specific revisionInstruction using only that source (what to lead with, clarify, or connect). Do not supply a generic instruction such as "make stronger". nextStep="ask" when missing facts prevent a meaningful improvement; ask one focused question. nextStep="keep" for already strong originals and accepted improvements. An improved bullet may still have an optional evidence question.
@@ -70,13 +73,14 @@ export function qualityPairs(resume: Resume, candidate: Optimization, locked: st
     .map(b => ({ id: b.id, source: source.get(b.id)!, candidate: b.text }));
 }
 
-/** A narrow grammar check catches a reviewer blind spot: explicit writing /
- * testing tasks hidden behind responsibility scaffolding need no new facts.
- * Generic responsibilities ("responsible for sales") deliberately do not match. */
+/** Source-based direction for a bounded retry, never an automatic endorsement.
+ * A documented task can be stated directly while its measurement stays intact.
+ * Generic responsibility, assistance and future work do not establish execution. */
 export function explicitTaskRevision(source: string): string | undefined {
-  const match = source.trim().match(/^(?:I\s+(?:was|am)\s+|(?:was|am)\s+)?responsible for (?:the task of )?(writing|maintaining|documenting|testing|reviewing|updating)\s+(.+)/i);
+  if (/\b(?:not (?:yet )?(?:implemented|completed|started|built)|would|will|planned|planning|proposed|proposal|scheduled|next (?:quarter|year|month)|future)\b/i.test(source)) return undefined;
+  const match = source.trim().match(/^(?:I\s+(?:was|am)\s+|(?:was|am)\s+)?responsible for (?:the task of )?(writing|maintaining|documenting|testing|reviewing|updating|adding|implementing|configuring|building)\s+(.+)/i);
   if (!match || match[2].trim().split(/\s+/).length < 3) return undefined;
-  return `Replace the opening responsibility scaffolding with a direct description of the documented ${match[1].toLowerCase()} task. Keep its object, method, scope, users, and stated results; do not upgrade the responsibility or add a result.`;
+  return `Replace the opening responsibility scaffolding with a direct description of the documented ${match[1].toLowerCase()} task. Rewrite from the original source, not the rejected candidate. Keep its object, method, scope, users, and stated results. Leave the measurement clause intact, including units, denominator, comparison conditions, time period, and approximate wording; do not calculate new figures, upgrade the responsibility, or add a result.`;
 }
 
 export function parseContentReviews(raw: unknown, pairs: ReviewPair[]): Map<string, ContentReview> {
@@ -88,13 +92,12 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[]): Map<stri
     const dimensions = Array.isArray(row?.dimensions) ? [...new Set<string>(row.dimensions.filter((d: unknown): d is string => typeof d === "string" && allowed.has(d)))] : [];
     const valid = row && typeof row.supported === "boolean" && typeof row.detailsPreserved === "boolean" && typeof row.causalityPreserved === "boolean" && ["improved", "retain"].includes(row.decision) && typeof row.reason === "string" && row.reason.trim() && (row.decision !== "improved" || dimensions.length > 0);
     const improved = valid && row.supported && row.detailsPreserved && row.causalityPreserved && row.decision === "improved" && pair.source.trim() !== pair.candidate.trim();
-    const missedRevision = valid && row.supported && row.detailsPreserved && row.causalityPreserved &&
-      pair.source.trim() === pair.candidate.trim() && row.nextStep === "keep"
+    const missedRevision = valid && !improved && row.nextStep === "keep"
       ? explicitTaskRevision(pair.source) : undefined;
     return [pair.id, {
       text: pair.candidate, sourceText: pair.source,
       status: valid ? (improved ? "improved" : "retained") : "unreviewed",
-      reason: missedRevision ? "The original still buries a documented task behind responsibility scaffolding." : valid ? row.reason.trim().slice(0, 600) : "Content review was unavailable; the original wording was kept.",
+      reason: missedRevision ? `${row.reason.trim().slice(0, 450)} The source still buries a documented task behind responsibility scaffolding; retry from its complete evidence.` : valid ? row.reason.trim().slice(0, 600) : "Content review was unavailable; the original wording was kept.",
       dimensions: improved ? dimensions : [],
       ...(valid ? { audit: { supported: row.supported, detailsPreserved: row.detailsPreserved, causalityPreserved: row.causalityPreserved }, impactMetrics: normalizeImpactMetrics(row.impactMetrics, pair.source) } : {}),
       ...(valid && ["keep", "revise", "ask"].includes(row.nextStep) ? { nextStep: row.nextStep } : {}),

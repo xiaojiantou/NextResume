@@ -7,7 +7,7 @@ export type HarnessCandidate = {
   id: string;
   text: string;
   evidence: string[];
-  origin: "source" | "model" | "locked";
+  origin: "source" | "model" | "source_edit" | "locked";
   attempt: number;
   review?: ContentReview;
 };
@@ -50,13 +50,13 @@ export function startHarnessTrace(resume: Resume, model: string, id: string, now
   };
 }
 
-export function recordCandidates(trace: HarnessTrace, optimization: Optimization, attempt: number): void {
+export function recordCandidates(trace: HarnessTrace, optimization: Optimization, attempt: number, origin: "model" | "source_edit" = "model", ids?: ReadonlySet<string>): void {
   const byId = new Map(trace.bullets.map(bullet => [bullet.bulletId, bullet]));
   for (const entry of [...optimization.roles, ...(optimization.projects ?? [])]) {
     for (const bullet of entry.bullets) {
       const run = byId.get(bullet.id);
-      if (!run || run.candidates.some(candidate => candidate.text === bullet.text && JSON.stringify(candidate.evidence) === JSON.stringify(bullet.evidence))) continue;
-      run.candidates.push({ id: `${bullet.id}:candidate:${run.candidates.length}`, text: bullet.text, evidence: [...bullet.evidence], origin: "model", attempt });
+      if (!run || (ids && !ids.has(bullet.id)) || run.candidates.some(candidate => candidate.text === bullet.text && JSON.stringify(candidate.evidence) === JSON.stringify(bullet.evidence))) continue;
+      run.candidates.push({ id: `${bullet.id}:candidate:${run.candidates.length}`, text: bullet.text, evidence: [...bullet.evidence], origin, attempt });
     }
   }
 }

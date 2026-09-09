@@ -1,0 +1,66 @@
+[
+  {
+    "id": "dense-faithful-task-opening",
+    "category": "measured-clarity",
+    "job": "Backend performance engineer",
+    "source": "I was responsible for updating batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in a replay of the same document set, with the worker count and parser version held fixed.",
+    "candidate": "Updated batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in a replay of the same document set, with the worker count and parser version held fixed.",
+    "expected": "improved"
+  },
+  {
+    "id": "dense-lost-comparison-set",
+    "category": "comparison-condition-loss",
+    "job": "Backend performance engineer",
+    "source": "I was responsible for updating batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in a replay of the same document set, with the worker count and parser version held fixed.",
+    "candidate": "Updated batch sizes for a document extraction service; CPU time fell from 720 to 510 milliseconds per document in replay tests, with the worker count and parser version held fixed.",
+    "expected": "retain"
+  },
+  {
+    "id": "dense-lost-sample-denominator",
+    "category": "sample-denominator-loss",
+    "job": "Document processing engineer",
+    "source": "Implemented receipt-field normalization; strict field-check passes increased from 408 to 446 on the same set of 480 manually labeled receipts, using the same validation rules before and after.",
+    "candidate": "Implemented receipt-field normalization, increasing strict field-check passes from 408 to 446 on the same manually labeled receipt set, using the same validation rules before and after.",
+    "expected": "retain"
+  },
+  {
+    "id": "dense-estimate-presented-as-measured",
+    "category": "measurement-certainty-inflation",
+    "job": "Operations automation engineer",
+    "source": "Automated weekly reconciliation checks; the operations team estimated approximately 14 hours saved per month from remembered task durations, without a time-tracking study.",
+    "candidate": "Automated weekly reconciliation checks, delivering a measured saving of 14 hours per month for the operations team.",
+    "expected": "retain"
+  },
+  {
+    "id": "dense-strong-measured-original",
+    "category": "already-strong",
+    "job": "AI platform engineer",
+    "source": "Maintained request monitoring and failure alerts for a translation assistant processing approximately 7 million input tokens and 2 million output tokens per month, based on gateway usage logs.",
+    "candidate": "Maintained request monitoring and failure alerts for a translation assistant processing approximately 7 million input tokens and 2 million output tokens per month, based on gateway usage logs.",
+    "expected": "retain"
+  },
+  {
+    "id": "dense-qualitative-task-clarity",
+    "category": "qualitative-clarity",
+    "job": "Technical support specialist",
+    "source": "I was responsible for documenting the account recovery procedure in a shared guide that support staff used when handling locked accounts.",
+    "candidate": "Documented the account recovery procedure in a shared guide that support staff used when handling locked accounts.",
+    "expected": "improved"
+  },
+  {
+    "id": "dense-preparatory-task-not-ownership",
+    "category": "completion-and-ownership-inflation",
+    "job": "Platform reliability engineer",
+    "source": "I was responsible for investigating possible queue settings with the platform lead and drafting a test plan; the proposed settings had not been deployed.",
+    "candidate": "Owned queue configuration improvements and deployed the new settings with the platform lead after completing a test plan.",
+    "expected": "retain"
+  },
+  {
+    "id": "dense-input-output-volume-reassignment",
+    "category": "metric-category-loss",
+    "job": "AI infrastructure engineer",
+    "source": "I was responsible for maintaining usage dashboards for a writing assistant processing approximately 11 million input tokens and 4 million output tokens per month, as recorded by provider usage logs.",
+    "candidate": "Maintained usage dashboards for a writing assistant processing approximately 11 million output tokens and 4 million input tokens per month, as recorded by provider usage logs.",
+    "expected": "retain"
+  }
+]

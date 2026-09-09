@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "title": "Resume content review",
+  "criteria": [
+    {
+      "id": "value",
+      "label": "Value / impact",
+      "description": "Explains what the work changed or enabled. Relevant qualitative value counts; a number is not required."
+    },
+    {
+      "id": "contribution",
+      "label": "Contribution",
+      "description": "Makes the person’s own action clear without upgrading participation to leadership."
+    },
+    {
+      "id": "specificity",
+      "label": "Specificity",
+      "description": "Keeps useful methods, scope and evidence; avoids generic claims."
+    },
+    {
+      "id": "relevance",
+      "label": "Role relevance",
+      "description": "Highlights evidence that matters for this role without adding job-description facts."
+    },
+    {
+      "id": "clarity",
+      "label": "Clarity",
+      "description": "Communicates the work directly and reads naturally; extra length is not automatically better."
+    }
+  ],
+  "items": [
+    {
+      "id": "3ee51747a525b5cf58d3ae5f",
+      "target": {
+        "title": "Senior AI Platform Engineer",
+        "seniority": "senior",
+        "responsibilities": [
+          "Improve inference cost using comparable measurements.",
+          "Operate request monitoring for internal AI applications."
+        ]
+      },
+      "sourceFacts": [
+        "The application was an internal LLM assistant.",
+        "The candidate implemented prompt caching.",
+        "A replay of the same request set measured input-token processing cost at $12 before and $9 after per 1,000 requests.",
+        "The model and cache-hit mix were held fixed for that comparison.",
+        "Monthly observed volume was approximately 18 million input tokens.",
+        "Monthly observed output volume was approximately 3 million tokens.",
+        "The candidate maintained volume monitoring.",
+        "Failure alerts covered assistant requests."
+      ],
+      "A": [
+        "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures."
+      ],
+      "B": [
+        "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Operated monitoring for an internal LLM assistant processing ~18M input and ~3M output tokens monthly, and implemented alerts for request failures."
+      ]
+    }
+  ],
+  "mappingDigest": "6c20d5e48fe5b2446d3f2a94bfd1878b23681186da0cdaa6af1c32ed9e46f35e",
+  "packetId": "7312e4a471570e892984cf31c71c8e23c5a8187f15f85470ab2da493e9bc67a3"
+}

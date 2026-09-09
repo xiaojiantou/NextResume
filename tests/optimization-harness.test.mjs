@@ -86,3 +86,34 @@ test('repeated numeric rewrite violations restore source only after retries and 
   assert.deepEqual(result.optimization.harness.sourceRestorations[0].ids, ['b1']);
   assert.ok(result.optimization.harness.validation.some(v => v.stage === 'selected' && !v.issues.length));
 });
+
+test('dense source repair uses the remaining round after numeric correction and preserves an approved sibling', async () => {
+  const data = structuredClone(input);
+  const source = 'I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.';
+  const faithful = 'Added prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.';
+  data.resume.experience[0].bullets = [{ id: 'b1', text: source }, { id: 'b2', text: 'Was responsible for documenting the request-failure escalation process.' }];
+  let writes = 0;
+  const reviewed = [];
+  const result = await runOptimizationHarness(data, { reviewGrounding: reviewSemanticGrounding, complete: async ({ system, user }) => {
+    if (system.includes('ONE entry')) {
+      writes++;
+      if (writes === 3) assert.match(user, /original source/);
+      return { id: 'r1', bullets: [
+        { id: 'b1', text: writes === 1 ? 'Reduced input-token processing cost by 25% using prompt caching.' : writes === 2 ? 'Reduced input-token processing cost from $12 to $9 per 1,000 requests by adding prompt caching in a replay test.' : faithful, evidence: ['b1'], matchedKeywords: [], rationale: '' },
+        { id: 'b2', text: writes === 3 ? 'Led 100 engineers.' : 'Documented the request-failure escalation process.', evidence: ['b2'], matchedKeywords: [], rationale: '' },
+      ] };
+    }
+    if (system.includes('independently compare')) {
+      const pairs = JSON.parse(user).bullets; reviewed.push(pairs.map(p => p.id));
+      return { reviews: pairs.map(p => ({ id: p.id, decision: p.id === 'b1' && writes === 2 ? 'retain' : 'improved', supported: true, detailsPreserved: p.id !== 'b1' || writes !== 2, causalityPreserved: true, reason: p.id === 'b1' && writes === 2 ? 'The same request set and fixed mix are missing.' : 'Names the documented task directly, preserving the rest.', dimensions: ['clarity'], nextStep: 'keep' })) };
+    }
+    if (system.includes('conservative resume evidence reviewer')) return { valid: true, issues: [] };
+    return { title: data.resume.title, summary: '', skills: [] };
+  } });
+  assert.equal(result.ok, true);
+  assert.equal(writes, 3);
+  assert.equal(result.optimization.roles[0].bullets[0].text, faithful);
+  assert.equal(result.optimization.roles[0].bullets[1].text, 'Documented the request-failure escalation process.');
+  assert.deepEqual(reviewed, [['b1', 'b2'], ['b1']]);
+  assert.equal(result.optimization.structureIntegrity.valid, true);
+});

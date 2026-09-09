@@ -90,3 +90,37 @@ test('a narrow grammar check catches unchanged explicit tasks the reviewer incor
   const generic = 'Responsible for sales.';
   assert.equal(parseContentReviews(rows, [{ id: 'b1', source: generic, candidate: generic }]).get('b1').nextStep, 'keep');
 });
+
+test('a changed but rejected dense bullet gets a source-based retry without approval or loss of its rejection reason', () => {
+  const source = 'I was responsible for adding prompt caching to an internal LLM assistant; cost fell from $12 to $9 per 1,000 requests on the same request set with the model and cache-hit mix fixed.';
+  const candidateText = 'Reduced costs from $12 to $9 per 1,000 requests using prompt caching and a fixed model.';
+  const pairs = [{ id: 'b1', source, candidate: candidateText }];
+  const reviews = parseContentReviews({ reviews: [{ id: 'b1', decision: 'retain', supported: true, detailsPreserved: false, causalityPreserved: true, reason: 'Drops the same request set and fixed cache-hit mix.', dimensions: [], nextStep: 'keep' }] }, pairs);
+  const review = reviews.get('b1');
+  assert.equal(review.status, 'retained');
+  assert.equal(review.audit.detailsPreserved, false);
+  assert.match(review.reason, /same request set/);
+  assert.equal(review.nextStep, 'revise');
+  assert.match(review.revisionInstruction, /original source/);
+  assert.equal(contentRevisionIssues(pairs, reviews, new Set()).length, 1);
+  assert.equal(contentRevisionIssues(pairs, reviews, new Set(['b1'])).length, 0);
+});
+test('task repair never forces acceptance or overrides assistance, future work, evidence questions or approved content', () => {
+  const row = { id: 'b1', decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Keep.', dimensions: [], nextStep: 'keep' };
+  for (const source of [
+    'Responsible for sales.',
+    'Assisted with adding caching for the team.',
+    'Was responsible for implementing a migration planned for next quarter.',
+    'Was responsible for building a system that was not yet completed.',
+    'Maintained monitoring for approximately 18 million input tokens per month.',
+  ]) {
+    const review = parseContentReviews({ reviews: [row] }, [{ id: 'b1', source, candidate: source }]).get('b1');
+    assert.equal(review.nextStep, 'keep');
+  }
+  const source = 'Was responsible for implementing report validation in Python.';
+  const pair = [{ id: 'b1', source, candidate: 'Implemented report validation in Python.' }];
+  assert.equal(parseContentReviews({ reviews: [{ ...row, nextStep: 'ask', question: 'Which validation did you implement?' }] }, pair).get('b1').nextStep, 'ask');
+  const improved = parseContentReviews({ reviews: [{ ...row, decision: 'improved', dimensions: ['clarity'] }] }, pair).get('b1');
+  assert.equal(improved.status, 'improved');
+  assert.equal(improved.nextStep, 'keep');
+});

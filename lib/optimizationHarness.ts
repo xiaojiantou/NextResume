@@ -15,6 +15,7 @@ import {
   selectReviewedContent, type ContentReview, type QualityCompletion,
 } from "./contentQuality.ts";
 import { restoreUnsupportedNumericText } from "./numericRewriteFallback.ts";
+import { proposeSourceTaskEdits } from "./sourceTaskRewrite.ts";
 import { finishHarnessTrace, recordCandidateReviews, recordCandidates, startHarnessTrace } from "./harnessTrace.ts";
 import type { AtsReport, ContentStructureMode, JobAnalysis, Optimization, OptimizedBullet, Resume } from "./types";
 
@@ -50,6 +51,8 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
     const results = new Map<string, unknown>();
     const qualityReviews = new Map<string, ContentReview>();
     const qualityRevised = new Set<string>();
+    const sourceEditEligible = new Set<string>();
+    const sourceEditAttempted = new Set<string>();
     const approvedBullets = new Map<string, OptimizedBullet>();
     let bestSafeOptimization: Optimization | null = null;
     let numericRecovery = false;
@@ -140,8 +143,21 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
         baseline: baselineOptimization,
         lockedContentIds,
       });
+      // On a revision retry, offer a verbatim-evidence alternative for an
+      // explicit task whose quality review already rejected the rewrite. Only
+      // review rejections make a bullet eligible: a numeric failure alone must
+      // still go through a normal retry and be reviewed, or the proposal
+      // replaces the candidate before the reviewer ever sees it and the
+      // revision round never happens. It receives exactly the same validators
+      // and independent review below.
+      const proposed = proposeSourceTaskEdits(resume, opt,
+        new Set([...sourceEditEligible].filter(id => !sourceEditAttempted.has(id))),
+        lockedContentIds, new Set(approvedBullets.keys()));
+      opt = proposed.optimization;
+      for (const id of proposed.proposedIds) { sourceEditAttempted.add(id); qualityRevised.add(id); }
+      recordCandidates(trace, opt, attempt, "source_edit", new Set(proposed.proposedIds));
+      const recovered = restoreUnsupportedNumericText(resume, opt, lockedContentIds);
       if (attempt === attempts) {
-        const recovered = restoreUnsupportedNumericText(resume, opt, lockedContentIds);
         if (recovered.restoredIds.length) {
           opt = recovered.optimization;
           numericRecovery = true;
@@ -232,6 +248,7 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
         pending = chunks.filter(chunk => feedbackByChunk.has(chunkKey(chunk)));
         if (pending.length) {
           for (const { id } of revisions) qualityRevised.add(id);
+          for (const { id } of revisions) sourceEditEligible.add(id);
           continue;
         }
       }
