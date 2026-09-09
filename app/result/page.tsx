@@ -1255,7 +1255,7 @@ function ResultPageInner() {
             ) : null}
             <p className="text-ink-400 text-xs mt-3">
               {errorDetails.length > 0
-                ? "Nothing unsafe was applied. Review the exact source/output mismatch above, then retry or switch structure mode."
+                ? "Your resume was left untouched. Review the issues above, then retry or switch structure mode."
                 : "Your resume was left untouched. Retry, pick a different model, or switch structure mode."}
             </p>
             <div className="mt-3 flex justify-center">

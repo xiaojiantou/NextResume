@@ -88,7 +88,11 @@ function publicOptimizationIssue(issue: string): string {
     return "A manually edited field changed, so the rewrite was rejected.";
   }
   if (/^keyword /i.test(issue)) {
-    return "A rewrite repeated a keyword too many times, which trips ATS keyword-stuffing filters.";
+    const density = issue.match(/^keyword "([^"]+)": repeated (\d+) times \(the source resume has (\d+)\).*\(max (\d+)\)/i);
+    if (density) {
+      return `"${density[1]}" appears ${density[2]} times in the rewrite versus ${density[3]} in the source (allowed: ${density[4]}).`;
+    }
+    return "A rewrite exceeded the keyword repetition limit.";
   }
   if (/role|project|bullet|evidence/i.test(issue)) {
     return "A rewritten achievement could not be matched safely to its original entry.";

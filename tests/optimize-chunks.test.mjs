@@ -292,3 +292,27 @@ test("mapWithConcurrency preserves order and caps parallelism", async () => {
   assert.deepEqual(out, [60, 20, 40, 10, 30]);
   assert.equal(peak, 2);
 });
+
+test("absent keyword allowances stay within the document cap on long resumes", () => {
+  const longResume = {
+    ...resume,
+    experience: Array.from({ length: 8 }, (_, index) => ({
+      ...resume.experience[0],
+      id: `role-${index}`,
+    })),
+  };
+  for (const structureMode of ["optimize", "preserve"]) {
+    const prompts = planRewriteChunks(longResume, structureMode).map(chunk =>
+      buildChunkPrompt({
+        chunk, resume: longResume,
+        job: { ...job, requiredKeywords: ["Kubernetes"], niceToHaveKeywords: [] },
+        report, structureMode, lockedContentIds: [], baselineOptimization: null,
+      }).user,
+    );
+    const budgets = prompts.map(prompt => Number(prompt.match(/"Kubernetes":(\d+)/)?.[1] ?? 0));
+    assert.equal(budgets.reduce((sum, budget) => sum + budget, 0), 4);
+    for (const [index, budget] of budgets.entries()) {
+      if (!budget) assert.match(prompts[index], /Do NOT add these terms .*\["Kubernetes"\]/);
+    }
+  }
+});

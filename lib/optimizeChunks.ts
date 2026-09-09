@@ -229,9 +229,8 @@ function chunkSourceText(
  * for the same top JD keyword and the assembled document trips the stuffing
  * cap validateOptimization enforces. Each chunk keeps the mentions its own
  * source text already has plus an equal share of whatever slack the whole
- * document has left under the cap; a keyword the resume never uses may still
- * be introduced once, so the "K8s -> Kubernetes" renames the prompt asks for
- * stay possible even on a long resume.
+ * document has left under the cap. Distribute the remainder once across the
+ * chunks so their combined allowances never exceed the document budget.
  */
 function keywordBudgetBlock({
   resume,
@@ -252,14 +251,16 @@ function keywordBudgetBlock({
   if (keywords.length === 0) return "";
   const sourceText = resumeToText(resume);
   const ownText = chunkSourceText(resume, structureMode, chunk).toLowerCase();
-  const parts = planRewriteChunks(resume, structureMode).length;
+  const chunks = planRewriteChunks(resume, structureMode);
+  const parts = chunks.length;
+  const index = chunks.findIndex((part) => chunkKey(part) === chunkKey(chunk));
   const blocked: string[] = [];
   const caps: Record<string, number> = {};
   for (const keyword of keywords) {
     const total = countOccurrences(sourceText, keyword);
     const slack = Math.max(MAX_KEYWORD_REPEATS, total) - total;
-    let budget = countOccurrences(ownText, keyword) + Math.floor(slack / parts);
-    if (total === 0) budget = Math.max(budget, 1);
+    const budget = countOccurrences(ownText, keyword) + Math.floor(slack / parts)
+      + (index >= 0 && index < slack % parts ? 1 : 0);
     if (budget <= 0) blocked.push(keyword);
     else if (budget < MAX_KEYWORD_REPEATS) caps[keyword] = budget;
   }
