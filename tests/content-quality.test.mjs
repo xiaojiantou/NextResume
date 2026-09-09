@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contentRevisionIssues, parseContentReviews, qualityPairs, selectReviewedContent, currentContentReview, reviewContentQuality } from '../lib/contentQuality.ts';
+import { REVIEW_BATCH_SIZE, REVIEW_WORKERS, contentRevisionIssues, parseContentReviews, qualityPairs, selectReviewedContent, currentContentReview, reviewContentQuality } from '../lib/contentQuality.ts';
 const source = { experience: [{ id: 'r1', bullets: [{ id: 'b1', text: 'Assisted with weekly supplier reviews.' }] }], projects: [] };
 const candidate = { roles: [{ id: 'r1', bullets: [{ id: 'b1', text: 'Owned supplier strategy.', evidence: ['b1'], matchedKeywords: ['strategy'], rationale: 'Strong ownership' }] }], projects: [] };
 const pair = qualityPairs(source, candidate);
@@ -53,14 +53,14 @@ test('long resumes use bounded batches and preserve reviews when another batch f
   let active = 0, peak = 0;
   const reviews = await reviewContentQuality({ pairs, job: {}, complete: async ({ user }) => {
     const { bullets } = JSON.parse(user);
-    assert.ok(bullets.length <= 8);
+    assert.ok(bullets.length <= REVIEW_BATCH_SIZE);
     active++; peak = Math.max(peak, active);
     await new Promise(resolve => setTimeout(resolve, 5));
     active--;
     if (bullets.some(b => b.id === 'b8')) throw new Error('one batch failed');
     return { reviews: bullets.map(b => ({ id: b.id, decision: 'improved', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Clarifies the action.', dimensions: ['clarity'] })) };
   } });
-  assert.equal(peak, 2);
+  assert.equal(peak, REVIEW_WORKERS);
   assert.equal(reviews.size, 20);
   assert.equal(reviews.get('b0').status, 'improved');
   assert.equal(reviews.get('b8').status, 'unreviewed');

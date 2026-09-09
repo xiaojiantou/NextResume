@@ -109,20 +109,29 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[]): Map<stri
   }));
 }
 
-export async function reviewContentQuality({ pairs, job, complete, timeoutMs = 30_000 }: {
+// A review that does not return in time keeps the source wording for every
+// bullet it covered, so the deadline decides whether the customer gets a
+// rewrite at all. On the default model an eight-pair batch alone ran past
+// 30s; four-pair batches on three workers finish a typical resume in one
+// wave with room under the 60s deadline.
+export const REVIEW_BATCH_SIZE = 4;
+export const REVIEW_WORKERS = 3;
+export const REVIEW_TIMEOUT_MS = 60_000;
+
+export async function reviewContentQuality({ pairs, job, complete, timeoutMs = REVIEW_TIMEOUT_MS }: {
   pairs: ReviewPair[]; job: JobAnalysis; complete: QualityCompletion; timeoutMs?: number;
 }): Promise<Map<string, ContentReview>> {
   if (!pairs.length) return new Map();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  // Small batches avoid truncating a long resume's review. Two workers share
-  // one deadline, and a failed batch cannot discard successful comparisons.
+  // Small batches avoid truncating a long resume's review. Workers share one
+  // deadline, and a failed batch cannot discard successful comparisons.
   const batches: ReviewPair[][] = [];
-  for (let i = 0; i < pairs.length; i += 8) batches.push(pairs.slice(i, i + 8));
+  for (let i = 0; i < pairs.length; i += REVIEW_BATCH_SIZE) batches.push(pairs.slice(i, i + REVIEW_BATCH_SIZE));
   const reviews = new Map<string, ContentReview>();
   let next = 0;
   try {
-    await Promise.all(Array.from({ length: Math.min(2, batches.length) }, async () => {
+    await Promise.all(Array.from({ length: Math.min(REVIEW_WORKERS, batches.length) }, async () => {
       while (next < batches.length) {
         const batch = batches[next++];
         let raw: unknown = null;

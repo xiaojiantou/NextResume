@@ -37,7 +37,9 @@ are provisional; they do not substitute for human review or customer data.
 - Production entry prompts share `CONTENT_WRITING_STANDARD` in
   `lib/contentQuality.ts`, including preserve mode and single-bullet refinement.
 - The full optimize route independently reviews work/project bullets in batches
-  of eight, with two workers and a shared 30-second deadline. It requests at
+  of four, with three workers and a shared 60-second deadline (an eight-pair
+  batch alone exceeded the earlier 30s on the default model, which silently
+  shipped source wording for every bullet). It requests at
   most one quality-driven revision per rejected bullet within the existing
   three-attempt request budget. The final deliverable passes the existing
   factual, structural, lock, and keyword checks again after source restoration.

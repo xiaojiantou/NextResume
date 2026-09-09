@@ -11,9 +11,10 @@ import {
   validatePreservedOptimization,
 } from "./resumeStructure.ts";
 import {
-  contentRevisionIssues, restoreApprovedBullets, qualityPairs, reviewContentQuality,
+  REVIEW_TIMEOUT_MS, contentRevisionIssues, restoreApprovedBullets, qualityPairs, reviewContentQuality,
   selectReviewedContent, type ContentReview, type QualityCompletion,
 } from "./contentQuality.ts";
+import { guardAtsRegression } from "./atsGuard.ts";
 import { restoreUnsupportedNumericText } from "./numericRewriteFallback.ts";
 import { proposeSourceTaskEdits } from "./sourceTaskRewrite.ts";
 import { finishHarnessTrace, recordCandidateReviews, recordCandidates, startHarnessTrace } from "./harnessTrace.ts";
@@ -211,7 +212,7 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
       const reviewed = await reviewContentQuality({
         pairs: fresh, job,
         complete: (args) => invoke("content_review", undefined, args),
-        timeoutMs: Math.max(1, Math.min(30_000, deadline - now() - 5_000)),
+        timeoutMs: Math.max(1, Math.min(REVIEW_TIMEOUT_MS, deadline - now() - 5_000)),
       });
       recordCandidateReviews(trace, reviewed);
       for (const [id, review] of reviewed) qualityReviews.set(id, review);
@@ -224,6 +225,18 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
         }
       }
       opt = selectReviewedContent(opt, qualityReviews);
+      // The reviewer judges writing, not the ATS rubric: an accepted rewrite
+      // can still drop a job keyword the source carried, or the headline can
+      // drift off the posting's title. Never ship below the source's score.
+      const guarded = guardAtsRegression({ resume, optimization: opt, job, lockedContentIds });
+      if (guarded.restored.length) {
+        opt = guarded.optimization;
+        trace.sourceRestorations = [...(trace.sourceRestorations ?? []), {
+          attempt,
+          ids: guarded.restored.map(item => item.id),
+          reason: `ATS regression guard: ${guarded.restored.map(item => item.reason).join(" ")}`,
+        }];
+      }
       // Restoring source text can change keyword density; validate the actual deliverable.
       const finalIssues = [
         ...validateOptimization(resume, opt, job),
