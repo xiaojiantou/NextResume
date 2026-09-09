@@ -100,9 +100,10 @@ export function EditorWithPreview({
 
       {/* Content */}
       {layout === "split" ? (
-        <div className="grid h-[calc(100dvh-8rem)] min-h-[720px] grid-cols-2 gap-6">
-          {/* Editor Side */}
-          <div className="min-w-0 overflow-y-auto pr-4 pb-4">
+        <div className="grid grid-cols-2 gap-6 items-start">
+          {/* Editor Side: grows with the page instead of scrolling inside a
+              viewport-height box; the preview stays pinned beside it. */}
+          <div className="min-w-0 pr-4 pb-4">
             <EditableResumeCanvas
               resume={resume}
               optimizedPreview={Boolean(optimization)}
@@ -115,8 +116,8 @@ export function EditorWithPreview({
             />
           </div>
 
-          {/* Preview Side */}
-          <div className="min-w-0 overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
+          {/* Preview Side: pinned below the sticky h-14 site header */}
+          <div className="sticky top-[4.5rem] h-[calc(100dvh-5.5rem)] min-h-[560px] min-w-0 overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
             <LivePdfPreview
               resume={resume}
               optimization={optimization}
