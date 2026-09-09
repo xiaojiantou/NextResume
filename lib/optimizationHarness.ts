@@ -14,6 +14,7 @@ import {
   contentRevisionIssues, restoreApprovedBullets, qualityPairs, reviewContentQuality,
   selectReviewedContent, type ContentReview, type QualityCompletion,
 } from "./contentQuality.ts";
+import { restoreUnsupportedNumericText } from "./numericRewriteFallback.ts";
 import { finishHarnessTrace, recordCandidateReviews, recordCandidates, startHarnessTrace } from "./harnessTrace.ts";
 import type { AtsReport, ContentStructureMode, JobAnalysis, Optimization, OptimizedBullet, Resume } from "./types";
 
@@ -51,7 +52,8 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
     const qualityRevised = new Set<string>();
     const approvedBullets = new Map<string, OptimizedBullet>();
     let bestSafeOptimization: Optimization | null = null;
-    const respondWithOptimization = (optimization: Optimization, fallback = false) => {
+    let numericRecovery = false;
+    const respondWithOptimization = (optimization: Optimization, fallback = numericRecovery) => {
       optimization.structureMode = structureMode;
       optimization.structureIntegrity = createStructureIntegrity(resume, optimization, structureMode);
       optimization.atsScore = calculateOptimizationAtsScore({ resume, optimization, job });
@@ -138,6 +140,14 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
         baseline: baselineOptimization,
         lockedContentIds,
       });
+      if (attempt === attempts) {
+        const recovered = restoreUnsupportedNumericText(resume, opt, lockedContentIds);
+        if (recovered.restoredIds.length) {
+          opt = recovered.optimization;
+          numericRecovery = true;
+          trace.sourceRestorations = [...(trace.sourceRestorations ?? []), { attempt, ids: recovered.restoredIds, reason: "Numeric rewrites exhausted retries; restored source wording before full validation." }];
+        }
+      }
       const issues = [
         ...validateOptimization(resume, opt, job),
         ...validateGroundedOptimization(resume, opt),

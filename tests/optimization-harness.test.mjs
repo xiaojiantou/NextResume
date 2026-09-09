@@ -67,3 +67,22 @@ test('locked accepted text and evidence survive regeneration with a locked trace
   assert.deepEqual(result.optimization.roles[0].bullets[0].decisionHistory, accepted.decisionHistory);
   assert.equal(result.optimization.harness.bullets[0].state, 'locked');
 });
+
+test('repeated numeric rewrite violations restore source only after retries and still validate the deliverable', async () => {
+  const source = structuredClone(input);
+  source.resume.experience[0].bullets[0].text = 'Redesigned form errors; 6 of 10 participants completed the task before and 9 of 10 after in the same test.';
+  let writes = 0;
+  const result = await runOptimizationHarness(source, { reviewGrounding: reviewSemanticGrounding, complete: async ({ system, user }) => {
+    if (system.includes('ONE entry')) { writes++; return { id: 'r1', bullets: [{ id: 'b1', text: 'Redesigned form errors, raising task success from 60% to 90%.', evidence: ['b1'], matchedKeywords: [], rationale: '' }] }; }
+    if (system.includes('independently compare')) return { reviews: JSON.parse(user).bullets.map(b => ({ id: b.id, decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Keeps sample size and counts.', dimensions: [], nextStep: 'keep' })) };
+    if (system.includes('conservative resume evidence reviewer')) return { valid: true, issues: [] };
+    return { title: source.resume.title, summary: '', skills: [] };
+  } });
+  assert.equal(result.ok, true);
+  assert.equal(writes, 3);
+  assert.equal(result.optimization.roles[0].bullets[0].text, source.resume.experience[0].bullets[0].text);
+  assert.equal(result.optimization.structureIntegrity.valid, true);
+  assert.equal(result.optimization.harness.outcome, 'fallback');
+  assert.deepEqual(result.optimization.harness.sourceRestorations[0].ids, ['b1']);
+  assert.ok(result.optimization.harness.validation.some(v => v.stage === 'selected' && !v.issues.length));
+});

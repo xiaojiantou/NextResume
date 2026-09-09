@@ -25,6 +25,7 @@ export type HarnessTrace = {
   startedAt: string;
   elapsedMs: number;
   outcome: "running" | "completed" | "fallback" | "failed";
+  sourceRestorations?: Array<{ attempt: number; ids: string[]; reason: string }>;
   validation: Array<{ attempt: number; stage: "candidate" | "selected"; issues: string[] }>;
   calls: Array<{
     stage: "generate" | "content_review" | "grounding";

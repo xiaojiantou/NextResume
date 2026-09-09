@@ -403,7 +403,7 @@ export function createOptimizationCacheKey({
         modelId,
         structureMode,
         structureVersion: OPTIMIZATION_STRUCTURE_VERSION,
-        contentQualityVersion: 4,
+        contentQualityVersion: 5,
       }),
     ),
   );
