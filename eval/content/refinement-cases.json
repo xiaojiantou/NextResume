@@ -1,0 +1,366 @@
+[
+  {
+    "id": "runbook-purpose-inference",
+    "category": "reasonable-inference",
+    "originalBullet": "Wrote runbooks for the on-call team to investigate failed scheduled jobs.",
+    "instruction": "Explain the value of this work more clearly.",
+    "candidate": "Authored runbooks to support on-call troubleshooting of failed scheduled jobs.",
+    "expected": "supported",
+    "reason": "Troubleshooting support is a reasonable qualitative purpose of an investigation runbook; no new measured result or responsibility is claimed.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Wrote runbooks for the on-call team to investigate failed scheduled jobs."
+      }
+    ]
+  },
+  {
+    "id": "suggested-number-is-not-confirmation",
+    "category": "unconfirmed-measurement",
+    "originalBullet": "Wrote runbooks for the on-call team to investigate failed scheduled jobs.",
+    "instruction": "Make the impact stronger. Perhaps add a 30% reduction in incident resolution time if that sounds plausible; I do not have a measurement.",
+    "candidate": "Authored on-call runbooks that reduced incident resolution time by 30%.",
+    "expected": "unsupported",
+    "reason": "A proposed plausible number, explicitly lacking a measurement or confirmed estimation inputs, is not evidence of an achieved reduction.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Wrote runbooks for the on-call team to investigate failed scheduled jobs."
+      }
+    ]
+  },
+  {
+    "id": "confirmed-hours-estimate-qualified",
+    "category": "confirmed-estimate",
+    "originalBullet": "Automated the report preparation workflow using Python.",
+    "instruction": "Include my confirmed estimate of the monthly time saved.",
+    "candidate": "Automated report preparation using Python, saving approximately 30 hours per month based on estimated task times and frequency.",
+    "expected": "supported",
+    "reason": "The confirmed calculation is (60 − 15) × 40 ÷ 60 = 30 hours per month, and the output preserves its approximate status.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Automated the report preparation workflow using Python."
+      },
+      {
+        "kind": "confirmed_estimate",
+        "text": "Approximately 30 hours saved per month",
+        "estimate": {
+          "metric": "hours_saved",
+          "inputs": {
+            "before": "60",
+            "after": "15",
+            "runs": "40"
+          },
+          "value": 30,
+          "description": "Approximately 30 hours saved per month",
+          "basis": "(minutes before − minutes after) × runs per month ÷ 60; Minutes per task before: 60; Minutes per task after: 15; Runs per month: 40",
+          "confirmedAt": "2026-09-01T12:00:00.000Z"
+        },
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "confirmed-hours-estimate-presented-as-measured",
+    "category": "estimate-qualification",
+    "originalBullet": "Automated the report preparation workflow using Python.",
+    "instruction": "Include my confirmed estimate of the monthly time saved.",
+    "candidate": "Automated report preparation using Python, delivering a measured saving of 30 hours per month.",
+    "expected": "unsupported",
+    "reason": "Confirmation of estimated inputs supports an approximate result; it does not turn the result into a measured saving.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Automated the report preparation workflow using Python."
+      },
+      {
+        "kind": "confirmed_estimate",
+        "text": "Approximately 30 hours saved per month",
+        "estimate": {
+          "metric": "hours_saved",
+          "inputs": {
+            "before": "60",
+            "after": "15",
+            "runs": "40"
+          },
+          "value": 30,
+          "description": "Approximately 30 hours saved per month",
+          "basis": "(minutes before − minutes after) × runs per month ÷ 60; Minutes per task before: 60; Minutes per task after: 15; Runs per month: 40",
+          "confirmedAt": "2026-09-01T12:00:00.000Z"
+        },
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "latest-correction-overrides-saved-notes",
+    "category": "latest-correction",
+    "originalBullet": "Built a dashboard to consolidate weekly sales reports.",
+    "instruction": "Correction: eight analysts actually used it. Twenty was the size of the department, not the number of users. Use eight users.",
+    "current": "Built a dashboard used by 20 analysts to consolidate weekly sales reports.",
+    "candidate": "Built a dashboard used by eight analysts to consolidate weekly sales reports.",
+    "expected": "supported",
+    "reason": "The latest explicit correction supersedes the older instruction, current draft, and stale confirmed note that claimed 20 users.",
+    "turns": [
+      {
+        "instruction": "The dashboard was used by 20 analysts.",
+        "result": "Built a dashboard used by 20 analysts to consolidate weekly sales reports."
+      }
+    ],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Built a dashboard to consolidate weekly sales reports."
+      },
+      {
+        "kind": "user_confirmed",
+        "text": "The dashboard was used by 20 analysts.",
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "superseded-user-count-rejected",
+    "category": "latest-correction",
+    "originalBullet": "Built a dashboard to consolidate weekly sales reports.",
+    "instruction": "Correction: eight analysts actually used it. Twenty was the size of the department, not the number of users. Use eight users.",
+    "current": "Built a dashboard used by 20 analysts to consolidate weekly sales reports.",
+    "candidate": "Built a dashboard used by 20 analysts to consolidate weekly sales reports.",
+    "expected": "unsupported",
+    "reason": "An older confirmed note cannot override the latest explicit correction from 20 users to eight users.",
+    "turns": [
+      {
+        "instruction": "The dashboard was used by 20 analysts.",
+        "result": "Built a dashboard used by 20 analysts to consolidate weekly sales reports."
+      }
+    ],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Built a dashboard to consolidate weekly sales reports."
+      },
+      {
+        "kind": "user_confirmed",
+        "text": "The dashboard was used by 20 analysts.",
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "previous-model-output-cannot-confirm-scale",
+    "category": "model-history-contamination",
+    "originalBullet": "Built an LLM gateway to route requests between model providers.",
+    "instruction": "Shorten the wording and keep the technical focus.",
+    "current": "Built an LLM gateway routing 50 million tokens per month between model providers.",
+    "candidate": "Built a multi-provider LLM gateway routing 50M tokens per month.",
+    "expected": "unsupported",
+    "reason": "The 50M monthly volume exists only in an earlier model output and current draft. Asking for shorter wording does not attest to that invented scale.",
+    "turns": [
+      {
+        "instruction": "Make this more specific.",
+        "result": "Built an LLM gateway routing 50 million tokens per month between model providers."
+      }
+    ],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Built an LLM gateway to route requests between model providers."
+      }
+    ]
+  },
+  {
+    "id": "senior-tone-does-not-upgrade-ownership",
+    "category": "stylistic-instruction",
+    "originalBullet": "Helped test a billing migration by writing regression cases and reporting defects.",
+    "instruction": "Make this sound more senior and impact-oriented. Use decisive verbs.",
+    "candidate": "Led the billing migration, directing engineering delivery and owning the regression strategy.",
+    "expected": "unsupported",
+    "reason": "A request for a more senior tone is not a factual assertion of project leadership, engineering direction, or ownership.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Helped test a billing migration by writing regression cases and reporting defects."
+      }
+    ]
+  },
+  {
+    "id": "new-user-measurement-is-evidence",
+    "category": "latest-user-evidence",
+    "originalBullet": "Reorganized the help center articles for the customer support team.",
+    "instruction": "Add this result: our ticket report showed repetitive account-setup questions fell from 200 to 150 per month after the reorganization, comparing two full months. Say it was associated with the decline; do not claim it was the only cause.",
+    "candidate": "Reorganized help center articles, associated with a decline in repetitive account-setup questions from 200 to 150 per month across two full-month reporting periods.",
+    "expected": "supported",
+    "reason": "The latest user instruction explicitly supplies the measurement and comparison window, and the candidate preserves the requested limited causal attribution.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Reorganized the help center articles for the customer support team."
+      }
+    ]
+  },
+  {
+    "id": "chinese-guide-purpose-inference",
+    "category": "reasonable-inference",
+    "originalBullet": "为新入职的客服整理了常见账户问题操作指南。",
+    "instruction": "说明这个工作的价值，不用强行加数字。",
+    "candidate": "整理常见账户问题操作指南，支持新入职客服熟悉账户问题处理流程。",
+    "expected": "supported",
+    "reason": "支持新人熟悉流程是操作指南用途的合理定性推断，没有虚构培训速度、处理量或指标提升。",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "为新入职的客服整理了常见账户问题操作指南。"
+      }
+    ]
+  },
+  {
+    "id": "chinese-token-estimate-qualified-scale",
+    "category": "confirmed-estimate",
+    "originalBullet": "搭建了在多个模型供应商之间分发请求的 LLM 网关。",
+    "instruction": "把我确认的 token 用量估算加进去，保留估算口吻，只表示处理规模。",
+    "candidate": "搭建多供应商 LLM 请求网关，按已确认的请求量与平均输入、输出长度估算，每月处理约 2,000 万 token。",
+    "expected": "supported",
+    "reason": "1,000 次/天 × (800 + 200) token/次 × 20 天 = 2,000 万 token/月；文案明确是估算规模。",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "搭建了在多个模型供应商之间分发请求的 LLM 网关。"
+      },
+      {
+        "kind": "confirmed_estimate",
+        "text": "Approximately 20,000,000 input + output tokens per month",
+        "estimate": {
+          "metric": "monthly_tokens",
+          "inputs": {
+            "requests": "1000",
+            "input": "800",
+            "output": "200",
+            "days": "20"
+          },
+          "value": 20000000,
+          "description": "Approximately 20,000,000 input + output tokens per month",
+          "basis": "requests per day × (input + output tokens per request) × active days per month; Requests per day: 1000; Average input tokens per request: 800; Average output tokens per request: 200; Active days per month (1–31): 20",
+          "confirmedAt": "2026-09-01T12:00:00.000Z"
+        },
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "token-volume-does-not-prove-cost-savings",
+    "category": "scale-versus-impact",
+    "originalBullet": "搭建了在多个模型供应商之间分发请求的 LLM 网关。",
+    "instruction": "展示规模与业务价值，使用我确认的 token 量估算。",
+    "candidate": "搭建多供应商 LLM 网关，每月处理约 2,000 万 token，并降低 40% 推理成本。",
+    "expected": "unsupported",
+    "reason": "确认的 token 量只支持约 2,000 万 token/月的规模，不能证明新增的 40% 成本降幅。",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "搭建了在多个模型供应商之间分发请求的 LLM 网关。"
+      },
+      {
+        "kind": "confirmed_estimate",
+        "text": "Approximately 20,000,000 input + output tokens per month",
+        "estimate": {
+          "metric": "monthly_tokens",
+          "inputs": {
+            "requests": "1000",
+            "input": "800",
+            "output": "200",
+            "days": "20"
+          },
+          "value": 20000000,
+          "description": "Approximately 20,000,000 input + output tokens per month",
+          "basis": "requests per day × (input + output tokens per request) × active days per month; Requests per day: 1000; Average input tokens per request: 800; Average output tokens per request: 200; Active days per month (1–31): 20",
+          "confirmedAt": "2026-09-01T12:00:00.000Z"
+        },
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "quality-estimate-percentage-points",
+    "category": "metric-units",
+    "originalBullet": "Tuned retrieval settings for a document-answering assistant.",
+    "instruction": "Use the confirmed evaluation improvement estimate.",
+    "candidate": "Tuned retrieval settings for a document-answering assistant, improving success on the same evaluation set by approximately 15 percentage points.",
+    "expected": "supported",
+    "reason": "Estimated success moving from 60% to 75% is a 15 percentage-point increase; the output retains the approximate qualifier and comparable evaluation basis.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Tuned retrieval settings for a document-answering assistant."
+      },
+      {
+        "kind": "user_confirmed",
+        "text": "The estimated before and after success rates refer to the same evaluation set.",
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      },
+      {
+        "kind": "confirmed_estimate",
+        "text": "Approximately 15 percentage-point improvement",
+        "estimate": {
+          "metric": "quality_points",
+          "inputs": {
+            "before": "60",
+            "after": "75"
+          },
+          "value": 15,
+          "description": "Approximately 15 percentage-point improvement",
+          "basis": "success percentage after − success percentage before; Success rate before (%): 60; Success rate after (%): 75",
+          "confirmedAt": "2026-09-01T12:00:00.000Z"
+        },
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "quality-points-cannot-become-relative-percent",
+    "category": "metric-units",
+    "originalBullet": "Tuned retrieval settings for a document-answering assistant.",
+    "instruction": "Use the confirmed evaluation improvement estimate.",
+    "candidate": "Tuned retrieval settings for a document-answering assistant, improving success on the same evaluation set by approximately 15% relative to baseline.",
+    "expected": "unsupported",
+    "reason": "Moving from 60% to 75% is 15 percentage points or 25% relative improvement. Approximate wording does not justify substituting an incorrect unit or denominator.",
+    "turns": [],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Tuned retrieval settings for a document-answering assistant."
+      },
+      {
+        "kind": "user_confirmed",
+        "text": "The estimated before and after success rates refer to the same evaluation set.",
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      },
+      {
+        "kind": "confirmed_estimate",
+        "text": "Approximately 15 percentage-point improvement",
+        "estimate": {
+          "metric": "quality_points",
+          "inputs": {
+            "before": "60",
+            "after": "75"
+          },
+          "value": 15,
+          "description": "Approximately 15 percentage-point improvement",
+          "basis": "success percentage after − success percentage before; Success rate before (%): 60; Success rate after (%): 75",
+          "confirmedAt": "2026-09-01T12:00:00.000Z"
+        },
+        "confirmedAt": "2026-09-01T12:00:00.000Z"
+      }
+    ]
+  }
+]

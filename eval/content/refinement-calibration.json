@@ -1,0 +1,475 @@
+{
+  "model": "deepseek/deepseek-v3.2",
+  "at": "2026-09-09T17:27:32.743Z",
+  "mode": "reparse-saved-judgments-no-new-model-calls",
+  "scope": "authored factual calibration; not human preference or a held-out benchmark",
+  "counts": {
+    "total": 14,
+    "falseAcceptance": 0,
+    "falseRejection": 0,
+    "unavailable": 0
+  },
+  "calls": [],
+  "results": [
+    {
+      "id": "runbook-purpose-inference",
+      "expected": "supported",
+      "review": {
+        "text": "Authored runbooks to support on-call troubleshooting of failed scheduled jobs.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Authored runbooks to support on-call troubleshooting of failed scheduled jobs.",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0",
+              "e1"
+            ],
+            "reason": "Evidence e0 states 'Wrote runbooks for the on-call team to investigate failed scheduled jobs.' The instruction e1 requests explaining the value more clearly, which is a style request and does not contradict the factual claim of authoring runbooks for troubleshooting."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are directly supported by evidence."
+      }
+    },
+    {
+      "id": "suggested-number-is-not-confirmation",
+      "expected": "unsupported",
+      "review": {
+        "text": "Authored on-call runbooks that reduced incident resolution time by 30%.",
+        "status": "rejected",
+        "claims": [
+          {
+            "text": "Authored on-call runbooks",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Evidence e0 states 'Wrote runbooks for the on-call team'."
+          },
+          {
+            "text": "that reduced incident resolution time by 30%",
+            "verdict": "unsupported",
+            "evidenceIds": [],
+            "reason": "Evidence e1 explicitly says 'I do not have a measurement' and only suggests adding the number if plausible; it does not assert it as a fact."
+          }
+        ],
+        "audit": {
+          "supported": false,
+          "correctionsRespected": true,
+          "estimatesPreserved": false
+        },
+        "reason": "The bullet claims a 30% reduction in incident resolution time, but the user explicitly stated they do not have a measurement and only requested making the impact stronger. No evidence supports the quantitative outcome."
+      }
+    },
+    {
+      "id": "confirmed-hours-estimate-qualified",
+      "expected": "supported",
+      "review": {
+        "text": "Automated report preparation using Python, saving approximately 30 hours per month based on estimated task times and frequency.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Automated report preparation using Python",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Directly supported by source evidence e0."
+          },
+          {
+            "text": "saving approximately 30 hours per month based on estimated task times and frequency.",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1",
+              "e2"
+            ],
+            "reason": "The value and unit are from confirmed estimate e1. The instruction e2 confirms the estimate should be included. The phrase 'based on estimated task times and frequency' is a reasonable qualitative description of the basis."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are supported by evidence. The estimate is explicitly confirmed and its wording is preserved."
+      }
+    },
+    {
+      "id": "confirmed-hours-estimate-presented-as-measured",
+      "expected": "unsupported",
+      "review": {
+        "text": "Automated report preparation using Python, delivering a measured saving of 30 hours per month.",
+        "status": "rejected",
+        "claims": [
+          {
+            "text": "Automated report preparation using Python",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Evidence e0 states the candidate automated the report preparation workflow using Python."
+          },
+          {
+            "text": "delivering a measured saving of 30 hours per month",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1",
+              "e2"
+            ],
+            "reason": "Evidence e1 is a confirmed estimate of approximately 30 hours saved per month. Evidence e2 is an instruction to include this confirmed estimate."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": false
+        },
+        "reason": "Keep approximate wording for the confirmed estimate."
+      }
+    },
+    {
+      "id": "latest-correction-overrides-saved-notes",
+      "expected": "supported",
+      "review": {
+        "text": "Built a dashboard used by eight analysts to consolidate weekly sales reports.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Built a dashboard",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Source evidence confirms building a dashboard."
+          },
+          {
+            "text": "used by eight analysts",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e3"
+            ],
+            "reason": "User correction explicitly states eight analysts used it."
+          },
+          {
+            "text": "to consolidate weekly sales reports.",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Source evidence confirms the dashboard's purpose."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are supported by evidence, with the user's final correction respected."
+      }
+    },
+    {
+      "id": "superseded-user-count-rejected",
+      "expected": "unsupported",
+      "review": {
+        "text": "Built a dashboard used by 20 analysts to consolidate weekly sales reports.",
+        "status": "rejected",
+        "claims": [
+          {
+            "text": "Built a dashboard",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Source evidence states 'Built a dashboard'."
+          },
+          {
+            "text": "used by 20 analysts",
+            "verdict": "unsupported",
+            "evidenceIds": [],
+            "reason": "User correction (e3) explicitly retracts '20 analysts' and states 'eight analysts actually used it'."
+          },
+          {
+            "text": "to consolidate weekly sales reports.",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Source evidence states purpose was 'to consolidate weekly sales reports.'"
+          }
+        ],
+        "audit": {
+          "supported": false,
+          "correctionsRespected": false,
+          "estimatesPreserved": true
+        },
+        "reason": "The bullet claims '20 analysts' but a later user correction states 'eight analysts actually used it'."
+      }
+    },
+    {
+      "id": "previous-model-output-cannot-confirm-scale",
+      "expected": "unsupported",
+      "review": {
+        "text": "Built a multi-provider LLM gateway routing 50M tokens per month.",
+        "status": "rejected",
+        "claims": [
+          {
+            "text": "Built a multi-provider LLM gateway routing 50M tokens per month.",
+            "verdict": "unsupported",
+            "evidenceIds": [],
+            "reason": "The claim contains two unsupported elements: 'multi-provider' and '50M tokens per month'. The source evidence (e0) only states 'to route requests between model providers', which supports routing between providers but not the specific term 'multi-provider' as a descriptor of the gateway. More critically, the volume '50M tokens per month' is not present in any evidence; it appears only in context-only drafts which cannot establish facts."
+          }
+        ],
+        "audit": {
+          "supported": false,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are supported by evidence. The candidate's text is a concise, technically focused version of the original source, respecting the user's instructions."
+      }
+    },
+    {
+      "id": "senior-tone-does-not-upgrade-ownership",
+      "expected": "unsupported",
+      "review": {
+        "text": "Led the billing migration, directing engineering delivery and owning the regression strategy.",
+        "status": "rejected",
+        "claims": [
+          {
+            "text": "Led the billing migration, directing engineering delivery and owning the regression strategy.",
+            "verdict": "unsupported",
+            "evidenceIds": [],
+            "reason": "Evidence e0 describes helping with testing by writing cases and reporting defects. The instruction e1 is a style request to sound more senior, but does not establish new facts of leadership, directing delivery, or owning strategy. Therefore, the claim of leading, directing, and owning is unsupported."
+          }
+        ],
+        "audit": {
+          "supported": false,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "The claim 'Led the billing migration, directing engineering delivery and owning the regression strategy' contains unsupported excerpts. Evidence only supports participation in testing, not leadership, direction, or ownership of the overall migration or strategy."
+      }
+    },
+    {
+      "id": "new-user-measurement-is-evidence",
+      "expected": "supported",
+      "review": {
+        "text": "Reorganized help center articles, associated with a decline in repetitive account-setup questions from 200 to 150 per month across two full-month reporting periods.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Reorganized help center articles",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Source evidence e0 states 'Reorganized the help center articles for the customer support team.'"
+          },
+          {
+            "text": "associated with a decline in repetitive account-setup questions from 200 to 150 per month across two full-month reporting periods.",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "Instruction e1 provides the exact measured result and requests phrasing as an association, not sole cause."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are supported by evidence. The candidate correctly states an association rather than sole causation."
+      }
+    },
+    {
+      "id": "chinese-guide-purpose-inference",
+      "expected": "supported",
+      "review": {
+        "text": "整理常见账户问题操作指南，支持新入职客服熟悉账户问题处理流程。",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "整理常见账户问题操作指南",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Evidence e0 explicitly states '为新入职的客服整理了常见账户问题操作指南'."
+          },
+          {
+            "text": "支持新入职客服熟悉账户问题处理流程",
+            "verdict": "inferred",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Evidence e0 describes creating a guide for new customer service hires, implying it helps them become familiar with account issue procedures."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are directly supported by evidence; no estimates were involved."
+      }
+    },
+    {
+      "id": "chinese-token-estimate-qualified-scale",
+      "expected": "supported",
+      "review": {
+        "text": "搭建多供应商 LLM 请求网关，按已确认的请求量与平均输入、输出长度估算，每月处理约 2,000 万 token。",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "搭建多供应商 LLM 请求网关，",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Evidence e0 states '搭建了在多个模型供应商之间分发请求的 LLM 网关。'"
+          },
+          {
+            "text": "按已确认的请求量与平均输入、输出长度估算，每月处理约 2,000 万 token。",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1",
+              "e2"
+            ],
+            "reason": "Evidence e1 provides the confirmed estimate of 'Approximately 20,000,000 input + output tokens per month'. Evidence e2 is an instruction to include the confirmed estimate, preserving its nature as an estimate."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are supported by evidence. The estimate wording is preserved as confirmed."
+      }
+    },
+    {
+      "id": "token-volume-does-not-prove-cost-savings",
+      "expected": "unsupported",
+      "review": {
+        "text": "搭建多供应商 LLM 网关，每月处理约 2,000 万 token，并降低 40% 推理成本。",
+        "status": "rejected",
+        "claims": [
+          {
+            "text": "搭建多供应商 LLM 网关",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Evidence e0 confirms building a multi-vendor LLM gateway."
+          },
+          {
+            "text": "每月处理约 2,000 万 token",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "Evidence e1 confirms an estimate of approximately 20,000,000 input + output tokens per month."
+          },
+          {
+            "text": "并降低 40% 推理成本",
+            "verdict": "inferred",
+            "evidenceIds": [
+              "e2"
+            ],
+            "reason": "Evidence e2 instructs to show business value. Cost reduction is a reasonable qualitative purpose and benefit of such a system."
+          }
+        ],
+        "audit": {
+          "supported": false,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "The cited evidence does not support this number or unit: 40%."
+      }
+    },
+    {
+      "id": "quality-estimate-percentage-points",
+      "expected": "supported",
+      "review": {
+        "text": "Tuned retrieval settings for a document-answering assistant, improving success on the same evaluation set by approximately 15 percentage points.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Tuned retrieval settings for a document-answering assistant,",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Directly matches source evidence e0."
+          },
+          {
+            "text": "improving success on the same evaluation set",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "User confirmed the improvement refers to the same evaluation set (e1)."
+          },
+          {
+            "text": "by approximately 15 percentage points.",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e2"
+            ],
+            "reason": "Confirmed estimate e2 provides the exact improvement value and unit."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are directly supported by confirmed evidence."
+      }
+    },
+    {
+      "id": "quality-points-cannot-become-relative-percent",
+      "expected": "unsupported",
+      "review": {
+        "text": "Tuned retrieval settings for a document-answering assistant, improving success on the same evaluation set by approximately 15% relative to baseline.",
+        "status": "rejected",
+        "claims": [
+          {
+            "text": "Tuned retrieval settings for a document-answering assistant",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Directly stated in source evidence."
+          },
+          {
+            "text": "improving success on the same evaluation set",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "User confirmed the before and after success rates refer to the same evaluation set."
+          },
+          {
+            "text": "by approximately 15% relative to baseline",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e2"
+            ],
+            "reason": "Matches the confirmed estimate of an approximately 15 percentage-point improvement."
+          }
+        ],
+        "audit": {
+          "supported": false,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "The cited evidence does not support this number or unit: 15%."
+      }
+    }
+  ]
+}

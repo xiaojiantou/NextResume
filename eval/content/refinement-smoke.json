@@ -1,0 +1,115 @@
+{
+  "model": "deepseek/deepseek-v3.2",
+  "at": "2026-09-09T17:24:08.860Z",
+  "scope": "single authored case through production refinement runner; not a quality benchmark",
+  "calls": [
+    {
+      "ms": 2865,
+      "usage": {
+        "prompt_tokens": 1537,
+        "completion_tokens": 103,
+        "total_tokens": 1640,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "ms": 5364,
+      "usage": {
+        "prompt_tokens": 599,
+        "completion_tokens": 145,
+        "total_tokens": 744,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 384,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    }
+  ],
+  "result": {
+    "ok": true,
+    "bullet": {
+      "id": "runbook-purpose-inference",
+      "text": "Wrote runbooks for the on-call team to investigate failed scheduled jobs, enabling faster diagnosis and resolution of production incidents.",
+      "evidence": [
+        "runbook-purpose-inference",
+        "voice-transcript"
+      ],
+      "matchedKeywords": [],
+      "rationale": "The instruction requested clarifying the value of the work, so I inferred the reasonable qualitative purpose of runbooks—to enable faster diagnosis and resolution—from the stated task, making the bullet's impact clearer.",
+      "evidenceLedger": [
+        {
+          "kind": "source",
+          "text": "Wrote runbooks for the on-call team to investigate failed scheduled jobs."
+        },
+        {
+          "kind": "instruction",
+          "text": "Explain the value of this work more clearly.",
+          "confirmedAt": "2026-09-09T12:00:00Z"
+        }
+      ],
+      "refinementReview": {
+        "text": "Wrote runbooks for the on-call team to investigate failed scheduled jobs, enabling faster diagnosis and resolution of production incidents.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Wrote runbooks for the on-call team to investigate failed scheduled jobs,",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0"
+            ],
+            "reason": "Directly stated in evidence e0."
+          },
+          {
+            "text": "enabling faster diagnosis and resolution of production incidents.",
+            "verdict": "inferred",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "Evidence e1 requests explaining the value; a qualitative purpose of enabling faster diagnosis/resolution is a reasonable inference for runbooks."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are supported or reasonably inferred from evidence. No corrections or estimates were provided to override."
+      },
+      "refinementTrace": {
+        "version": 1,
+        "model": "deepseek/deepseek-v3.2",
+        "elapsedMs": 8232,
+        "outcome": "approved",
+        "calls": [
+          {
+            "stage": "generate",
+            "elapsedMs": 2866,
+            "outcome": "completed"
+          },
+          {
+            "stage": "review",
+            "elapsedMs": 5364,
+            "outcome": "completed"
+          }
+        ]
+      }
+    }
+  }
+}

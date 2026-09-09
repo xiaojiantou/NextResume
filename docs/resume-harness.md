@@ -2,11 +2,11 @@
 
 ## Assessment
 
-The current implementation has useful components but the optimize route owns
-orchestration and the evaluation script reimplements it. Candidate history is
-lost on selection; factual and writing decisions are collapsed into one status;
-confirmed estimates become free-form text; user acceptance and restoration are
-not recorded as decisions. These gaps make regressions difficult to diagnose.
+Before the first delivery, the implementation had useful components but the optimize route owned
+orchestration and the evaluation script reimplemented it. Candidate history was
+lost on selection; factual and writing decisions were collapsed into one status;
+confirmed estimates became free-form text; user acceptance and restoration were
+not recorded as decisions. These gaps made regressions difficult to diagnose.
 
 ## First delivery
 
@@ -34,8 +34,8 @@ and online optimization use the same orchestration function.
 
 ## Follow-up milestones
 
-- Calibrated per-claim review of refinement conversations, including corrections
-  and accepted historical evidence; quality grading independent from grounding.
+- Expand calibration of per-claim refinement review beyond the first authored
+  corpus; quality grading remains independent from grounding.
 - Richer evidence questions and alternative framing at entry/document level.
 - A consented real-resume/job corpus, blind human preferences, and configurable
   release gates for quality, latency, and provider cost.
@@ -66,3 +66,53 @@ corrections; (2) expand a held-out corpus across roles and evidence availability
 with blind human preferences; (3) use those results to decide whether additional
 framing candidates improve quality enough to justify latency/cost. Do not add
 more model rounds solely because the harness can run them.
+
+## Second delivery: independent refinement review
+
+The single-bullet API now runs generation and a separate factual review through
+`runRefinementHarness`. The reviewer sees ordered user evidence; current and past
+model drafts are context only. Each approved claim must quote an exact span and
+cite known evidence IDs, and all words in the candidate must be covered. This
+review does not claim the writing is better; writing preference needs separate
+evaluation.
+
+The runner uses a 25-second generation deadline and 14-second review deadline
+inside the route's 45-second limit. A malformed, incomplete, unavailable, or
+rejected review returns no bullet for acceptance. The current text stays in
+place. No extra repair call is added in this delivery.
+
+Confirmed estimate results, free-form facts, and user instructions persist as
+distinct records. Reopening a refinement replays this evidence without promoting
+a previous model draft. Later corrections take precedence. Repeated unchanged
+notes do not undo corrections, and deliberate changes back to an earlier value
+remain newest. Removing an estimate persists a retraction until reconfirmed.
+
+The review parser also checks numeric claims against their cited evidence using
+the shared numeric validator. Chinese 万/亿 magnitudes and percent spacing are
+normalized. Calculation inputs are excluded as output achievements. Estimate
+clauses must retain approximate wording. Numeric checks help catch missing
+values and percent/percentage-point confusion; semantic unit, ownership and
+causality judgments still rely on the model and may be wrong.
+
+Validation commands and scope:
+
+- `npm test`: deterministic runner, API, parser, provenance, timeout and correction
+  regression tests alongside the existing suite.
+- `npm run test:content-ui`: mocked browser test for rejected rewrites preserving
+  current text, accepted evidence replay, removal corrections and mobile layout.
+- `npm run eval:refinement`: validates 14 authored bilingual calibration cases.
+- `npm run eval:refinement -- --live`: calls the production reviewer. The initial
+  DeepSeek V3.2 run agreed on 12/14 cases and falsely accepted two: invented 40%
+  cost savings from token volume, and 15 percentage points written as 15%.
+  The original judgments are retained in `refinement-calibration-initial.json`.
+- `npm run eval:refinement -- --replay`: reparses those saved judgments through
+  the strengthened numeric checks, with no new model calls. All 14 now match the
+  authored labels; this is regression replay, not fresh blind evaluation.
+- `npm run eval:refinement -- --live --smoke`: exercises generation and review
+  together. The authored runbook example completed in about 8.2 seconds.
+
+Next: collect broader examples across role levels and evidence completeness,
+reserve a held-out split, and obtain blind human preferences on actual content
+uplift. The current authored set is factual calibration and must not be used to
+claim a customer quality improvement rate. Production token accounting, cost
+gates and a trace viewer remain open.
