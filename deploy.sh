@@ -39,10 +39,17 @@ fi
 echo "📋 Type checking..."
 npx tsc --noEmit || { echo "❌ TypeScript errors"; exit 1; }
 
-# Commit and push (for code history, not deployment)
-echo "📤 Committing + pushing to GitHub..."
-git add -A
-git commit -m "Deploy: $(date '+%Y-%m-%d %H:%M:%S')" || true
+# The deploy ships the working directory, so anything uncommitted would go
+# live without being in history. Refuse rather than sweep it into an
+# auto-generated "Deploy:" commit — commit it deliberately, then deploy.
+if [ -n "$(git status --porcelain)" ]; then
+  echo "❌ Uncommitted changes — commit (or stash) them first so the deploy matches git history:"
+  git status --short
+  exit 1
+fi
+
+# Push (for code history, not deployment)
+echo "📤 Pushing main to GitHub..."
 git push origin main || { echo "❌ git push failed; deploy cancelled"; exit 1; }
 
 # Actual deployment: Vercel CLI (builds remotely)
