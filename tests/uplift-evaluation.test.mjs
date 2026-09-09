@@ -109,3 +109,13 @@ test('decisive win rate and share of all covered comparisons have distinct denom
   assert.equal(summary.byRole.unknown.failedCases.length, 1);
   assert.equal(summary.byRole.unknown.attemptedCases, 1);
 });
+test('technical summary includes failures and missing usage and computes an even-sample median correctly', async () => {
+  const { summarizeTechnicalRun } = await import('../scripts/lib/uplift-evaluation.mjs');
+  const summary = summarizeTechnicalRun({ cases: [
+    { ...rows[0], trace: { elapsedMs: 100, outcome: 'completed' }, calls: [{ inputTokens: 12, outputTokens: 2 }] },
+    { id: 'failed', ok: false, trace: { elapsedMs: 300 }, calls: [{ inputTokens: null, outputTokens: null }] },
+  ] });
+  assert.equal(summary.medianElapsedMs, 200);
+  assert.equal(summary.completed, 1); assert.equal(summary.attempted, 2);
+  assert.equal(summary.callsWithoutUsage, 1); assert.equal(summary.knownInputTokens, 12);
+});

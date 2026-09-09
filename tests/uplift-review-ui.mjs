@@ -35,14 +35,16 @@ const file = join(directory, 'review.html');
 const html = renderUpliftReview(packet);
 assert.equal(html.includes(packet.privateMapping), false);
 await writeFile(file, html);
+const trace = label => { if (process.env.UPLIFT_UI_DEBUG) console.log(label); };
 let browser;
 try {
-  browser = await puppeteer.launch({ headless: true });
+  browser = await puppeteer.launch({ headless: true, protocolTimeout: 30_000 });
   const page = await browser.newPage();
   const errors = [];
   const remoteRequests = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('request', request => { if (/^https?:/.test(request.url())) remoteRequests.push(request.url()); });
+  trace('load');
   await page.goto(pathToFileURL(file).href, { waitUntil: 'load' });
 
   assert.equal(await page.$eval('#download-review', button => button.disabled), true);
@@ -55,6 +57,7 @@ try {
   assert.equal(await page.$$eval('#comparison-0 .version:first-child li', items => items.length), 2);
   assert.equal(await page.$eval('#comparison-0 .version', element => getComputedStyle(element).backgroundColor), await page.$eval('#comparison-0 .version:last-child', element => getComputedStyle(element).backgroundColor));
 
+  trace('keyboard and reviewer code');
   // Keyboard selection is explicit. Attestation alone never creates a vote.
   await page.click('#attestation');
   assert.equal(await page.$eval('#download-review', button => button.disabled), true);
@@ -79,6 +82,7 @@ try {
     URL.createObjectURL = blob => { window.__downloadText = blob.text(); return create(blob); };
     document.addEventListener('click', event => { if (event.target instanceof HTMLAnchorElement && event.target.download) event.preventDefault(); });
   });
+  trace('download');
   await page.click('#download-review');
   const downloaded = await page.evaluate(async () => JSON.parse(await window.__downloadText));
   assert.deepEqual(downloaded, {
@@ -96,6 +100,7 @@ try {
   await page.click('#comparison-1 [data-clear]');
   assert.equal(await page.$$eval('#comparison-1 [data-preference]:checked', inputs => inputs.length), 0);
 
+  trace('packet isolation');
   // Reusing the same file for another packet must not borrow old preferences.
   await writeFile(file, renderUpliftReview({ ...packet, packetId: 'different-packet' }));
   await page.reload({ waitUntil: 'load' });
@@ -106,10 +111,12 @@ try {
   await page.reload({ waitUntil: 'load' });
   assert.equal(await page.$eval(firstChoice, input => input.checked), true);
 
+  trace('mobile and screenshot');
   await page.setViewport({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   if (process.env.UPLIFT_REVIEW_SCREENSHOT) await page.screenshot({ path: process.env.UPLIFT_REVIEW_SCREENSHOT, fullPage: true });
 
+  trace('storage fallback');
   const noStorage = await browser.newPage();
   noStorage.on('pageerror', error => errors.push(error.message));
   await noStorage.evaluateOnNewDocument(() => {
@@ -122,16 +129,22 @@ try {
   await noStorage.type('#reviewer', 'storage-fallback-reviewer');
   assert.equal(await noStorage.$eval('#download-review', button => button.disabled), false);
   assert.match(await noStorage.$eval('#save-status', element => element.textContent), /Local saving is unavailable/);
+  await noStorage.close();
+  await page.bringToFront();
+  trace('identical text');
   const identical = structuredClone(packet);
   identical.packetId = 'identical-packet';
   identical.items[0].B = identical.items[0].A;
   await writeFile(file, renderUpliftReview(identical));
   await page.reload({ waitUntil: 'load' });
+  trace('identical loaded');
   assert.equal(await page.$eval('#comparison-0 [data-preference][value="A"]', input => input.disabled), true);
   assert.equal(await page.$eval('#comparison-0 [data-preference][value="B"]', input => input.disabled), true);
   assert.equal(await page.$$eval('#comparison-0 [data-preference]:checked', inputs => inputs.length), 0);
+  trace('choose identical tie');
   await page.click('#comparison-0 [data-preference][value="tie"]');
   assert.equal(await page.$eval('#comparison-0 [data-preference][value="tie"]', input => input.checked), true);
+  trace('finish');
   assert.deepEqual(errors, []);
   assert.deepEqual(remoteRequests, []);
   console.log('PASS: explicit blind votes, reviewer-code requirement, attested partial export schema, draft persistence, packet isolation, clear choice, hostile content, keyboard focus, mobile width, offline operation, storage fallback.');

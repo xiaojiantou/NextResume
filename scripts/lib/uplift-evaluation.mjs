@@ -102,3 +102,17 @@ export function summarizeHumanReviews(packet, key, reviews, { minReviewersPerIte
     overall, byRole: Object.fromEntries([...new Set([...cases, ...key.failedMetadata].map(c => c.roleFamily))].map(role => [role, group(cases.filter(c => c.roleFamily === role), key.failedMetadata.filter(c => c.roleFamily === role))])),
     byEvidence: Object.fromEntries([...new Set([...cases, ...key.failedMetadata].map(c => c.evidenceLevel))].map(level => [level, group(cases.filter(c => c.evidenceLevel === level), key.failedMetadata.filter(c => c.evidenceLevel === level))])), cases };
 }
+
+export function summarizeTechnicalRun(run) {
+  const completed = run.cases.filter(c => c.ok);
+  const times = run.cases.map(c => c.trace.elapsedMs).sort((a, b) => a - b);
+  const calls = run.cases.flatMap(c => c.calls);
+  return { attempted: run.cases.length, completed: completed.length, failed: run.cases.filter(c => !c.ok).map(c => c.id), unchanged: completed.filter(c => digest(c.source) === digest(c.candidate)).length,
+    fallbacks: completed.filter(c => c.trace.outcome === 'fallback').map(c => c.id),
+    medianElapsedMs: times.length ? (times[Math.floor((times.length - 1) / 2)] + times[Math.floor(times.length / 2)]) / 2 : null,
+    maxElapsedMs: times.at(-1) ?? null, modelCalls: calls.length,
+    knownInputTokens: calls.reduce((sum, c) => sum + (typeof c.inputTokens === 'number' ? c.inputTokens : 0), 0),
+    knownOutputTokens: calls.reduce((sum, c) => sum + (typeof c.outputTokens === 'number' ? c.outputTokens : 0), 0),
+    callsWithoutUsage: calls.filter(c => typeof c.inputTokens !== 'number' || typeof c.outputTokens !== 'number').length,
+    scope: 'Experience/project content only. Technical completion and model review labels do not measure human preference or whole-document layout quality.' };
+}

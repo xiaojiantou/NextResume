@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { runOptimizationHarness } from '../lib/optimizationHarness.ts';
 import { reviewSemanticGrounding } from '../lib/semanticGrounding.ts';
 import { DEFAULT_MODEL_ID } from '../lib/models.ts';
-import { digest, validateCorpus, makeBlindPacket, summarizeHumanReviews } from './lib/uplift-evaluation.mjs';
+import { digest, validateCorpus, makeBlindPacket, summarizeHumanReviews, summarizeTechnicalRun } from './lib/uplift-evaluation.mjs';
 
 const option = (flag, fallback) => {
   const index = process.argv.indexOf(flag);
@@ -71,10 +71,8 @@ if (from) {
   run.status = 'completed';
 }
 writeFileSync(join(dir, 'run.json'), JSON.stringify(run, null, 2) + '\n');
-const ok = run.cases.filter(c => c.ok), times = run.cases.map(c => c.trace.elapsedMs).sort((a, b) => a - b), calls = run.cases.flatMap(c => c.calls);
-const technical = { attempted: run.cases.length, completed: ok.length, failed: run.cases.filter(c => !c.ok).map(c => c.id), unchanged: ok.filter(c => digest(c.source) === digest(c.candidate)).length,
-  medianElapsedMs: times.length ? (times[Math.floor((times.length - 1) / 2)] + times[Math.floor(times.length / 2)]) / 2 : null, maxElapsedMs: times.at(-1) ?? null, modelCalls: calls.length, knownInputTokens: calls.reduce((n, c) => n + (c.inputTokens ?? 0), 0), knownOutputTokens: calls.reduce((n, c) => n + (c.outputTokens ?? 0), 0), callsWithoutUsage: calls.filter(c => typeof c.inputTokens !== 'number' || typeof c.outputTokens !== 'number').length,
-  scope: 'Experience/project content only. Technical completion and model review labels do not measure human preference or whole-document layout quality.' };
+const ok = run.cases.filter(c => c.ok);
+const technical = summarizeTechnicalRun(run);
 writeFileSync(join(dir, 'technical-summary.json'), JSON.stringify(technical, null, 2) + '\n');
 if (!ok.length) { console.log('No completed comparison; saved failures to ' + dir); process.exitCode = 1; }
 else {
