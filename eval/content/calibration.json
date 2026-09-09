@@ -1,0 +1,107 @@
+{
+  "at": "2026-09-09T06:17:09.533Z",
+  "model": "deepseek/deepseek-v3.2",
+  "disagreements": [],
+  "reviews": {
+    "technical-impact": {
+      "text": "Reduced failed imports by 30% by writing Python validation checks for the import pipeline.",
+      "sourceText": "Was responsible for writing Python validation checks for the import pipeline, which reduced failed imports by 30%.",
+      "status": "improved",
+      "reason": "Restructured to lead with the impact, making the candidate's contribution and result clearer without altering facts.",
+      "dimensions": [
+        "clarity",
+        "contribution"
+      ]
+    },
+    "cosmetic": {
+      "text": "Developed a Python API for invoice processing.",
+      "sourceText": "Built a Python API for invoice processing.",
+      "status": "retained",
+      "reason": "Candidate change is a synonym swap ('Built' to 'Developed') with no meaningful improvement in clarity, specificity, or relevance.",
+      "dimensions": []
+    },
+    "strong": {
+      "text": "Improved deployment efficiency through CI/CD optimization.",
+      "sourceText": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+      "status": "retained",
+      "reason": "Candidate loses the precise quantitative result (40 to 10 minutes) and the specific method (parallelizing integration tests in GitHub Actions), replacing them with a vague claim. The original is stronger.",
+      "dimensions": []
+    },
+    "sparse": {
+      "text": "Led marketing campaigns that increased customer acquisition by 25%.",
+      "sourceText": "Helped with marketing.",
+      "status": "retained",
+      "reason": "Candidate invents a leadership role ('Led'), a specific outcome ('increased customer acquisition by 25%'), and a scope ('campaigns') not supported by the source.",
+      "dimensions": [],
+      "question": "What specific marketing tasks did you perform, and what was the observed outcome?"
+    },
+    "ownership": {
+      "text": "Owned supplier strategy and led weekly performance reviews.",
+      "sourceText": "Assisted the operations manager with weekly supplier reviews.",
+      "status": "retained",
+      "reason": "Candidate inflates 'assisted' to 'owned' and 'led', asserting a strategy responsibility not supported by the source.",
+      "dimensions": [],
+      "question": "What was your specific contribution to the supplier reviews, and what was the scope of your responsibility?"
+    },
+    "nontechnical-impact": {
+      "text": "Created a shared billing-question guide used to onboard new support staff.",
+      "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "status": "improved",
+      "reason": "Candidate paraphrases concisely ('used to onboard') while preserving the original facts: creation of a guide and its use during onboarding. This improves clarity.",
+      "dimensions": [
+        "clarity"
+      ]
+    },
+    "causal-transfer": {
+      "text": "Reduced API latency by 20% by adding logging and caching.",
+      "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "status": "retained",
+      "reason": "Candidate incorrectly attributes the latency reduction to both 'adding logging and caching', transferring causal credit from caching alone to logging as well.",
+      "dimensions": []
+    },
+    "strong-unchanged": {
+      "text": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "sourceText": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "status": "retained",
+      "reason": "Candidate is verbatim identical to the original, which is already clear, specific, and impactful.",
+      "dimensions": []
+    },
+    "invented-onboarding-benefit": {
+      "text": "Created a shared onboarding guide for common billing questions, which new support staff used to accelerate ramp-up.",
+      "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "status": "retained",
+      "reason": "Candidate invents an outcome ('accelerate ramp-up') not supported by the source, which only states the guide was used during onboarding.",
+      "dimensions": [],
+      "question": "What was the observed effect of the guide on the onboarding process?"
+    },
+    "logging-causal-credit": {
+      "text": "Reduced API latency by 20% by implementing a caching layer and adding structured logging for debugging.",
+      "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "status": "retained",
+      "reason": "Candidate incorrectly implies both caching and logging contributed to latency reduction, and invokes 'structured logging' without evidence.",
+      "dimensions": []
+    }
+  },
+  "calls": [
+    {
+      "phase": "review",
+      "ms": 18643,
+      "usage": {
+        "prompt_tokens": 1470,
+        "completion_tokens": 947,
+        "total_tokens": 2417,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    }
+  ]
+}
