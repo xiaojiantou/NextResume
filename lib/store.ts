@@ -98,6 +98,7 @@ type State = {
   step: Step;
 
 
+  evidenceAnswers: Record<string, { question: string; answer: string }>;
   voiceCount: number;
 };
 
@@ -156,6 +157,7 @@ type Actions = {
   clearFitVariants: () => void;
   clearFitVariantsForStyle: (style: PdfStyle) => void;
 
+  setEvidenceAnswer: (bulletId: string, question: string, answer: string) => void;
   incrementVoiceCount: () => void;
 
   markPaid: (access?: OrderAccess) => void;
@@ -200,6 +202,7 @@ const initial: State = {
   orderToken: null,
   step: "upload",
 
+  evidenceAnswers: {},
   voiceCount: 0,
 };
 
@@ -208,12 +211,16 @@ export const useFlow = create<State & Actions>()(
     (set) => ({
       ...initial,
       setFileMeta: (name, type, size, fingerprint = null) =>
-        set({
+        set((state) => ({
+          evidenceAnswers: fingerprint && fingerprint === state.fileFingerprint ? state.evidenceAnswers : {},
           fileName: name,
           fileType: type,
           fileSize: size,
           fileFingerprint: fingerprint,
-        }),
+        })),
+      setEvidenceAnswer: (bulletId, question, answer) => set((state) => ({
+        evidenceAnswers: { ...state.evidenceAnswers, [bulletId]: { question, answer: answer.slice(0, 3000) } },
+      })),
       setResume: (r) =>
         set((state) => {
           if (!state.resume) return { resume: r };
@@ -293,6 +300,7 @@ export const useFlow = create<State & Actions>()(
       setSourceDocument: (document) => set({ sourceDocument: document }),
       clearFile: () =>
         set({
+          evidenceAnswers: {},
           fileName: null,
           fileType: null,
           fileSize: null,

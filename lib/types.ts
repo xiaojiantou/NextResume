@@ -432,6 +432,7 @@ export type FitBrief = {
 export type BulletSuggestion = "keep" | "trim" | "cut";
 
 export type OptimizedBullet = {
+  contentReview?: import("./contentQuality").ContentReview;
   id: string;
   text: string;
   evidence: string[];

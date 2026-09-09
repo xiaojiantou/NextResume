@@ -1,0 +1,84 @@
+[
+  {
+    "id": "technical-impact",
+    "category": "technical",
+    "job": "Backend engineer building reliable data pipelines",
+    "source": "Was responsible for writing Python validation checks for the import pipeline, which reduced failed imports by 30%.",
+    "candidate": "Reduced failed imports by 30% by writing Python validation checks for the import pipeline.",
+    "expected": "improved"
+  },
+  {
+    "id": "cosmetic",
+    "category": "technical",
+    "job": "Backend engineer",
+    "source": "Built a Python API for invoice processing.",
+    "candidate": "Developed a Python API for invoice processing.",
+    "expected": "retain"
+  },
+  {
+    "id": "strong",
+    "category": "strong",
+    "job": "Platform engineer",
+    "source": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+    "candidate": "Improved deployment efficiency through CI/CD optimization.",
+    "expected": "retain"
+  },
+  {
+    "id": "sparse",
+    "category": "sparse",
+    "job": "Marketing coordinator",
+    "source": "Helped with marketing.",
+    "candidate": "Led marketing campaigns that increased customer acquisition by 25%.",
+    "expected": "retain",
+    "needsEvidence": true
+  },
+  {
+    "id": "ownership",
+    "category": "nontechnical",
+    "job": "Operations manager",
+    "source": "Assisted the operations manager with weekly supplier reviews.",
+    "candidate": "Owned supplier strategy and led weekly performance reviews.",
+    "expected": "retain",
+    "needsEvidence": true
+  },
+  {
+    "id": "nontechnical-impact",
+    "category": "nontechnical",
+    "job": "Customer support specialist",
+    "source": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+    "candidate": "Created a shared billing-question guide used to onboard new support staff.",
+    "expected": "improved"
+  },
+  {
+    "id": "causal-transfer",
+    "category": "technical",
+    "job": "Backend engineer",
+    "source": "Reduced API latency by 20% using caching; added logging for debugging.",
+    "candidate": "Reduced API latency by 20% by adding logging and caching.",
+    "expected": "retain"
+  },
+  {
+    "id": "strong-unchanged",
+    "category": "strong",
+    "job": "Data analyst",
+    "source": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+    "candidate": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+    "expected": "retain"
+  },
+  {
+    "id": "invented-onboarding-benefit",
+    "category": "nontechnical",
+    "job": "Customer support specialist",
+    "source": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+    "candidate": "Created a shared onboarding guide for common billing questions, which new support staff used to accelerate ramp-up.",
+    "expected": "retain"
+  },
+  {
+    "id": "logging-causal-credit",
+    "category": "technical",
+    "job": "Backend engineer",
+    "source": "Reduced API latency by 20% using caching; added logging for debugging.",
+    "candidate": "Reduced API latency by 20% by implementing a caching layer and adding structured logging for debugging.",
+    "expected": "retain"
+  }
+]

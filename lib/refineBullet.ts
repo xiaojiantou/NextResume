@@ -1,5 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import { CONTENT_WRITING_STANDARD } from "./contentQuality.ts";
+
 // Prompt construction for a single-bullet refinement conversation.
 //
 // Split out of the route so the parts worth pinning down — that earlier rounds
@@ -19,8 +21,9 @@ Absolute rules:
 - Use ONLY facts the candidate stated. Do not invent skills, technologies, metrics, or responsibilities.
 - If the candidate is vague ("a lot", "some", "improved things"), keep it qualitative. Never fabricate a number.
 - The candidate's instructions are the ground truth. The previous bullet is context, not license to embellish.
-- Start with a strong ownership verb (Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered).
-- Output must be one bullet, under 240 characters.
+- Output must be one concise bullet. Preserve meaningful evidence; do not enforce an arbitrary character limit.
+
+${CONTENT_WRITING_STANDARD}
 
 Language:
 - The candidate may instruct you in ANY language.
@@ -37,7 +40,7 @@ Output ONLY valid JSON:
   "id": "refined",
   "text": string,
   "evidence": string[],       // Include the original bullet id (echoed from input). Plus "voice-transcript" as a signal.
-  "matchedKeywords": string[],// 1-3 JD keywords this bullet now satisfies
+  "matchedKeywords": string[],// 0-3 JD keywords supported by this bullet
   "rationale": string         // 1 sentence on how the instruction strengthened the bullet
 }`;
 

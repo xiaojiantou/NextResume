@@ -1,0 +1,1341 @@
+{
+  "at": "2026-09-09T06:16:01.732Z",
+  "model": "deepseek/deepseek-v3.2",
+  "corpus": "authored regression cases, not customer resumes",
+  "scope": "writing + quality selection; full route safety validators covered separately by tests",
+  "disagreements": [
+    "nontechnical-impact"
+  ],
+  "calibration": {
+    "technical-impact": {
+      "text": "Reduced failed imports by 30% by writing Python validation checks for the import pipeline.",
+      "sourceText": "Was responsible for writing Python validation checks for the import pipeline, which reduced failed imports by 30%.",
+      "status": "improved",
+      "reason": "Reordered to lead with the impact, making the candidate's contribution clearer and more direct. The action, method, and result are preserved.",
+      "dimensions": [
+        "clarity",
+        "contribution",
+        "impact"
+      ]
+    },
+    "cosmetic": {
+      "text": "Developed a Python API for invoice processing.",
+      "sourceText": "Built a Python API for invoice processing.",
+      "status": "retained",
+      "reason": "The change from 'Built' to 'Developed' is a synonym swap that does not meaningfully improve clarity, specificity, contribution, impact, or relevance. The original wording is already clear.",
+      "dimensions": []
+    },
+    "strong": {
+      "text": "Improved deployment efficiency through CI/CD optimization.",
+      "sourceText": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+      "status": "retained",
+      "reason": "The candidate version loses the precise result (40 to 10 minutes), the specific method (parallelizing integration tests), and the tool (GitHub Actions). 'Improved deployment efficiency' is vague and 'CI/CD optimization' is a generic term that does not preserve the original causality or details.",
+      "dimensions": []
+    },
+    "sparse": {
+      "text": "Led marketing campaigns that increased customer acquisition by 25%.",
+      "sourceText": "Helped with marketing.",
+      "status": "retained",
+      "reason": "The candidate version invents a leadership role ('Led'), a specific activity ('campaigns'), and a quantitative result ('increased customer acquisition by 25%') not present in the source. This is unsupported inflation.",
+      "dimensions": [],
+      "question": "What specific marketing activities did you perform, and what was the observed outcome?"
+    },
+    "ownership": {
+      "text": "Owned supplier strategy and led weekly performance reviews.",
+      "sourceText": "Assisted the operations manager with weekly supplier reviews.",
+      "status": "retained",
+      "reason": "The candidate version changes 'Assisted' to 'Owned' and 'led', and invents 'supplier strategy' without evidence. 'Assistance' does not establish ownership or strategic leadership.",
+      "dimensions": [],
+      "question": "What was your specific contribution to the weekly supplier reviews?"
+    },
+    "nontechnical-impact": {
+      "text": "Created a shared billing-question guide used to onboard new support staff.",
+      "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "status": "retained",
+      "reason": "The candidate version condenses the wording but loses the explicit mention of 'onboarding' as the context of use. The original is clearer about the guide's purpose and application.",
+      "dimensions": []
+    },
+    "causal-transfer": {
+      "text": "Reduced API latency by 20% by adding logging and caching.",
+      "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "status": "retained",
+      "reason": "The candidate version incorrectly adds 'adding logging' as a cause for reducing latency. The source attributes the latency reduction solely to caching and states logging was added for a different purpose (debugging).",
+      "dimensions": []
+    },
+    "strong-unchanged": {
+      "text": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "sourceText": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "status": "retained",
+      "reason": "The candidate version is verbatim. The original is already strong, clear, and specific, with a documented action, tool, and quantitative impact.",
+      "dimensions": []
+    },
+    "invented-onboarding-benefit": {
+      "text": "Created a shared onboarding guide for common billing questions, which new support staff used to accelerate ramp-up.",
+      "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "status": "retained",
+      "reason": "The candidate version invents an outcome ('accelerate ramp-up') that is not supported by the source. The source only states the guide was used during onboarding, not that it improved the speed or effectiveness of onboarding.",
+      "dimensions": [],
+      "question": "What specific benefit or improvement did you observe from the guide being used during onboarding?"
+    },
+    "logging-causal-credit": {
+      "text": "Reduced API latency by 20% by implementing a caching layer and adding structured logging for debugging.",
+      "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "status": "retained",
+      "reason": "The candidate version invents 'structured logging' without evidence and again incorrectly implies logging contributed to the latency reduction. It also loses the semicolon structure that separates the two independent actions.",
+      "dimensions": []
+    }
+  },
+  "calls": [
+    {
+      "phase": "baseline",
+      "ms": 4901,
+      "usage": {
+        "prompt_tokens": 907,
+        "completion_tokens": 100,
+        "total_tokens": 1007,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 832,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5417,
+      "usage": {
+        "prompt_tokens": 1350,
+        "completion_tokens": 96,
+        "total_tokens": 1446,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1280,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3022,
+      "usage": {
+        "prompt_tokens": 990,
+        "completion_tokens": 113,
+        "total_tokens": 1103,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3873,
+      "usage": {
+        "prompt_tokens": 1012,
+        "completion_tokens": 85,
+        "total_tokens": 1097,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 2217,
+      "usage": {
+        "prompt_tokens": 868,
+        "completion_tokens": 79,
+        "total_tokens": 947,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5250,
+      "usage": {
+        "prompt_tokens": 1334,
+        "completion_tokens": 85,
+        "total_tokens": 1419,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 2499,
+      "usage": {
+        "prompt_tokens": 964,
+        "completion_tokens": 98,
+        "total_tokens": 1062,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 2308,
+      "usage": {
+        "prompt_tokens": 964,
+        "completion_tokens": 90,
+        "total_tokens": 1054,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 4210,
+      "usage": {
+        "prompt_tokens": 900,
+        "completion_tokens": 90,
+        "total_tokens": 990,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 832,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5572,
+      "usage": {
+        "prompt_tokens": 1343,
+        "completion_tokens": 94,
+        "total_tokens": 1437,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3037,
+      "usage": {
+        "prompt_tokens": 985,
+        "completion_tokens": 114,
+        "total_tokens": 1099,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3034,
+      "usage": {
+        "prompt_tokens": 985,
+        "completion_tokens": 108,
+        "total_tokens": 1093,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 4011,
+      "usage": {
+        "prompt_tokens": 886,
+        "completion_tokens": 82,
+        "total_tokens": 968,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 768,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5214,
+      "usage": {
+        "prompt_tokens": 1329,
+        "completion_tokens": 92,
+        "total_tokens": 1421,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4179,
+      "usage": {
+        "prompt_tokens": 980,
+        "completion_tokens": 95,
+        "total_tokens": 1075,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4566,
+      "usage": {
+        "prompt_tokens": 979,
+        "completion_tokens": 103,
+        "total_tokens": 1082,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 4816,
+      "usage": {
+        "prompt_tokens": 890,
+        "completion_tokens": 100,
+        "total_tokens": 990,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 768,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5824,
+      "usage": {
+        "prompt_tokens": 1333,
+        "completion_tokens": 98,
+        "total_tokens": 1431,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4902,
+      "usage": {
+        "prompt_tokens": 992,
+        "completion_tokens": 107,
+        "total_tokens": 1099,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3636,
+      "usage": {
+        "prompt_tokens": 988,
+        "completion_tokens": 73,
+        "total_tokens": 1061,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 2668,
+      "usage": {
+        "prompt_tokens": 877,
+        "completion_tokens": 101,
+        "total_tokens": 978,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 2339,
+      "usage": {
+        "prompt_tokens": 1320,
+        "completion_tokens": 89,
+        "total_tokens": 1409,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 512,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 5169,
+      "usage": {
+        "prompt_tokens": 1011,
+        "completion_tokens": 121,
+        "total_tokens": 1132,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4555,
+      "usage": {
+        "prompt_tokens": 981,
+        "completion_tokens": 172,
+        "total_tokens": 1153,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revision",
+      "ms": 6274,
+      "usage": {
+        "prompt_tokens": 1465,
+        "completion_tokens": 109,
+        "total_tokens": 1574,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1280,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3696,
+      "usage": {
+        "prompt_tokens": 1005,
+        "completion_tokens": 79,
+        "total_tokens": 1084,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 2683,
+      "usage": {
+        "prompt_tokens": 876,
+        "completion_tokens": 92,
+        "total_tokens": 968,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 4408,
+      "usage": {
+        "prompt_tokens": 1342,
+        "completion_tokens": 88,
+        "total_tokens": 1430,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 2673,
+      "usage": {
+        "prompt_tokens": 983,
+        "completion_tokens": 92,
+        "total_tokens": 1075,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4576,
+      "usage": {
+        "prompt_tokens": 999,
+        "completion_tokens": 102,
+        "total_tokens": 1101,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revision",
+      "ms": 5819,
+      "usage": {
+        "prompt_tokens": 1444,
+        "completion_tokens": 105,
+        "total_tokens": 1549,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1280,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4297,
+      "usage": {
+        "prompt_tokens": 1004,
+        "completion_tokens": 95,
+        "total_tokens": 1099,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 2512,
+      "usage": {
+        "prompt_tokens": 878,
+        "completion_tokens": 97,
+        "total_tokens": 975,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 768,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 2548,
+      "usage": {
+        "prompt_tokens": 1321,
+        "completion_tokens": 100,
+        "total_tokens": 1421,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4204,
+      "usage": {
+        "prompt_tokens": 1007,
+        "completion_tokens": 99,
+        "total_tokens": 1106,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3770,
+      "usage": {
+        "prompt_tokens": 1007,
+        "completion_tokens": 83,
+        "total_tokens": 1090,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 2943,
+      "usage": {
+        "prompt_tokens": 881,
+        "completion_tokens": 122,
+        "total_tokens": 1003,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 768,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5886,
+      "usage": {
+        "prompt_tokens": 1347,
+        "completion_tokens": 105,
+        "total_tokens": 1452,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 5693,
+      "usage": {
+        "prompt_tokens": 1015,
+        "completion_tokens": 137,
+        "total_tokens": 1152,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 832,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 5968,
+      "usage": {
+        "prompt_tokens": 1008,
+        "completion_tokens": 158,
+        "total_tokens": 1166,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 960,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revision",
+      "ms": 6270,
+      "usage": {
+        "prompt_tokens": 1506,
+        "completion_tokens": 114,
+        "total_tokens": 1620,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1280,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 5137,
+      "usage": {
+        "prompt_tokens": 1008,
+        "completion_tokens": 122,
+        "total_tokens": 1130,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 4187,
+      "usage": {
+        "prompt_tokens": 901,
+        "completion_tokens": 102,
+        "total_tokens": 1003,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 704,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 6593,
+      "usage": {
+        "prompt_tokens": 1344,
+        "completion_tokens": 109,
+        "total_tokens": 1453,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 5385,
+      "usage": {
+        "prompt_tokens": 1009,
+        "completion_tokens": 123,
+        "total_tokens": 1132,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 832,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4951,
+      "usage": {
+        "prompt_tokens": 1006,
+        "completion_tokens": 117,
+        "total_tokens": 1123,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revision",
+      "ms": 6508,
+      "usage": {
+        "prompt_tokens": 1464,
+        "completion_tokens": 114,
+        "total_tokens": 1578,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4244,
+      "usage": {
+        "prompt_tokens": 1005,
+        "completion_tokens": 90,
+        "total_tokens": 1095,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 960,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 20206,
+      "usage": {
+        "prompt_tokens": 1404,
+        "completion_tokens": 1066,
+        "total_tokens": 2470,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 896,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    }
+  ],
+  "rows": [
+    {
+      "id": "technical-impact",
+      "category": "technical",
+      "job": "Backend engineer building reliable data pipelines",
+      "source": "Was responsible for writing Python validation checks for the import pipeline, which reduced failed imports by 30%.",
+      "candidate": "Reduced failed imports by 30% by writing Python validation checks for the import pipeline.",
+      "expected": "improved",
+      "baseline": "Built Python validation checks for a critical data import pipeline, reducing failed imports by 30%.",
+      "baselineReview": {
+        "text": "Built Python validation checks for a critical data import pipeline, reducing failed imports by 30%.",
+        "sourceText": "Was responsible for writing Python validation checks for the import pipeline, which reduced failed imports by 30%.",
+        "status": "retained",
+        "reason": "The candidate's rewrite is a cosmetic edit. 'Was responsible for writing' changed to 'Built,' but the substance, facts, and structure are identical. No concrete improvement in clarity, specificity, contribution, impact, or relevance was made. The original is already clear and specific, and the change does not meaningfully uplift the content.",
+        "dimensions": []
+      },
+      "proposed": "Reduced failed imports by 30% by writing Python validation checks for the import pipeline.",
+      "final": "Reduced failed imports by 30% by writing Python validation checks for the import pipeline.",
+      "revisedReview": {
+        "text": "Reduced failed imports by 30% by writing Python validation checks for the import pipeline.",
+        "sourceText": "Was responsible for writing Python validation checks for the import pipeline, which reduced failed imports by 30%.",
+        "status": "improved",
+        "reason": "The candidate version leads with the documented impact, making the accomplishment and the candidate's direct contribution clearer and more immediate. The factual content and causal relationship are unchanged.",
+        "dimensions": [
+          "clarity",
+          "contribution"
+        ]
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "cosmetic",
+      "category": "technical",
+      "job": "Backend engineer",
+      "source": "Built a Python API for invoice processing.",
+      "candidate": "Developed a Python API for invoice processing.",
+      "expected": "retain",
+      "baseline": "Built a Python API for invoice processing.",
+      "baselineReview": {
+        "text": "Built a Python API for invoice processing.",
+        "sourceText": "Built a Python API for invoice processing.",
+        "status": "retained",
+        "reason": "The candidate text is identical to the source text. There is no change to improve clarity, specificity, contribution, impact, or relevance.",
+        "dimensions": []
+      },
+      "proposed": "Built a Python API for invoice processing.",
+      "final": "Built a Python API for invoice processing.",
+      "revisedReview": {
+        "text": "Built a Python API for invoice processing.",
+        "sourceText": "Built a Python API for invoice processing.",
+        "status": "retained",
+        "reason": "The candidate's wording is identical to the source. There is no change to evaluate for improvement.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "strong",
+      "category": "strong",
+      "job": "Platform engineer",
+      "source": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+      "candidate": "Improved deployment efficiency through CI/CD optimization.",
+      "expected": "retain",
+      "baseline": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+      "baselineReview": {
+        "text": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+        "sourceText": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+        "status": "retained",
+        "reason": "The candidate's version is verbatim and already clear, specific, and impactful. It precisely states the action, method, and quantitative result. No meaningful improvement is possible without losing or altering the original, well-constructed achievement.",
+        "dimensions": []
+      },
+      "proposed": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+      "final": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+      "revisedReview": {
+        "text": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+        "sourceText": "Reduced deployment time from 40 to 10 minutes by parallelizing integration tests in GitHub Actions.",
+        "status": "retained",
+        "reason": "The candidate's version is verbatim to the original, which is already strong, clear, and specific. It preserves the precise result, the method, and the tool, making any change unnecessary.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "sparse",
+      "category": "sparse",
+      "job": "Marketing coordinator",
+      "source": "Helped with marketing.",
+      "candidate": "Led marketing campaigns that increased customer acquisition by 25%.",
+      "expected": "retain",
+      "needsEvidence": true,
+      "baseline": "Contributed to marketing initiatives.",
+      "baselineReview": {
+        "text": "Contributed to marketing initiatives.",
+        "sourceText": "Helped with marketing.",
+        "status": "retained",
+        "reason": "The candidate version is a cosmetic synonym swap ('Helped with' to 'Contributed to') with no concrete improvement in clarity, specificity, contribution, impact, or relevance. The original is equally vague. No meaningful content uplift was achieved.",
+        "dimensions": []
+      },
+      "proposed": "Helped with marketing.",
+      "final": "Helped with marketing.",
+      "revisedReview": {
+        "text": "Helped with marketing.",
+        "sourceText": "Helped with marketing.",
+        "status": "retained",
+        "reason": "The candidate wording is identical to the source. No meaningful improvement in clarity, specificity, contribution, impact, or relevance is possible without additional evidence from the candidate.",
+        "dimensions": [],
+        "question": "Can you describe a specific marketing task you helped with, such as creating content, managing social media, or analyzing campaign data?"
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "ownership",
+      "category": "nontechnical",
+      "job": "Operations manager",
+      "source": "Assisted the operations manager with weekly supplier reviews.",
+      "candidate": "Owned supplier strategy and led weekly performance reviews.",
+      "expected": "retain",
+      "needsEvidence": true,
+      "baseline": "Led weekly supplier performance reviews, analyzing key metrics to drive operational efficiency.",
+      "baselineReview": {
+        "text": "Led weekly supplier performance reviews, analyzing key metrics to drive operational efficiency.",
+        "sourceText": "Assisted the operations manager with weekly supplier reviews.",
+        "status": "retained",
+        "reason": "The candidate's version inflates 'assisted' to 'led' and adds unsupported claims of analyzing metrics and driving efficiency. The source provides no evidence for this ownership or these outcomes. The original wording is accurate and should be preserved.",
+        "dimensions": [],
+        "question": "Can you describe your specific responsibilities and contributions during the weekly supplier reviews?"
+      },
+      "proposed": "Assisted the operations manager with weekly supplier reviews.",
+      "final": "Assisted the operations manager with weekly supplier reviews.",
+      "revisedReview": {
+        "text": "Assisted the operations manager with weekly supplier reviews.",
+        "sourceText": "Assisted the operations manager with weekly supplier reviews.",
+        "status": "retained",
+        "reason": "The candidate's wording is identical to the source. No improvement is made or required; the original is a clear statement of support activity.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "nontechnical-impact",
+      "category": "nontechnical",
+      "job": "Customer support specialist",
+      "source": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "candidate": "Created a shared billing-question guide used to onboard new support staff.",
+      "expected": "improved",
+      "baseline": "Built and maintained a shared knowledge base of common billing questions that was integrated into the onboarding curriculum for new support staff.",
+      "baselineReview": {
+        "text": "Built and maintained a shared knowledge base of common billing questions that was integrated into the onboarding curriculum for new support staff.",
+        "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+        "status": "retained",
+        "reason": "The candidate's rewrite introduces new, unsupported facts: 'maintained' and 'integrated into the onboarding curriculum.' The source only states the guide was created and used during onboarding. The original is already clear and specific about the accomplishment.",
+        "dimensions": [],
+        "question": "Can you describe your specific role in the creation and adoption of the guide, and any feedback or results you observed from its use?"
+      },
+      "proposed": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "final": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "revisedReview": {
+        "text": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+        "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+        "status": "retained",
+        "reason": "The candidate's wording is identical to the source. There is no change to review, and the original already clearly states the action and its intended use case.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "causal-transfer",
+      "category": "technical",
+      "job": "Backend engineer",
+      "source": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "candidate": "Reduced API latency by 20% by adding logging and caching.",
+      "expected": "retain",
+      "baseline": "Reduced API latency by 20% by implementing caching strategies and adding comprehensive logging for debugging.",
+      "baselineReview": {
+        "text": "Reduced API latency by 20% by implementing caching strategies and adding comprehensive logging for debugging.",
+        "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+        "status": "retained",
+        "reason": "The candidate's version incorrectly attributes the latency reduction to both caching and logging, while the source only credits caching. This is an unsupported causal transfer. The original wording is clear and specific about the separate actions and their purposes.",
+        "dimensions": []
+      },
+      "proposed": "Reduced API latency by 20% by implementing caching and added logging for debugging.",
+      "final": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "revisedReview": {
+        "text": "Reduced API latency by 20% by implementing caching and added logging for debugging.",
+        "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+        "status": "retained",
+        "reason": "The candidate's rewrite incorrectly attributes the latency reduction to both 'implementing caching and added logging', while the source attributes it only to caching. This is an unsupported causal transfer. The original wording is more precise and should be retained.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "strong-unchanged",
+      "category": "strong",
+      "job": "Data analyst",
+      "source": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "candidate": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "expected": "retain",
+      "baseline": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "baselineReview": {
+        "text": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+        "sourceText": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+        "status": "retained",
+        "reason": "The candidate's wording is identical to the source, which is already clear, specific, and impactful. It preserves the action (automated), tool (SQL), object (weekly sales reports), and quantified result (saving 6 hours per week).",
+        "dimensions": []
+      },
+      "proposed": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "final": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+      "revisedReview": {
+        "text": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+        "sourceText": "Automated weekly sales reports in SQL, saving the finance team 6 hours per week.",
+        "status": "retained",
+        "reason": "The candidate's wording is identical to the source, which is already clear, specific, and includes a quantifiable impact. No improvement is needed or possible without new evidence.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "invented-onboarding-benefit",
+      "category": "nontechnical",
+      "job": "Customer support specialist",
+      "source": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "candidate": "Created a shared onboarding guide for common billing questions, which new support staff used to accelerate ramp-up.",
+      "expected": "retain",
+      "baseline": "Built a shared knowledge base for common billing inquiries, which was adopted as a core onboarding resource for new support staff.",
+      "baselineReview": {
+        "text": "Built a shared knowledge base for common billing inquiries, which was adopted as a core onboarding resource for new support staff.",
+        "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+        "status": "retained",
+        "reason": "The candidate's version adds an unsupported claim about the guide's purpose ('adopted as a core onboarding resource'). The source states the guide was used during onboarding, which is a factual usage, but does not establish it was formally adopted as a core resource or that it accelerated onboarding. This is an inference beyond the evidence. The original wording is more precise.",
+        "dimensions": [],
+        "question": "What was the primary purpose or intended benefit of creating the shared guide?"
+      },
+      "proposed": "Created a shared guide for common billing questions that new support staff used during onboarding.",
+      "final": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+      "revisedReview": {
+        "text": "Created a shared guide for common billing questions that new support staff used during onboarding.",
+        "sourceText": "Created a shared guide for common billing questions and new support staff used it during onboarding.",
+        "status": "retained",
+        "reason": "The candidate's version is a minor rephrasing that does not improve substance. The source states the guide was created and used during onboarding; it does not provide evidence that this usage 'accelerated ramp-up' or 'improved efficiency', which are common but unsupported inferences. The original wording is already clear and specific about what was done.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "logging-causal-credit",
+      "category": "technical",
+      "job": "Backend engineer",
+      "source": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "candidate": "Reduced API latency by 20% by implementing a caching layer and adding structured logging for debugging.",
+      "expected": "retain",
+      "baseline": "Reduced API latency by 20% by implementing a caching layer and adding structured logging for debugging.",
+      "baselineReview": {
+        "text": "Reduced API latency by 20% by implementing a caching layer and adding structured logging for debugging.",
+        "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+        "status": "retained",
+        "reason": "The candidate's version incorrectly credits 'adding structured logging' with contributing to the latency reduction. The source attributes the 20% reduction only to 'using caching' and states logging was added 'for debugging' as a separate action. The candidate also adds the unsupported descriptor 'structured' to the logging. These are material changes to the causal attribution and factual detail.",
+        "dimensions": []
+      },
+      "proposed": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "final": "Reduced API latency by 20% using caching; added logging for debugging.",
+      "revisedReview": {
+        "text": "Reduced API latency by 20% using caching; added logging for debugging.",
+        "sourceText": "Reduced API latency by 20% using caching; added logging for debugging.",
+        "status": "retained",
+        "reason": "The candidate's wording is identical to the source. No change was made, so there is no improvement to evaluate. The source already clearly states two separate actions and their purposes, preserving causality and details.",
+        "dimensions": []
+      },
+      "humanPreference": null
+    }
+  ]
+}

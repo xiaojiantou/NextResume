@@ -25,6 +25,7 @@ import { REFINE_QUOTA, orderAuthHeaders, useFlow } from "@/lib/store";
 import { loadSourceDocument } from "@/lib/sourceDocumentStore";
 
 import { cn } from "@/lib/cn";
+import { currentContentReview } from "@/lib/contentQuality";
 import {
   PDF_STYLE_DEFINITIONS,
   getDefaultPaletteId,
@@ -97,7 +98,7 @@ const REWRITE_PROGRESS_STAGES = [
   "Reading your experience",
   "Matching against the job description",
   "Rewriting bullets with evidence",
-  "Checking every claim against your resume",
+  "Checking claims and comparing content quality",
   "Reordering for the target role",
   "Scoring the result",
 ] as const;
@@ -105,8 +106,8 @@ const REWRITE_PROGRESS_STAGES = [
 const REWRITE_STAGE_MS = 5_000;
 
 // Nearly all of the wait is the model generating the rewrite (60-90s on a
-// slow model, up to three correction rounds). The checks and scoring after it
-// are deterministic and finish in seconds. The bar therefore stops advancing
+// slow model, up to three correction rounds). Evidence and content review
+// also use the model; the displayed elapsed time covers those stages. The bar therefore stops advancing
 // on the rewrite stage and shows elapsed time there — parking it on "Scoring
 // the result" made an instant step look like the bottleneck.
 const REWRITE_HOLD_STAGE = 2;
@@ -2491,6 +2492,7 @@ function BulletDiffRow({
 }) {
   const [refining, setRefining] = useState(false);
   const quotaExhausted = quotaRemaining <= 0;
+  const review = currentContentReview(bullet);
 
   // Focus is deliberately not driven by hover: the preview scrolls itself to
   // the focused bullet, and doing that every time the pointer crosses a row is
@@ -2583,6 +2585,20 @@ function BulletDiffRow({
             aria-label="Rewritten bullet"
             className="w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-1.5 -mx-2 text-sm leading-relaxed text-ink-900 transition hover:border-ink-100 focus:border-accent-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-100"
           />
+          {review && (
+            <div className="mt-2 text-xs text-ink-600">
+              <span className="font-medium text-ink-900">
+                {review.status === "improved" ? "Content improved" : review.status === "retained" ? "Original retained" : "Content review unavailable"}
+              </span>
+              <p className="mt-1">{review.reason}</p>
+              {review.question && (
+                <button type="button" onClick={() => setRefining(true)} disabled={quotaExhausted}
+                  className="mt-2 text-left font-medium text-accent-700 underline underline-offset-2 disabled:opacity-40">
+                  Add evidence: {review.question}
+                </button>
+              )}
+            </div>
+          )}
           <div className="mt-2 flex flex-wrap gap-1.5">
             {bullet.matchedKeywords.map((k) => (
               <span
@@ -2666,6 +2682,13 @@ function BulletDiff({
   if (!resume || !optimization) return null;
   const quotaRemaining = Math.max(0, REFINE_QUOTA - voiceCount);
 
+  const reviewedBullets = [...optimization.roles, ...(optimization.projects ?? [])].flatMap(entry => entry.bullets);
+  const reviews = reviewedBullets.map(currentContentReview);
+  const improvedCount = reviews.filter(review => review?.status === "improved").length;
+  const retainedCount = reviews.filter(review => review?.status === "retained").length;
+  const needsEvidenceCount = reviews.filter(review => review?.question).length;
+  const unreviewedCount = reviews.filter(review => !review || review.status === "unreviewed").length;
+
   const rowProps = (
     ownerId: string,
     bullet: OptimizedBullet,
@@ -2699,6 +2722,11 @@ function BulletDiff({
 
   return (
     <div className="mt-10">
+      <div className="mb-4 rounded-lg border border-ink-200 bg-white p-4 text-sm" aria-live="polite">
+        <p className="font-medium text-ink-900">Content improvements</p>
+        <p className="mt-1 text-ink-600">{improvedCount} improved · {retainedCount} originals retained · {needsEvidenceCount} could benefit from more evidence{unreviewedCount > 0 ? ` · ${unreviewedCount} without a current content review` : ""}</p>
+        <p className="mt-1 text-xs text-ink-500">These comparisons assess achievement wording. Formatting and ATS keyword scores are separate. Expand Refine to answer an optional evidence question.</p>
+      </div>
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-ink-900">
           Bullet-by-bullet changes
@@ -2710,7 +2738,7 @@ function BulletDiff({
               (optimization.additionalSections?.flatMap((section) =>
                 section.items.flatMap((item) => item.bullets),
               ).length ?? 0)}{" "}
-            bullets rewritten
+            bullets compared
           </span>
           <span className="hidden sm:inline">·</span>
           <span
