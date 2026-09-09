@@ -1,0 +1,35 @@
+[
+  {
+    "id": "reasonable-enabling-value",
+    "category": "inference",
+    "job": "Site reliability engineer",
+    "source": "Wrote runbooks for the on-call team to investigate failed scheduled jobs.",
+    "candidate": "Authored runbooks to support on-call investigation and recovery of failed scheduled jobs.",
+    "expected": "improved"
+  },
+  {
+    "id": "shared-guide-value",
+    "category": "inference",
+    "job": "Customer support specialist",
+    "source": "Created a shared guide covering common account questions for new support staff.",
+    "candidate": "Created a shared guide to support onboarding new staff on common account questions.",
+    "expected": "improved"
+  },
+  {
+    "id": "llm-scale-question",
+    "category": "metric-opportunity",
+    "job": "AI platform engineer",
+    "source": "Built an LLM gateway to route requests between model providers.",
+    "candidate": "Built an LLM gateway to route requests between model providers.",
+    "expected": "retain",
+    "expectedMetric": "monthly_tokens"
+  },
+  {
+    "id": "unconfirmed-token-count",
+    "category": "unconfirmed-number",
+    "job": "AI platform engineer",
+    "source": "Built an LLM gateway to route requests between model providers.",
+    "candidate": "Built an LLM gateway processing 20 million tokens per month.",
+    "expected": "retain"
+  }
+]

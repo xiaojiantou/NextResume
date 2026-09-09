@@ -1,0 +1,54 @@
+[
+  {
+    "id": "incident-docs",
+    "category": "technical",
+    "job": "Site reliability engineer documenting incident response",
+    "source": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+    "candidate": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+    "expected": "retain",
+    "expectedNextStep": "revise"
+  },
+  {
+    "id": "inventory-reconciliation",
+    "category": "nontechnical",
+    "job": "Inventory coordinator",
+    "source": "For the monthly stock count, a spreadsheet was maintained by me to track discrepancies and it was used by the warehouse supervisor during reconciliation.",
+    "candidate": "Maintained a spreadsheet of monthly stock-count discrepancies used by the warehouse supervisor during reconciliation.",
+    "expected": "improved"
+  },
+  {
+    "id": "access-support",
+    "category": "nontechnical",
+    "job": "Customer support specialist handling account access",
+    "source": "When customers had account access problems, I checked identity records and restored access following the documented verification procedure.",
+    "candidate": "Resolved customer account-access issues by checking identity records and restoring access under the documented verification procedure.",
+    "expected": "improved"
+  },
+  {
+    "id": "qualitative-strong",
+    "category": "strong",
+    "job": "Localization specialist",
+    "source": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+    "candidate": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+    "expected": "retain",
+    "expectedNextStep": "keep"
+  },
+  {
+    "id": "support-sparse",
+    "category": "sparse",
+    "job": "Customer support specialist",
+    "source": "Helped with customer support.",
+    "candidate": "Helped with customer support.",
+    "expected": "retain",
+    "expectedNextStep": "ask",
+    "needsEvidence": true
+  },
+  {
+    "id": "handoff-overclaim",
+    "category": "technical",
+    "job": "Data engineer",
+    "source": "Documented the nightly import procedure and handed it over to the support team.",
+    "candidate": "Automated nightly imports, eliminating manual support work.",
+    "expected": "retain"
+  }
+]

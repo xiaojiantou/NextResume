@@ -1,0 +1,67 @@
+{
+  "at": "2026-09-09T07:31:47.001Z",
+  "model": "deepseek/deepseek-v3.2",
+  "disagreements": [
+    "reasonable-enabling-value"
+  ],
+  "reviews": {
+    "reasonable-enabling-value": {
+      "text": "Authored runbooks to support on-call investigation and recovery of failed scheduled jobs.",
+      "sourceText": "Wrote runbooks for the on-call team to investigate failed scheduled jobs.",
+      "status": "retained",
+      "reason": "The candidate's version is a faithful paraphrase that clarifies the purpose ('to support on-call investigation and recovery') without altering the original action or scope. The qualitative inference about supporting on-call work is reasonable and grounded in the source. The original is already clear and specific, so there is no meaningful improvement to justify a change.",
+      "dimensions": [],
+      "impactMetrics": [],
+      "nextStep": "keep"
+    },
+    "shared-guide-value": {
+      "text": "Created a shared guide to support onboarding new staff on common account questions.",
+      "sourceText": "Created a shared guide covering common account questions for new support staff.",
+      "status": "improved",
+      "reason": "The candidate version adds a clear, reasonable purpose ('to support onboarding new staff') that connects the shared guide to a key job function. This improves relevance and clarity by explicitly stating the value of the work without inventing new facts or metrics.",
+      "dimensions": [
+        "clarity",
+        "relevance"
+      ],
+      "impactMetrics": [],
+      "nextStep": "keep"
+    },
+    "llm-scale-question": {
+      "text": "Built an LLM gateway to route requests between model providers.",
+      "sourceText": "Built an LLM gateway to route requests between model providers.",
+      "status": "retained",
+      "reason": "The candidate version is identical to the source. While the action is clear, it lacks scale, method details, or any indication of impact, which is typical for an AI platform role. The original is retained as there is no evidence to support an improvement.",
+      "dimensions": [],
+      "impactMetrics": [
+        "monthly_tokens"
+      ],
+      "nextStep": "ask",
+      "question": "What was the scale of the routing (e.g., requests per second, number of providers) or the primary technical method used (e.g., load balancing, failover logic)?"
+    },
+    "unconfirmed-token-count": {
+      "text": "Built an LLM gateway processing 20 million tokens per month.",
+      "sourceText": "Built an LLM gateway to route requests between model providers.",
+      "status": "retained",
+      "reason": "The candidate inserted a specific metric ('20 million tokens per month') that is not present in the source. This is an unsupported fabrication of scale. The original must be retained to preserve factual accuracy.",
+      "dimensions": [],
+      "impactMetrics": [
+        "monthly_tokens"
+      ],
+      "nextStep": "ask",
+      "question": "Do you have data on the volume of tokens or requests the gateway processed?"
+    }
+  },
+  "calls": [
+    {
+      "phase": "review",
+      "ms": 21652,
+      "usage": {
+        "prompt_tokens": 1955,
+        "completion_tokens": 620,
+        "total_tokens": 2575,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      }
+    }
+  ]
+}

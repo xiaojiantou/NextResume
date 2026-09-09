@@ -80,3 +80,22 @@ quality gains. Human preference fields remain unfilled. Real resume/job pairs,
 blind preference review, and representative latency/cost measurements remain
 necessary before claiming measured customer uplift. The implementation is
 local; these checks do not deploy it.
+
+## Updated direction: reasonable inference and estimated impact
+
+The user's subsequent instruction permits reasonable qualitative value
+inferences and asks for impact criteria and estimates that the user can fill or
+confirm. [Research notes and sources](criteria-research.md) describe the updated
+policy. Purpose/capability inferences are accepted; proposed numeric impact is
+collected separately and calculated from user-supplied inputs before confirmation
+and refinement. `impact/calibration.json` records a small exploratory check:
+the reviewer accepted an onboarding purpose inference, suggested token-scale
+inputs for an LLM gateway, and rejected an unconfirmed numeric claim. It retained
+one other plausible paraphrase because it did not find a meaningful writing gain,
+while explicitly accepting the inference in its reasoning. That stylistic
+judgment disagreed with the original preferred-output label (3/4); it is not
+reported as a perfect evaluation or broad quality improvement.
+
+The latest flow also revises unchanged weak wording when there is a concrete
+source-supported direction, preserves approved sibling bullets during retries,
+and returns a previously validated result if an optional extra revision fails.

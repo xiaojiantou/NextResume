@@ -1,0 +1,732 @@
+{
+  "casesPath": "eval/content/heldout-v2.json",
+  "baselineRef": "HEAD",
+  "at": "2026-09-09T06:58:29.529Z",
+  "model": "deepseek/deepseek-v3.2",
+  "corpus": "authored regression cases, not customer resumes",
+  "scope": "writing + quality selection; full route safety validators covered separately by tests",
+  "disagreements": [
+    "incident-docs"
+  ],
+  "calibration": {
+    "incident-docs": {
+      "text": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+      "sourceText": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+      "status": "retained",
+      "reason": "The candidate wording is identical to the source. The original is already clear and specific, stating the action (writing runbooks), the object (runbooks), the user (on-call team), and the purpose (investigate failed scheduled jobs). No meaningful improvement is possible without additional evidence.",
+      "dimensions": [],
+      "nextStep": "keep"
+    },
+    "inventory-reconciliation": {
+      "text": "Maintained a spreadsheet of monthly stock-count discrepancies used by the warehouse supervisor during reconciliation.",
+      "sourceText": "For the monthly stock count, a spreadsheet was maintained by me to track discrepancies and it was used by the warehouse supervisor during reconciliation.",
+      "status": "improved",
+      "reason": "The candidate restructures the passive, awkward source into a concise, active statement. It removes weak scaffolding ('For the monthly stock count, a spreadsheet was maintained by me') and leads with the core action ('Maintained a spreadsheet'), preserving all key facts: the object (spreadsheet), its content (monthly stock-count discrepancies), its user (warehouse supervisor), and its purpose (during reconciliation). This improves clarity and readability.",
+      "dimensions": [
+        "clarity"
+      ],
+      "nextStep": "keep"
+    },
+    "access-support": {
+      "text": "Resolved customer account-access issues by checking identity records and restoring access under the documented verification procedure.",
+      "sourceText": "When customers had account access problems, I checked identity records and restored access following the documented verification procedure.",
+      "status": "improved",
+      "reason": "The candidate improves the source by leading with a stronger action verb ('Resolved') that accurately summarizes the described process. It maintains all factual components: the problem (customer account-access issues), the method (checking identity records, restoring access), and the constraint (following documented verification procedure). The restructuring removes the weak 'When... I...' clause and connects the action to its purpose more directly, enhancing clarity and contribution.",
+      "dimensions": [
+        "clarity",
+        "contribution"
+      ],
+      "nextStep": "keep"
+    },
+    "qualitative-strong": {
+      "text": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+      "sourceText": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+      "status": "retained",
+      "reason": "The candidate wording is identical to the source. The original is already strong, specific, and concise. It clearly states the action (Translated), object (installation guides), method (verified terminology with product engineers), and scope (from Spanish to English). No improvement is needed.",
+      "dimensions": [],
+      "nextStep": "keep"
+    },
+    "support-sparse": {
+      "text": "Helped with customer support.",
+      "sourceText": "Helped with customer support.",
+      "status": "retained",
+      "reason": "The candidate wording is identical to the source. The source is extremely sparse, stating only 'Helped with customer support.' Without additional evidence of specific tasks, methods, or results, no meaningful improvement can be made. Retaining it is the only supported option.",
+      "dimensions": [],
+      "nextStep": "ask",
+      "question": "What specific customer support tasks did you perform (e.g., answering tickets, troubleshooting issues)?"
+    },
+    "handoff-overclaim": {
+      "text": "Automated nightly imports, eliminating manual support work.",
+      "sourceText": "Documented the nightly import procedure and handed it over to the support team.",
+      "status": "retained",
+      "reason": "The candidate introduces unsupported facts and alters the causal attribution. The source states 'Documented... and handed it over.' The candidate asserts 'Automated... eliminating manual support work,' which is a new, unsupported mechanism (automation) and a new, unsupported result (eliminating manual work). The original detail of 'handed it over to the support team' is also lost. Therefore, the candidate is not supported and must be retained.",
+      "dimensions": [],
+      "nextStep": "revise",
+      "revisionInstruction": "Lead with the documented action: 'Documented the nightly import procedure and handed it over to the support team.' If automation was involved, the source must explicitly state it."
+    }
+  },
+  "calls": [
+    {
+      "phase": "baseline",
+      "ms": 2501,
+      "usage": {
+        "prompt_tokens": 1334,
+        "completion_tokens": 89,
+        "total_tokens": 1423,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 3088,
+      "usage": {
+        "prompt_tokens": 1428,
+        "completion_tokens": 123,
+        "total_tokens": 1551,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 6632,
+      "usage": {
+        "prompt_tokens": 1336,
+        "completion_tokens": 117,
+        "total_tokens": 1453,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 9342,
+      "usage": {
+        "prompt_tokens": 1340,
+        "completion_tokens": 192,
+        "total_tokens": 1532,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 5923,
+      "usage": {
+        "prompt_tokens": 1355,
+        "completion_tokens": 104,
+        "total_tokens": 1459,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5450,
+      "usage": {
+        "prompt_tokens": 1449,
+        "completion_tokens": 110,
+        "total_tokens": 1559,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4240,
+      "usage": {
+        "prompt_tokens": 1316,
+        "completion_tokens": 168,
+        "total_tokens": 1484,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 8363,
+      "usage": {
+        "prompt_tokens": 1338,
+        "completion_tokens": 153,
+        "total_tokens": 1491,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 6864,
+      "usage": {
+        "prompt_tokens": 1351,
+        "completion_tokens": 118,
+        "total_tokens": 1469,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5211,
+      "usage": {
+        "prompt_tokens": 1445,
+        "completion_tokens": 107,
+        "total_tokens": 1552,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 5770,
+      "usage": {
+        "prompt_tokens": 1334,
+        "completion_tokens": 166,
+        "total_tokens": 1500,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3541,
+      "usage": {
+        "prompt_tokens": 1306,
+        "completion_tokens": 142,
+        "total_tokens": 1448,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 5894,
+      "usage": {
+        "prompt_tokens": 1345,
+        "completion_tokens": 99,
+        "total_tokens": 1444,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 5221,
+      "usage": {
+        "prompt_tokens": 1439,
+        "completion_tokens": 104,
+        "total_tokens": 1543,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 3511,
+      "usage": {
+        "prompt_tokens": 1301,
+        "completion_tokens": 140,
+        "total_tokens": 1441,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 8935,
+      "usage": {
+        "prompt_tokens": 1327,
+        "completion_tokens": 181,
+        "total_tokens": 1508,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 2606,
+      "usage": {
+        "prompt_tokens": 1312,
+        "completion_tokens": 90,
+        "total_tokens": 1402,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 4656,
+      "usage": {
+        "prompt_tokens": 1429,
+        "completion_tokens": 99,
+        "total_tokens": 1528,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1280,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 7753,
+      "usage": {
+        "prompt_tokens": 1304,
+        "completion_tokens": 149,
+        "total_tokens": 1453,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 9038,
+      "usage": {
+        "prompt_tokens": 1307,
+        "completion_tokens": 183,
+        "total_tokens": 1490,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "baseline",
+      "ms": 2970,
+      "usage": {
+        "prompt_tokens": 1321,
+        "completion_tokens": 92,
+        "total_tokens": 1413,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "revised",
+      "ms": 4846,
+      "usage": {
+        "prompt_tokens": 1438,
+        "completion_tokens": 104,
+        "total_tokens": 1542,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1216,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 6421,
+      "usage": {
+        "prompt_tokens": 1322,
+        "completion_tokens": 111,
+        "total_tokens": 1433,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 4241,
+      "usage": {
+        "prompt_tokens": 1299,
+        "completion_tokens": 162,
+        "total_tokens": 1461,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "phase": "review",
+      "ms": 37753,
+      "usage": {
+        "prompt_tokens": 1582,
+        "completion_tokens": 961,
+        "total_tokens": 2543,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    }
+  ],
+  "rows": [
+    {
+      "id": "incident-docs",
+      "category": "technical",
+      "job": "Site reliability engineer documenting incident response",
+      "source": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+      "candidate": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+      "expected": "retain",
+      "expectedNextStep": "revise",
+      "baseline": "Wrote runbooks for the on-call team to investigate failed scheduled jobs.",
+      "baselineReview": {
+        "text": "Wrote runbooks for the on-call team to investigate failed scheduled jobs.",
+        "sourceText": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+        "status": "improved",
+        "reason": "Removed weak scaffolding ('I was responsible for the task of') and made the action ('Wrote') and its purpose clearer. The factual core—writing runbooks for the on-call team to investigate failed scheduled jobs—is preserved and presented more directly.",
+        "dimensions": [
+          "clarity",
+          "specificity"
+        ],
+        "nextStep": "keep"
+      },
+      "proposed": "Authored runbooks for the on-call team to diagnose and resolve failures in scheduled production jobs.",
+      "final": "Authored runbooks for the on-call team to diagnose and resolve failures in scheduled production jobs.",
+      "revisedReview": {
+        "text": "Authored runbooks for the on-call team to diagnose and resolve failures in scheduled production jobs.",
+        "sourceText": "I was responsible for the task of writing the runbooks that the on-call team used to investigate failed scheduled jobs.",
+        "status": "improved",
+        "reason": "The candidate version removes the weak scaffolding 'I was responsible for the task of' and leads with the stronger action 'Authored'. It preserves the key facts (writing runbooks, used by the on-call team, for investigating failed scheduled jobs) and expresses them more concisely and professionally. The addition of 'diagnose and resolve' and 'production' are reasonable, specific elaborations of 'investigate' and 'scheduled jobs' that do not contradict the source.",
+        "dimensions": [
+          "clarity",
+          "specificity"
+        ],
+        "nextStep": "keep"
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "inventory-reconciliation",
+      "category": "nontechnical",
+      "job": "Inventory coordinator",
+      "source": "For the monthly stock count, a spreadsheet was maintained by me to track discrepancies and it was used by the warehouse supervisor during reconciliation.",
+      "candidate": "Maintained a spreadsheet of monthly stock-count discrepancies used by the warehouse supervisor during reconciliation.",
+      "expected": "improved",
+      "baseline": "Maintained a spreadsheet to track discrepancies for the monthly stock count, which the warehouse supervisor used during reconciliation.",
+      "baselineReview": {
+        "text": "Maintained a spreadsheet to track discrepancies for the monthly stock count, which the warehouse supervisor used during reconciliation.",
+        "sourceText": "For the monthly stock count, a spreadsheet was maintained by me to track discrepancies and it was used by the warehouse supervisor during reconciliation.",
+        "status": "retained",
+        "reason": "The candidate's version is a faithful paraphrase that clarifies the sentence structure by making the subject ('I') implicit and active. It retains all original facts: the action (maintained), object (spreadsheet), purpose (track discrepancies), scope (for monthly stock count), and the documented usage (used by warehouse supervisor during reconciliation). The original wording was already clear and specific; the change is purely grammatical.",
+        "dimensions": [],
+        "nextStep": "keep"
+      },
+      "proposed": "Maintained a spreadsheet to track stock discrepancies, enabling the warehouse supervisor to reconcile inventory during monthly counts.",
+      "final": "Maintained a spreadsheet to track stock discrepancies, enabling the warehouse supervisor to reconcile inventory during monthly counts.",
+      "revisedReview": {
+        "text": "Maintained a spreadsheet to track stock discrepancies, enabling the warehouse supervisor to reconcile inventory during monthly counts.",
+        "sourceText": "For the monthly stock count, a spreadsheet was maintained by me to track discrepancies and it was used by the warehouse supervisor during reconciliation.",
+        "status": "improved",
+        "reason": "The candidate version removes the passive voice and awkward phrasing ('a spreadsheet was maintained by me', 'it was used by'), making the action and its purpose clearer. It retains the key facts: the candidate maintained the spreadsheet, it tracked discrepancies, and it was used by the supervisor for reconciliation during monthly counts. The causal link ('enabling') is supported by the source's statement that the spreadsheet 'was used by the warehouse supervisor during reconciliation.'",
+        "dimensions": [
+          "clarity",
+          "contribution"
+        ],
+        "nextStep": "keep"
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "access-support",
+      "category": "nontechnical",
+      "job": "Customer support specialist handling account access",
+      "source": "When customers had account access problems, I checked identity records and restored access following the documented verification procedure.",
+      "candidate": "Resolved customer account-access issues by checking identity records and restoring access under the documented verification procedure.",
+      "expected": "improved",
+      "baseline": "Resolved customer account access issues by verifying identity records and restoring access in compliance with documented security procedures.",
+      "baselineReview": {
+        "text": "Resolved customer account access issues by verifying identity records and restoring access in compliance with documented security procedures.",
+        "sourceText": "When customers had account access problems, I checked identity records and restored access following the documented verification procedure.",
+        "status": "retained",
+        "reason": "The candidate's version is a faithful paraphrase that adds 'security' as a descriptor for the procedures, which is a plausible inference but not explicitly stated in the source. The source wording ('When customers had account access problems, I checked identity records and restored access following the documented verification procedure.') is already clear, specific, and describes the candidate's contribution and method. The change is cosmetic and does not provide a concrete gain in clarity, specificity, contribution, impact, or relevance. The original should be retained as it is already strong",
+        "dimensions": [],
+        "nextStep": "keep"
+      },
+      "proposed": "Restored customer account access by verifying identity records and following documented security procedures.",
+      "final": "Restored customer account access by verifying identity records and following documented security procedures.",
+      "revisedReview": {
+        "text": "Restored customer account access by verifying identity records and following documented security procedures.",
+        "sourceText": "When customers had account access problems, I checked identity records and restored access following the documented verification procedure.",
+        "status": "improved",
+        "reason": "The candidate restructures the sentence to lead with the primary action ('Restored customer account access'), making the contribution clearer and more direct. The original facts—checking identity records and following documented verification procedures—are accurately retained and concisely expressed.",
+        "dimensions": [
+          "clarity",
+          "specificity"
+        ],
+        "nextStep": "keep"
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "qualitative-strong",
+      "category": "strong",
+      "job": "Localization specialist",
+      "source": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+      "candidate": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+      "expected": "retain",
+      "expectedNextStep": "keep",
+      "baseline": "Translated installation guides from Spanish to English and verified technical terminology with product engineers.",
+      "baselineReview": {
+        "text": "Translated installation guides from Spanish to English and verified technical terminology with product engineers.",
+        "sourceText": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+        "status": "retained",
+        "reason": "The candidate's edit is cosmetic, changing 'terminology' to 'technical terminology'. The original wording is already clear, specific, and accurately describes the candidate's contribution and method. No meaningful improvement in clarity, specificity, contribution, impact, or relevance is achieved.",
+        "dimensions": [],
+        "nextStep": "keep"
+      },
+      "proposed": "Translated installation guides from Spanish to English and verified technical terminology with product engineers to ensure accuracy.",
+      "final": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+      "revisedReview": {
+        "text": "Translated installation guides from Spanish to English and verified technical terminology with product engineers to ensure accuracy.",
+        "sourceText": "Translated installation guides from Spanish to English and verified terminology with product engineers.",
+        "status": "retained",
+        "reason": "The candidate's revision adds 'technical' before 'terminology' and 'to ensure accuracy' at the end. The first is a minor, plausible descriptor, but the second is a new claim of an intended outcome or benefit. The original only states the action of verification; it does not explicitly state that accuracy was ensured as a result. This is a subtle but material change in attribution. The original wording is already clear and specific, so it should be retained.",
+        "dimensions": [],
+        "nextStep": "keep"
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "support-sparse",
+      "category": "sparse",
+      "job": "Customer support specialist",
+      "source": "Helped with customer support.",
+      "candidate": "Helped with customer support.",
+      "expected": "retain",
+      "expectedNextStep": "ask",
+      "needsEvidence": true,
+      "baseline": "Helped with customer support.",
+      "baselineReview": {
+        "text": "Helped with customer support.",
+        "sourceText": "Helped with customer support.",
+        "status": "retained",
+        "reason": "The candidate bullet is identical to the source, which is vague and lacks specific actions, tools, or results. No evidence is provided to support a meaningful improvement in clarity, specificity, contribution, impact, or relevance. Retaining the original is necessary as there is no basis for an uplift without additional source information.",
+        "dimensions": [],
+        "nextStep": "ask",
+        "question": "What specific tasks did you perform to help with customer support (e.g., using a ticketing system, resolving billing inquiries, providing technical troubleshooting)?"
+      },
+      "proposed": "Assisted customers with technical issues and inquiries.",
+      "final": "Helped with customer support.",
+      "revisedReview": {
+        "text": "Assisted customers with technical issues and inquiries.",
+        "sourceText": "Helped with customer support.",
+        "status": "retained",
+        "reason": "The candidate version ('Assisted customers with technical issues and inquiries.') is a plausible paraphrase of the source ('Helped with customer support.'). It adds specificity ('technical issues and inquiries') which is a potential improvement in clarity and relevance. However, this specificity is not supported by the source text, which only states 'customer support' generically. The audit flags this as an unsupported addition, requiring a 'retain' decision. The original is weak but cannot be improved without additional evidence.",
+        "dimensions": [],
+        "nextStep": "ask",
+        "question": "What specific types of customer issues or inquiries did you help with? (e.g., billing, product usage, technical troubleshooting)"
+      },
+      "humanPreference": null
+    },
+    {
+      "id": "handoff-overclaim",
+      "category": "technical",
+      "job": "Data engineer",
+      "source": "Documented the nightly import procedure and handed it over to the support team.",
+      "candidate": "Automated nightly imports, eliminating manual support work.",
+      "expected": "retain",
+      "baseline": "Documented the nightly import procedure and handed it over to the support team.",
+      "baselineReview": {
+        "text": "Documented the nightly import procedure and handed it over to the support team.",
+        "sourceText": "Documented the nightly import procedure and handed it over to the support team.",
+        "status": "retained",
+        "reason": "The candidate's wording is identical to the source. It is already a clear and specific statement of the action and its outcome (handoff to support). No meaningful improvement is possible without additional evidence of a result, such as reduced support tickets or improved procedure reliability.",
+        "dimensions": [],
+        "nextStep": "keep"
+      },
+      "proposed": "Documented the nightly import procedure and transferred operational responsibility to the support team.",
+      "final": "Documented the nightly import procedure and handed it over to the support team.",
+      "revisedReview": {
+        "text": "Documented the nightly import procedure and transferred operational responsibility to the support team.",
+        "sourceText": "Documented the nightly import procedure and handed it over to the support team.",
+        "status": "retained",
+        "reason": "The candidate's 'transferred operational responsibility' is an unsupported upgrade from the source's 'handed it over'. The source describes a handoff; the candidate asserts a transfer of responsibility without evidence that responsibility was formally transferred.",
+        "dimensions": [],
+        "nextStep": "ask",
+        "question": "What was the specific nature of the handoff? Did you provide training, update an ownership matrix, or formally delegate on-call duties?"
+      },
+      "humanPreference": null
+    }
+  ]
+}
