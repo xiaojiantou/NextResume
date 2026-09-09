@@ -1,16 +1,16 @@
 {
   "attempted": 1,
-  "completed": 0,
-  "failed": [
+  "completed": 1,
+  "failed": [],
+  "unchanged": 0,
+  "fallbacks": [
     "dev-design-usability-measured-zh"
   ],
-  "unchanged": 0,
-  "fallbacks": [],
-  "medianElapsedMs": 29032,
-  "maxElapsedMs": 29032,
-  "modelCalls": 4,
-  "knownInputTokens": 7882,
-  "knownOutputTokens": 945,
+  "medianElapsedMs": 36469,
+  "maxElapsedMs": 36469,
+  "modelCalls": 6,
+  "knownInputTokens": 10401,
+  "knownOutputTokens": 1333,
   "callsWithoutUsage": 0,
   "scope": "Experience/project content only. Technical completion and model review labels do not measure human preference or whole-document layout quality."
 }

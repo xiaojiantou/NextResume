@@ -5,7 +5,8 @@
     "dev-design-usability-measured-zh"
   ],
   "unchanged": 2,
-  "medianElapsedMs": 26580,
+  "fallbacks": [],
+  "medianElapsedMs": 24080.5,
   "maxElapsedMs": 43465,
   "modelCalls": 30,
   "knownInputTokens": 45612,

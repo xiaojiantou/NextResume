@@ -34,3 +34,92 @@ This is an **authored, reserved validation set**, not an untouched real-world he
 The source set includes both weak phrasing with useful facts and already direct, quantified content. Review should allow ties and a preference for retaining a strong source. Additional words, numerical density, and token volume are not automatic evidence of better content. For example, an AI workload's input/output token counts describe scope, while a comparable cost measurement describes efficiency; those meanings should stay distinct.
 
 Assess candidate and source versions against the supplied facts and target role. Useful dimensions include contribution clarity, appropriate ownership, concrete method and scope, supported impact, readability, and role relevance. Keep preference judgments separate from unsupported-claim findings. This corpus is a starting point for a blinded review workflow, not a substitute for actual human preference data.
+
+## Run and review
+
+The default command validates the corpus and lists six development cases. It
+never calls a model or touches the reserved validation split.
+
+```sh
+npm run eval:uplift
+npm run eval:uplift -- --live --limit 6 --out eval/uplift/runs/my-run
+npm run eval:uplift -- --from eval/uplift/runs/my-run/run.json --out eval/uplift/reviews/my-run
+```
+
+Use `--case <id>` for a targeted development regression. Selecting validation
+requires `--split validation`; after it has informed a change, it is no longer
+untouched validation for that change. Each run records the corpus hash, model,
+Git revision and file hashes of the evaluated code. Existing runs and packets
+are never overwritten by the CLI. A run can return a failure exit status while
+still saving its completed comparisons and failure details.
+
+Share only `review.html` with reviewers. It is an offline file with no external
+assets or network calls. Keep `analysis-key.json` and `run.json` out of their
+review materials. A/B positions are balanced and shuffled independently of case
+order. Reviewer packets exclude model verdicts, generation traces and variant
+labels. Known facts remain visible to support factual checking; this masks
+provenance, not every possible linguistic clue about which version was rewritten.
+
+Reviewers choose A, B, equally strong, or neither is ready, and can separately
+flag factual concerns and explain their criteria. There are no initial votes;
+identical versions require an explicit tie/neither choice. A reviewer code and
+self-attestation are required for export. Codes distinguish submissions; they
+are not identity verification. Drafts stay in the browser under that packet ID.
+Partial exports are allowed and coverage stays incomplete until enough reviews
+arrive.
+
+```sh
+npm run eval:uplift:summary -- \
+  --packet eval/uplift/reviews/my-run/packet.json \
+  --key eval/uplift/reviews/my-run/analysis-key.json \
+  --out eval/uplift/reviews/my-run/human-summary.json \
+  /path/to/reviewer-one.json /path/to/reviewer-two.json
+```
+
+The importer binds votes to the visible text and the private mapping using the
+packet ID and a salted mapping commitment. It rejects duplicate reviewer codes,
+unknown items, stale packets, missing attestation and directional preferences
+for identical versions. To update a review, replace that person's previous
+export rather than supplying both exports. Do not combine votes from different
+packets or code versions.
+
+By default, each comparison needs at least two reviewer codes before it receives
+a consensus. A strict majority chooses a winner/tie/neither; otherwise it is
+mixed. Reports include failed generation cases, coverage, factual concerns, and
+breakdowns by role and evidence level. `decisiveCandidateWinRate` uses only
+candidate/source consensus outcomes; `candidatePreferredShareOfCovered` also
+includes ties, neither and mixed outcomes in its denominator. Both stay null
+when their denominator is empty. One candidate win plus five ties is not a
+100% preference share. No output automatically approves a release.
+
+## First development findings
+
+The initial six-case run completed five cases, retained two entire entries,
+and failed one measured usability case. Three successful entries changed some
+wording. This describes execution and textual change, not human-rated uplift.
+The Chinese usability case repeatedly converted participant counts into
+percentages, which the current numeric validator does not accept as source
+figures. Both the initial failure and the unsuccessful prompt-only experiment
+are retained under `runs/`.
+
+A last-attempt source recovery was then added to the production harness: restore
+only numerically invalid work/project bullets (and an invalid summary) from the
+original, preserve locked text and other candidates, then run all normal factual,
+semantic, content and final validators. This does not approve calculated
+percentages or bypass factual review. The targeted live rerun completed with
+`fallback`, preserving the source's sample size and participant counts while
+retaining a reviewed rewrite of the other bullet. It is a separate code version
+and must not be pooled into the initial run's completion or preference rate.
+
+Current review materials:
+
+- `reviews/development-first/review.html`: five completed comparisons from the
+  initial six-case development run. Human summary remains pending (0 reviews).
+- `runs/numeric-fallback-followup/review.html`: the targeted recovery follow-up,
+  separately versioned, with its own packet and pending human summary.
+
+The remaining six development cases and all six validation cases have not been
+run. Next content-quality work should address weak scaffolding in dense measured
+bullets without losing comparison conditions, and judge whether sparse-source
+rewrites add useful clarity while preserving participation. Use blind preferences
+and factual concerns to choose changes; a model's improved label is insufficient.

@@ -116,3 +116,29 @@ reserve a held-out split, and obtain blind human preferences on actual content
 uplift. The current authored set is factual calibration and must not be used to
 claim a customer quality improvement rate. Production token accounting, cost
 gates and a trace viewer remain open.
+
+## Third delivery: cross-role uplift comparisons and human review
+
+`eval/uplift` now contains 18 fictional cases across six role families and three
+evidence levels, split into 12 development and six reserved validation cases.
+The evaluator uses the production optimization runner and saves completed and
+failed attempts, exact outputs, model-call usage, latency and code/corpus hashes.
+Six development cases were evaluated; validation remains unused.
+
+The standalone offline review page compares full experience bullet lists under
+masked A/B labels. Side assignment is balanced and independently randomized;
+model judgments are omitted. Human exports require explicit choices and
+attestation, and aggregation verifies text/mapping commitments, duplicate codes,
+coverage and separate factual concerns. No human preference is fabricated from
+model output. With zero human exports, uplift metrics remain null.
+
+The first run completed 5/6 and left two complete entries unchanged. A measured
+sample-count example exposed a numeric rewrite loop; extra prompt guidance did
+not resolve it. The production fix restores only numerically invalid source
+text after the last retry and then runs every normal validator. The separate
+live regression completed as a fallback, preserving the measurement and the
+other reviewed bullet. This is recovery evidence, not measured writing uplift.
+
+See `eval/uplift/README.md` for commands, artifacts, denominators, review protocol
+and the next content-quality hypotheses. Production cost gates, consented real
+resume examples, blind human judgments and broader validation remain open.

@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "title": "Resume content review",
+  "criteria": [
+    {
+      "id": "value",
+      "label": "Value / impact",
+      "description": "Explains what the work changed or enabled. Relevant qualitative value counts; a number is not required."
+    },
+    {
+      "id": "contribution",
+      "label": "Contribution",
+      "description": "Makes the person’s own action clear without upgrading participation to leadership."
+    },
+    {
+      "id": "specificity",
+      "label": "Specificity",
+      "description": "Keeps useful methods, scope and evidence; avoids generic claims."
+    },
+    {
+      "id": "relevance",
+      "label": "Role relevance",
+      "description": "Highlights evidence that matters for this role without adding job-description facts."
+    },
+    {
+      "id": "clarity",
+      "label": "Clarity",
+      "description": "Communicates the work directly and reads naturally; extra length is not automatically better."
+    }
+  ],
+  "items": [
+    {
+      "id": "3f2e45563e4f9eb00a684f79",
+      "target": {
+        "title": "产品交互设计师",
+        "seniority": "mid",
+        "responsibilities": [
+          "设计清晰的表单交互。",
+          "通过可用性测试和访谈支持产品决策。"
+        ]
+      },
+      "sourceFacts": [
+        "重新设计的对象是报销表单错误提示。",
+        "进行了两轮可用性测试。",
+        "两轮使用相同任务与主持脚本。",
+        "每轮参加者都是首次使用者，共 10 名。",
+        "第一轮成功人数为 6 人。",
+        "第二轮成功人数为 9 人。",
+        "研究发现来源包括访谈记录与操作录像。",
+        "问题清单按照流程步骤分类。",
+        "产品与工程团队评审该清单。"
+      ],
+      "A": [
+        "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+        "综合用户访谈记录与操作录像中的发现，整理出按流程步骤分类的研究清单，为产品与工程团队的评审决策提供依据。"
+      ],
+      "B": [
+        "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+        "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。"
+      ]
+    }
+  ],
+  "mappingDigest": "6cd69afd0e3c11eea5cc8a175c16e15c29af3009d9143d889ef78215c74357c9",
+  "packetId": "ff1789f0085ea077ae1d165fd622bb13cc93d80812c850ac0aac9bfe504d081e"
+}
