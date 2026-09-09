@@ -9,7 +9,7 @@ import { PdfPalettePicker } from "@/components/PdfPalettePicker";
 import { TargetPagesPicker } from "@/components/TargetPagesPicker";
 import { ContentStructurePicker } from "@/components/ContentStructurePicker";
 import { OriginalDocumentPreview } from "@/components/OriginalDocumentPreview";
-import { LatexSourcePreview } from "@/components/LatexSourcePreview";
+import { OriginalLatexPreview } from "@/components/OriginalLatexPreview";
 import { LivePdfPreview } from "@/components/LivePdfPreview";
 import {
   FIT_PROGRESS_STAGES,
@@ -282,10 +282,6 @@ function ResultPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [hydrating, setHydrating] = useState(false);
-  // A .tex upload has no page images, so its "original" pane is the source
-  // typeset as a page — whole document visible, no scrolling — with the raw
-  // listing one click away for anyone who wants to see which lines change.
-  const [showLatexSource, setShowLatexSource] = useState(false);
   const [rewriteStage, setRewriteStage] = useState(0);
   const [rewriteElapsed, setRewriteElapsed] = useState(0);
 
@@ -2048,9 +2044,7 @@ function ResultPageInner() {
                   resumeStyleSource?.screenshots.length
                     ? "Original PDF"
                     : latexSource
-                      ? showLatexSource
-                        ? "Original LaTeX source"
-                        : "Original content (from your LaTeX)"
+                      ? "Original LaTeX"
                       : "Original content (reconstructed)"
                 }
                 tone="muted"
@@ -2064,59 +2058,24 @@ function ResultPageInner() {
                           : "Single-column"
                       }`
                     : latexSource
-                      ? "LaTeX · rewritten in place"
+                      ? "LaTeX · your template, compiled as uploaded"
                       : `${pageLabel} · Source content`
                 }
               >
+                {/* The original is whatever the user uploaded, shown as-is: a
+                    PDF's own pages, or a .tex compiled unchanged. Nothing on
+                    this side is re-typeset in our styles. */}
                 {resumeStyleSource?.screenshots.length ? (
                   <OriginalDocumentPreview source={resumeStyleSource} />
-                ) : latexSource ? (
-                  <>
-                    {showLatexSource ? (
-                      <LatexSourcePreview
-                        source={latexSource}
-                        resume={resume}
-                        optimization={optimization}
-                        includeSummary={summaryEnabled}
-                        pageSize={outputPage}
-                      />
-                    ) : (
-                      <div
-                        className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
-                        style={{
-                          aspectRatio: `${outputPage.widthPt} / ${outputPage.heightPt}`,
-                        }}
-                      >
-                        <LivePdfPreview
-                          resume={resume}
-                          optimization={null}
-                          style={pdfStyle}
-                          palette={pdfPalette}
-                          targetPages="auto"
-                          pageSize={outputPage}
-                          fitVariant={null}
-                          sourceRevision={sourceRevision}
-                          personalizedStyleProfile={personalizedStyleProfile}
-                          personalizedStatus={personalizedStatus}
-                          personalizedError={personalizedError}
-                          includeSummary={Boolean(resume.summary)}
-                          onRetryPersonalized={() => {
-                            personalizeRan.current = true;
-                            void generatePersonalized();
-                          }}
-                        />
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setShowLatexSource((value) => !value)}
-                      className="mt-2 text-xs font-medium text-ink-500 underline-offset-2 hover:text-ink-900 hover:underline"
-                    >
-                      {showLatexSource
-                        ? "Show as a page"
-                        : "Show LaTeX source and the lines that change"}
-                    </button>
-                  </>
+                ) : latexSource && sourceDocument ? (
+                  <OriginalLatexPreview
+                    sourceTex={sourceDocument.base64}
+                    source={latexSource}
+                    resume={resume}
+                    optimization={optimization}
+                    includeSummary={summaryEnabled}
+                    pageSize={outputPage}
+                  />
                 ) : (
                   <ResumeView
                     mode="original"
