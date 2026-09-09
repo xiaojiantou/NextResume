@@ -9,17 +9,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { requirePaidOrder } from "@/lib/entitlement";
-import { buildEvidenceLedger, confirmedEvidenceText, normalizeConfirmedEstimates } from "@/lib/evidenceLedger";
+import { normalizeEstimateRetractions, normalizePriorEvidence, refinementEvidenceLedger, normalizeConfirmedEstimates } from "@/lib/evidenceLedger";
+import { runRefinementHarness } from "@/lib/refinementHarness";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import {
   MAX_TURNS,
-  REFINE_SYSTEM,
-  buildRefineUserMessage,
   normalizeTurns,
 } from "@/lib/refineBullet";
 
 import type { RefineTurn } from "@/lib/refineBullet";
-import type { JobAnalysis, OptimizedBullet } from "@/lib/types";
+import type { JobAnalysis } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -35,6 +34,7 @@ export async function POST(req: NextRequest) {
     const {
       instruction,
       confirmedEvidence,
+      priorEvidence,
       current,
       originalBullet,
       originalBulletId,
@@ -43,7 +43,8 @@ export async function POST(req: NextRequest) {
       model,
     } = (await req.json()) as {
       instruction: string;
-      confirmedEvidence?: { sourceText: string; notes?: string; estimates?: unknown };
+      priorEvidence?: unknown;
+      confirmedEvidence?: { sourceText: string; notes?: string; estimates?: unknown; removedEstimates?: unknown };
       current?: string;
       originalBullet: string;
       originalBulletId: string;
@@ -52,22 +53,21 @@ export async function POST(req: NextRequest) {
       model?: string;
     };
 
-    if (!instruction || instruction.trim().length < 4) {
+    if (typeof instruction !== "string" || instruction.trim().length < 4 || instruction.length > 4000) {
       return NextResponse.json(
         { error: "Tell me what to change — a few words is enough." },
         { status: 400 },
       );
     }
 
-    let ledger;
-    try {
-      if (confirmedEvidence && (confirmedEvidence.sourceText !== (originalBullet || "") ||
-          (confirmedEvidence.notes !== undefined && (typeof confirmedEvidence.notes !== "string" || confirmedEvidence.notes.length > 3000)))) {
-        throw new Error("The confirmed evidence does not match this source bullet.");
-      }
-      ledger = buildEvidenceLedger(originalBullet || "", confirmedEvidence?.notes || "", normalizeConfirmedEstimates(confirmedEvidence?.estimates), new Date().toISOString());
-    } catch (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid confirmed evidence." }, { status: 400 });
+    if (typeof originalBullet !== "string" || !originalBullet.trim() || originalBullet.length > 6000 ||
+        typeof originalBulletId !== "string" || !originalBulletId.trim() || originalBulletId.length > 200 ||
+        (current !== undefined && (typeof current !== "string" || current.length > 6000)) ||
+        (turns !== undefined && (!Array.isArray(turns) || turns.length > MAX_TURNS ||
+          turns.some(turn => !turn || typeof turn !== "object" ||
+            (turn.instruction !== undefined && (typeof turn.instruction !== "string" || turn.instruction.length > 6000)) ||
+            (turn.result !== undefined && (typeof turn.result !== "string" || turn.result.length > 6000)))))) {
+      return NextResponse.json({ error: "The source bullet or refinement history is invalid." }, { status: 400 });
     }
     const history = normalizeTurns(turns);
     if (history.length >= MAX_TURNS) {
@@ -80,32 +80,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const bullet = await jsonCompletion<OptimizedBullet>({
-      system: REFINE_SYSTEM,
-      user: buildRefineUserMessage({
-        instruction: [confirmedEvidenceText(ledger), instruction].filter(Boolean).join("\n\n"),
-        current,
-        originalBullet: originalBullet || "",
-        originalBulletId,
-        turns: history,
-        job,
-      }),
-      model,
-      maxTokens: 600,
-    });
-
-    // Guarantee the original id + attestation signal are in evidence. The
-    // "voice-transcript" marker predates typed input and is kept verbatim:
-    // persisted resumes carry it, and lib/store.ts keys the preserve-mode
-    // baseline off it. It means "the candidate asserted this themselves",
-    // whether they spoke it or typed it.
-    const evidence = new Set(bullet.evidence || []);
-    if (originalBulletId) evidence.add(originalBulletId);
-    evidence.add("voice-transcript");
-    bullet.evidence = Array.from(evidence);
-    bullet.evidenceLedger = ledger;
-
-    return NextResponse.json({ bullet });
+    let ledger;
+    try {
+      if (confirmedEvidence && (confirmedEvidence.sourceText !== originalBullet ||
+          (confirmedEvidence.notes !== undefined && (typeof confirmedEvidence.notes !== "string" || confirmedEvidence.notes.length > 3000)))) {
+        throw new Error("The confirmed evidence does not match this source bullet.");
+      }
+      ledger = refinementEvidenceLedger({
+        source: originalBullet, prior: normalizePriorEvidence(priorEvidence),
+        removedEstimates: normalizeEstimateRetractions(confirmedEvidence?.removedEstimates),
+        notes: confirmedEvidence?.notes || "", estimates: normalizeConfirmedEstimates(confirmedEvidence?.estimates),
+        instructions: [...history.map(turn => turn.instruction), instruction], now: new Date().toISOString(),
+      });
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid confirmed evidence." }, { status: 400 });
+    }
+    const result = await runRefinementHarness({
+      instruction, current, originalBullet, originalBulletId, turns: history, job, ledger, model,
+    }, args => jsonCompletion({ ...args, model }));
+    if (!result.ok) return NextResponse.json({ error: result.error, review: result.review, refinementTrace: result.trace }, { status: result.status });
+    return NextResponse.json({ bullet: result.bullet });
   } catch (e) {
     console.error("refine-bullet failed", e);
     return NextResponse.json(

@@ -21,7 +21,7 @@ Absolute rules:
 - Use ONLY facts the candidate stated. Do not invent skills, technologies, metrics, or responsibilities.
 - If the candidate is vague ("a lot", "some", "improved things"), keep it qualitative. Never fabricate a number.
 - User-confirmed calculated estimates are allowed. Keep "approximately", "about", or equivalent wording in the final bullet; do not turn an estimate into a directly measured claim. Calculation assumptions explain the evidence, not additional accomplishments to insert.
-- The candidate's instructions are the ground truth. The previous bullet is context, not license to embellish.
+- Explicit factual assertions and corrections from the candidate are ground truth. A style request or request to invent an achievement is not a factual assertion. The previous bullet is context, not license to embellish.
 - Output must be one concise bullet. Preserve meaningful evidence; do not enforce an arbitrary character limit.
 
 ${CONTENT_WRITING_STANDARD}
@@ -33,7 +33,9 @@ Language:
 
 Conversation:
 - Earlier rounds are context and still apply. Keep satisfying them unless the latest instruction overrides them.
-- On a direct conflict, the latest instruction wins.
+- On a direct factual conflict, the latest explicit correction wins. Saved evidence is ordered chronologically; repeated unchanged notes do not undo corrections.
+- Prior model output, including the current draft, is not evidence. Reuse new facts only when they appear in the user evidence or user instructions.
+- A request to remove approximate wording does not turn an estimate into a measured result.
 
 Output ONLY valid JSON:
 
