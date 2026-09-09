@@ -116,8 +116,14 @@ export function EditorWithPreview({
             />
           </div>
 
-          {/* Preview Side: pinned below the sticky h-14 site header */}
-          <div className="sticky top-[4.5rem] h-[calc(100dvh-5.5rem)] min-h-[560px] min-w-0 overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
+          {/* Preview Side: the same page-shaped pane as the Side-by-side view,
+              sized from the output paper so the two previews match. */}
+          <div
+            className="min-w-0 overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+            style={{
+              aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}`,
+            }}
+          >
             <LivePdfPreview
               resume={resume}
               optimization={optimization}

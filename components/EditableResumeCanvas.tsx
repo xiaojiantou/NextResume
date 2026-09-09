@@ -14,7 +14,34 @@ import {
   Lock,
   Unlock,
 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+
+// A single-line input clipped every achievement to its first few words, so
+// the editor never showed the sentence being edited. Grow with the text.
+function BulletTextarea({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    element.style.height = "0px";
+    element.style.height = `${element.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="flex-1 min-h-11 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans leading-relaxed resize-none overflow-hidden"
+    />
+  );
+}
 
 export function EditableResumeCanvas({
   resume,
@@ -570,11 +597,9 @@ export function EditableResumeCanvas({
                   className="flex gap-2 items-start"
                 >
                   <span className="mt-2 text-ink-400">•</span>
-                  <input
-                    type="text"
+                  <BulletTextarea
                     value={bullet.text}
-                    onChange={(e) => updateBullet(role.id, bullet.id, e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans resize-none"
+                    onChange={(text) => updateBullet(role.id, bullet.id, text)}
                   />
                   <KeepButton contentId={bullet.id} compact />
                   <button
@@ -615,13 +640,11 @@ export function EditableResumeCanvas({
                         className="flex gap-2 items-start"
                       >
                         <span className="mt-2 text-ink-400">•</span>
-                        <input
-                          type="text"
+                        <BulletTextarea
                           value={bullet.text}
-                          onChange={(e) =>
-                            updateBullet(role.id, bullet.id, e.target.value)
+                          onChange={(text) =>
+                            updateBullet(role.id, bullet.id, text)
                           }
-                          className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans resize-none"
                         />
                         <KeepButton contentId={bullet.id} compact />
                         <button
@@ -710,13 +733,11 @@ export function EditableResumeCanvas({
                     className="flex gap-2 items-start"
                   >
                     <span className="mt-2 text-ink-400">•</span>
-                    <input
-                      type="text"
+                    <BulletTextarea
                       value={bullet.text}
-                      onChange={(e) =>
-                        updateProjectBullet(project.id, bullet.id, e.target.value)
+                      onChange={(text) =>
+                        updateProjectBullet(project.id, bullet.id, text)
                       }
-                      className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans resize-none"
                     />
                     <KeepButton contentId={bullet.id} compact />
                     <button
