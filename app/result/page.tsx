@@ -1483,8 +1483,8 @@ function ResultPageInner() {
                 </>
               ) : report.overallBefore > 0 ? (
                 <>
-                  ATS score: {report.overallBefore} → {report.overallAfter}{" "}
-                  <span className="text-ink-400">(projected, measuring…)</span>
+                  ATS score: {report.overallBefore} → up to {report.overallAfter}{" "}
+                  <span className="text-ink-400">(measuring…)</span>
                 </>
               ) : (
                 <>Measuring ATS score…</>

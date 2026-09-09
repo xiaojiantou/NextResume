@@ -14,54 +14,12 @@
 // list is arithmetic, so this route is now instant and costs nothing to run.
 
 import { NextRequest, NextResponse } from "next/server";
+import { projectAfter } from "@/lib/atsProjection";
 import { scoreResume } from "@/lib/atsScore";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
-import type { AtsCategory, AtsReport, JobAnalysis, Resume } from "@/lib/types";
+import type { AtsReport, JobAnalysis, Resume } from "@/lib/types";
 
 export const runtime = "nodejs";
-
-/**
- * What a careful rewrite of the SAME experience could reach. Deliberately
- * conservative: a rewrite can always fix the headline title and the verbs, but
- * it can only surface keywords and metrics the experience already supports, so
- * those gaps close partially at best.
- */
-function projectAfter(categories: AtsCategory[]): {
-  overallAfter: number;
-  categoriesAfter: AtsCategory[];
-} {
-  const close = (score: number, share: number) =>
-    Math.round(score + (100 - score) * share);
-
-  const categoriesAfter = categories.map((c) => {
-    switch (c.label) {
-      case "Title match":
-        // Always achievable: it is one line of text under the name.
-        return { ...c, score: 100, detail: "Achievable by matching the headline to the posting's title." };
-      case "Action verbs":
-        return { ...c, score: Math.max(c.score, 90), detail: "Achievable by reopening each bullet with an ownership verb." };
-      case "Keyword match":
-        return { ...c, score: close(c.score, 0.4), detail: "Partly achievable — only keywords your experience already supports can be added." };
-      case "Quantified impact":
-        return { ...c, score: close(c.score, 0.3), detail: "Partly achievable — only metrics your experience already implies can be surfaced." };
-      default:
-        return c;
-    }
-  });
-
-  const weightOf = (label: string) =>
-    label === "Keyword match" ? 0.45
-      : label === "Title match" ? 0.2
-        : label === "Quantified impact" ? 0.15
-          : label === "Action verbs" ? 0.12
-            : 0.08;
-
-  const overallAfter = Math.round(
-    categoriesAfter.reduce((sum, c) => sum + c.score * weightOf(c.label), 0),
-  );
-
-  return { overallAfter, categoriesAfter };
-}
 
 export async function POST(req: NextRequest) {
   const rl = rateLimitGuard(req, LIMITS.analyze);
@@ -80,7 +38,11 @@ export async function POST(req: NextRequest) {
     }
 
     const scored = scoreResume(resume, job);
-    const { overallAfter, categoriesAfter } = projectAfter(scored.categories);
+    const { overallAfter, categoriesAfter } = projectAfter(
+      scored.categories,
+      resume,
+      scored.overall,
+    );
 
     const report: AtsReport = {
       overallBefore: scored.overall,

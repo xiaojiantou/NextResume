@@ -179,7 +179,7 @@ Output ONLY valid JSON matching this schema:
 Non-negotiable rules:
 - Keep every source skill. You may reorder skills and normalize capitalization only. Never add or remove one.
 - If the source summary is present, rewrite that summary in place with concise wording; do not add a second summary above it. If the source summary is empty, keep it empty.
-- If the source professional title is empty, keep it empty. If present, rewrite it without adding unsupported facts.
+- "title" is the headline under the candidate's name, not a source fact: it is the field recruiters filter an ATS on, so it must speak to THIS posting even when the source has none. Set it to the posting's exact job title when the candidate's experience supports that role. If the posting's seniority would overstate them, keep the posting's role words and drop only the level ("Senior Backend Platform Engineer" -> "Backend Platform Engineer"). Never claim a specialization the resume does not evidence, and never put a company name in it. If the experience does not support the role at all, return the source title unchanged.
 - Never introduce a number the resume does not already contain. Never append meta-commentary such as "showcasing proficiency in X".`;
 
 export type ChunkPrompt = { system: string; user: string; maxTokens: number };
