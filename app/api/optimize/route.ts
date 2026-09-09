@@ -38,6 +38,8 @@ import type {
 } from "@/lib/types";
 import {
   CONTENT_WRITING_STANDARD,
+  contentRevisionIssues,
+  restoreApprovedBullets,
   qualityPairs,
   reviewContentQuality,
   selectReviewedContent,
@@ -207,6 +209,14 @@ export async function POST(req: NextRequest) {
     const results = new Map<string, unknown>();
     const qualityReviews = new Map<string, ContentReview>();
     const qualityRevised = new Set<string>();
+    const approvedBullets = new Map<string, OptimizedBullet>();
+    let bestSafeOptimization: Optimization | null = null;
+    const respondWithOptimization = (optimization: Optimization) => {
+      optimization.structureMode = structureMode;
+      optimization.structureIntegrity = createStructureIntegrity(resume, optimization, structureMode);
+      optimization.atsScore = calculateOptimizationAtsScore({ resume, optimization, job });
+      return NextResponse.json({ optimization });
+    };
     let pending = chunks;
     let feedbackByChunk = new Map<string, string[]>();
     let lastIssues: string[] = [];
@@ -251,6 +261,7 @@ export async function POST(req: NextRequest) {
           ranOutOfTime = true;
           break;
         }
+        if (bestSafeOptimization) return respondWithOptimization(bestSafeOptimization);
         throw attemptFailure;
       } finally {
         clearTimeout(attemptTimer);
@@ -258,9 +269,9 @@ export async function POST(req: NextRequest) {
       console.info(
         `optimize round ${attempt}: ${pending.length} chunk(s) in ${((Date.now() - startedAt) / 1000).toFixed(1)}s (${structureMode}, model=${model ?? "default"})`,
       );
-      const normalized = normalizeOptimization(
+      const normalized = restoreApprovedBullets(normalizeOptimization(
         assembleOptimization(resume, structureMode, results),
-      );
+      ), approvedBullets);
       if (structureMode === "optimize") {
         const grounded = reconcileGroundedSkills(
           resume,
@@ -333,16 +344,13 @@ export async function POST(req: NextRequest) {
         timeoutMs: Math.max(1, Math.min(30_000, deadline - Date.now() - 5_000)),
       });
       for (const [id, review] of reviewed) qualityReviews.set(id, review);
-      const qualityIssues = pairs.flatMap(pair => {
-        const review = qualityReviews.get(pair.id);
-        if (!review || review.status !== "retained" || pair.source === pair.candidate || qualityRevised.has(pair.id)) return [];
-        qualityRevised.add(pair.id);
-        return [`Content quality for bullet "${pair.id}": ${review.reason} Improve using only the original evidence, or return the original verbatim. Previous candidate: ${pair.candidate}`];
-      });
-      if (qualityIssues.length && attempt < attempts && deadline - Date.now() >= MIN_ATTEMPT_MS + 30_000) {
-        feedbackByChunk = chunksForIssues({ resume, candidate: opt, issues: qualityIssues, chunks });
-        pending = chunks.filter(chunk => feedbackByChunk.has(chunkKey(chunk)));
-        if (pending.length) continue;
+      for (const entry of [...opt.roles, ...(opt.projects ?? [])]) {
+        for (const bullet of entry.bullets) {
+          const review = qualityReviews.get(bullet.id);
+          if (review?.status === "improved" && review.text === bullet.text) {
+            approvedBullets.set(bullet.id, bullet);
+          }
+        }
       }
       opt = selectReviewedContent(opt, qualityReviews);
       // Restoring source text can change keyword density; validate the actual deliverable.
@@ -359,15 +367,22 @@ export async function POST(req: NextRequest) {
         if (!pending.length) pending = chunks;
         continue;
       }
-      opt.structureMode = structureMode;
-      opt.structureIntegrity = createStructureIntegrity(
-        resume,
-        opt,
-        structureMode,
-      );
-      opt.atsScore = calculateOptimizationAtsScore({ resume, optimization: opt, job });
-      return NextResponse.json({ optimization: opt });
+      // Keep a fully validated deliverable before attempting optional uplift.
+      // A failed extra revision must not discard successful work.
+      bestSafeOptimization = opt;
+      const revisions = contentRevisionIssues(pairs, qualityReviews, qualityRevised);
+      if (revisions.length && attempt < attempts && deadline - Date.now() >= MIN_ATTEMPT_MS + 30_000) {
+        feedbackByChunk = chunksForIssues({ resume, candidate: opt, issues: revisions.map(item => item.issue), chunks });
+        pending = chunks.filter(chunk => feedbackByChunk.has(chunkKey(chunk)));
+        if (pending.length) {
+          for (const { id } of revisions) qualityRevised.add(id);
+          continue;
+        }
+      }
+      return respondWithOptimization(opt);
     }
+
+    if (bestSafeOptimization) return respondWithOptimization(bestSafeOptimization);
 
     // Concrete safety issues beat a generic timeout notice: if we collected
     // any, the user gets something actionable even though we stopped early.

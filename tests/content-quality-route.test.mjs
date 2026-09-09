@@ -55,3 +55,71 @@ test('reviewer outage returns original wording with an explicit unavailable stat
   assert.equal(result.status, 200);
   assert.equal(result.body.optimization.roles[0].bullets[0].contentReview.status, 'unreviewed');
 });
+
+test('an unchanged weak bullet is revised without overwriting an approved sibling', async () => {
+  const source = structuredClone(resume);
+  source.experience[0].bullets = [
+    { id: 'b1', text: 'Was responsible for writing API tests in Python.' },
+    { id: 'b2', text: 'Was responsible for writing documentation for the API.' },
+  ];
+  let writes = 0;
+  const reviewedIds = [];
+  const POST = loadRoute(async ({ system, user }) => {
+    if (system.includes('independently compare')) {
+      const pairs = JSON.parse(user).bullets;
+      reviewedIds.push(pairs.map(b => b.id));
+      return { reviews: pairs.map(b => ({
+        id: b.id, supported: true, detailsPreserved: true, causalityPreserved: true,
+        decision: b.candidate.startsWith('Was responsible') ? 'retain' : 'improved',
+        dimensions: b.candidate.startsWith('Was responsible') ? [] : ['clarity'],
+        reason: b.candidate.startsWith('Was responsible') ? 'The task is buried in weak scaffolding.' : 'Names the actual task directly.',
+        nextStep: b.candidate.startsWith('Was responsible') ? 'revise' : 'keep',
+        revisionInstruction: b.candidate.startsWith('Was responsible') ? 'Lead with writing API documentation; remove the responsibility scaffolding.' : '',
+      })) };
+    }
+    if (system.includes('ONE entry')) {
+      writes++;
+      if (writes === 2) assert.match(user, /Lead with writing API documentation/);
+      return { id: 'r1', bullets: [
+        { id: 'b1', text: writes === 1 ? 'Wrote API tests in Python.' : 'Led 100 engineers.', evidence: ['b1'], matchedKeywords: [], rationale: '' },
+        { id: 'b2', text: writes === 1 ? source.experience[0].bullets[1].text : 'Wrote documentation for the API.', evidence: ['b2'], matchedKeywords: [], rationale: '' },
+      ] };
+    }
+    return { title: resume.title, summary: '', skills: [] };
+  });
+  const result = await POST({ json: async () => ({ resume: source, job, report: { missingKeywords: [] } }) });
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  assert.equal(writes, 2);
+  assert.deepEqual(result.body.optimization.roles[0].bullets.map(b => b.text), ['Wrote API tests in Python.', 'Wrote documentation for the API.']);
+  assert.deepEqual(reviewedIds, [['b1', 'b2'], ['b2']]);
+});
+
+test('missing evidence prompts a question instead of repeated rewriting', async () => {
+  let writes = 0;
+  const POST = loadRoute(async ({ system }) => {
+    if (system.includes('independently compare')) return { reviews: [{ id: 'b1', decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'The scope is unspecified.', dimensions: [], nextStep: 'ask', question: 'What part did you implement?' }] };
+    if (system.includes('ONE entry')) { writes++; return { id: 'r1', bullets: [{ id: 'b1', text: 'Developed an API for invoice processing.', evidence: ['b1'], matchedKeywords: [], rationale: '' }] }; }
+    return { title: resume.title, summary: '', skills: [] };
+  });
+  const result = await POST({ json: async () => ({ resume, job, report: { missingKeywords: [] } }) });
+  assert.equal(result.status, 200);
+  assert.equal(writes, 1);
+  assert.equal(result.body.optimization.roles[0].bullets[0].contentReview.question, 'What part did you implement?');
+});
+
+test('a failed optional revision returns the prior fully validated deliverable', async () => {
+  let writes = 0;
+  const POST = loadRoute(async ({ system }) => {
+    if (system.includes('independently compare')) return { reviews: [{ id: 'b1', decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Only a synonym changed.', dimensions: [] }] };
+    if (system.includes('ONE entry')) {
+      if (++writes > 1) throw new Error('provider unavailable');
+      return { id: 'r1', bullets: [{ id: 'b1', text: 'Developed an API for invoice processing.', evidence: ['b1'], matchedKeywords: [], rationale: '' }] };
+    }
+    return { title: resume.title, summary: '', skills: [] };
+  });
+  const result = await POST({ json: async () => ({ resume, job, report: { missingKeywords: [] } }) });
+  assert.equal(result.status, 200);
+  assert.equal(writes, 2);
+  assert.equal(result.body.optimization.roles[0].bullets[0].text, resume.experience[0].bullets[0].text);
+  assert.equal(result.body.optimization.structureIntegrity.valid, true);
+});
