@@ -55,6 +55,7 @@ export type ContentReview = {
   nextStep?: "keep" | "revise" | "ask";
   revisionInstruction?: string;
   impactMetrics?: ImpactMetric[];
+  audit?: { supported: boolean; detailsPreserved: boolean; causalityPreserved: boolean };
 };
 export type ReviewPair = { id: string; source: string; candidate: string };
 export type QualityCompletion = (args: {
@@ -95,7 +96,7 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[]): Map<stri
       status: valid ? (improved ? "improved" : "retained") : "unreviewed",
       reason: missedRevision ? "The original still buries a documented task behind responsibility scaffolding." : valid ? row.reason.trim().slice(0, 600) : "Content review was unavailable; the original wording was kept.",
       dimensions: improved ? dimensions : [],
-      ...(valid ? { impactMetrics: normalizeImpactMetrics(row.impactMetrics, pair.source) } : {}),
+      ...(valid ? { audit: { supported: row.supported, detailsPreserved: row.detailsPreserved, causalityPreserved: row.causalityPreserved }, impactMetrics: normalizeImpactMetrics(row.impactMetrics, pair.source) } : {}),
       ...(valid && ["keep", "revise", "ask"].includes(row.nextStep) ? { nextStep: row.nextStep } : {}),
       ...(valid && row.nextStep === "revise" && typeof row.revisionInstruction === "string" && row.revisionInstruction.trim()
         ? { revisionInstruction: row.revisionInstruction.trim().slice(0, 800) } : {}),

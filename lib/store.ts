@@ -4,6 +4,8 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { recordBulletDecision, type BulletDecision } from "./harnessTrace";
+import type { ConfirmedEstimate, EvidenceAnswer } from "./evidenceLedger";
 import { DEFAULT_MODEL_ID } from "./models";
 import {
   normalizeTargetPages,
@@ -98,7 +100,7 @@ type State = {
   step: Step;
 
 
-  evidenceAnswers: Record<string, { question: string; answer: string }>;
+  evidenceAnswers: Record<string, EvidenceAnswer>;
   voiceCount: number;
 };
 
@@ -141,6 +143,7 @@ type Actions = {
     roleId: string,
     bulletId: string,
     next: OptimizedBullet,
+    action?: BulletDecision["action"],
   ) => void;
 
   setSelectedModel: (m: string) => void;
@@ -157,7 +160,8 @@ type Actions = {
   clearFitVariants: () => void;
   clearFitVariantsForStyle: (style: PdfStyle) => void;
 
-  setEvidenceAnswer: (bulletId: string, question: string, answer: string) => void;
+  setEvidenceAnswer: (bulletId: string, question: string, answer: string, sourceText?: string) => void;
+  setConfirmedEstimate: (bulletId: string, sourceText: string, question: string, estimate: ConfirmedEstimate) => void;
   incrementVoiceCount: () => void;
 
   markPaid: (access?: OrderAccess) => void;
@@ -218,9 +222,20 @@ export const useFlow = create<State & Actions>()(
           fileSize: size,
           fileFingerprint: fingerprint,
         })),
-      setEvidenceAnswer: (bulletId, question, answer) => set((state) => ({
-        evidenceAnswers: { ...state.evidenceAnswers, [bulletId]: { question, answer: answer.slice(0, 3000) } },
+      setEvidenceAnswer: (bulletId, question, answer, sourceText) => set((state) => ({
+        evidenceAnswers: { ...state.evidenceAnswers, [bulletId]: {
+          ...state.evidenceAnswers[bulletId], question, answer: answer.slice(0, 3000), sourceText,
+          estimates: state.evidenceAnswers[bulletId]?.sourceText === sourceText ? state.evidenceAnswers[bulletId]?.estimates : [],
+        } },
       })),
+      setConfirmedEstimate: (bulletId, sourceText, question, estimate) => set((state) => {
+        const previous = state.evidenceAnswers[bulletId];
+        const sameSource = previous?.sourceText === sourceText;
+        return { evidenceAnswers: { ...state.evidenceAnswers, [bulletId]: {
+          question, sourceText, answer: sameSource ? previous.answer : "",
+          estimates: [...(sameSource ? previous.estimates ?? [] : []).filter(item => item.metric !== estimate.metric), estimate],
+        } } };
+      }),
       setResume: (r) =>
         set((state) => {
           if (!state.resume) return { resume: r };
@@ -410,13 +425,17 @@ export const useFlow = create<State & Actions>()(
           optimizationModel: null,
           optimizationStructureMode: null,
         }),
-      replaceOptimizedBullet: (roleId, bulletId, next) =>
+      replaceOptimizedBullet: (roleId, bulletId, next, action = "edit") =>
         set((s) => {
           if (!s.optimization) return {};
           const inRoles = s.optimization.roles.some((r) => r.id === roleId);
           const inProjects = (s.optimization.projects ?? []).some(
             (project) => project.id === roleId,
           );
+          const previousBullet = [...s.optimization.roles, ...(s.optimization.projects ?? []), ...(s.optimization.additionalSections ?? []).flatMap(section => section.items)]
+            .find(entry => entry.id === roleId)?.bullets.find(bullet => bullet.id === bulletId);
+          if (!previousBullet) return {};
+          next = recordBulletDecision(previousBullet, next, action, new Date().toISOString());
           const voiceAttested = next.evidence.includes("voice-transcript");
           const establishPreservedBaseline =
             voiceAttested && s.optimizationStructureMode === "preserve";

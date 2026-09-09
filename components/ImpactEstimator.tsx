@@ -2,11 +2,12 @@
 "use client";
 
 import { useId, useState } from "react";
+import type { ConfirmedEstimate } from "@/lib/evidenceLedger";
 import { estimateImpact, IMPACT_METRICS, type ImpactMetric } from "@/lib/resumeImpact";
 
 export function ImpactEstimator({ metric, onConfirm }: {
   metric: ImpactMetric;
-  onConfirm: (answer: string) => void;
+  onConfirm: (estimate: ConfirmedEstimate) => void;
 }) {
   const id = useId();
   const definition = IMPACT_METRICS[metric];
@@ -45,7 +46,7 @@ export function ImpactEstimator({ metric, onConfirm }: {
           </label>
           <button type="button" disabled={!confirmed || saved}
             onClick={() => {
-              onConfirm(`I confirm this estimate for my work: ${estimate.description}. Basis: ${estimate.basis}. Keep approximate wording; do not present it as directly measured.`);
+              onConfirm({ metric, inputs: { ...inputs }, ...estimate, confirmedAt: new Date().toISOString() });
               setSaved(true);
             }}
             className="btn btn-primary mt-3 !px-3 !py-1.5 text-xs disabled:opacity-40">

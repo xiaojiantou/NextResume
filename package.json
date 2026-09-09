@@ -18,7 +18,8 @@
     "run:prod": "bash scripts/run.sh --prod",
     "run:clean": "bash scripts/run.sh --clean",
     "eval:content": "node --experimental-strip-types scripts/eval-content.mjs --live",
-    "test:content-ui": "node --experimental-strip-types tests/content-quality-ui.mjs"
+    "test:content-ui": "node --experimental-strip-types tests/content-quality-ui.mjs",
+    "eval:harness": "node --experimental-strip-types scripts/eval-harness.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.20",

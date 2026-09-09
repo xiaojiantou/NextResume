@@ -432,6 +432,8 @@ export type FitBrief = {
 export type BulletSuggestion = "keep" | "trim" | "cut";
 
 export type OptimizedBullet = {
+  evidenceLedger?: import("./evidenceLedger").EvidenceRecord[];
+  decisionHistory?: import("./harnessTrace").BulletDecision[];
   contentReview?: import("./contentQuality").ContentReview;
   id: string;
   text: string;
@@ -495,6 +497,7 @@ export type StructureIntegrity = {
 };
 
 export type Optimization = {
+  harness?: import("./harnessTrace").HarnessTrace;
   summary: string;
   title: string;
   skills: string[];

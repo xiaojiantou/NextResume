@@ -101,8 +101,10 @@ export function BulletRefine({
   onQuotaConsume: () => void;
   onClose: () => void;
 }) {
-  const { evidenceAnswers, setEvidenceAnswer } = useFlow();
-  const savedAnswer = evidenceAnswers[bullet.id];
+  const { evidenceAnswers, setEvidenceAnswer, setConfirmedEstimate } = useFlow();
+  const storedAnswer = evidenceAnswers[bullet.id];
+  const savedAnswer = !storedAnswer?.sourceText || storedAnswer.sourceText === (sourceText || bullet.text) ? storedAnswer : undefined;
+  const confirmedEstimates = savedAnswer?.estimates ?? [];
   const review = currentContentReview(bullet);
   const impactMetrics = review?.impactMetrics ?? [];
   const question = review?.question || savedAnswer?.question ||
@@ -184,7 +186,7 @@ export function BulletRefine({
   const submit = async () => {
     const text = [
       answer.trim() ? `Additional facts I confirm about this work:\nQuestion: ${question}\nMy answer: ${answer.trim()}` : "",
-      instruction.trim() || (answer.trim() ? "Strengthen this bullet using these facts and the original evidence." : ""),
+      instruction.trim() || (answer.trim() || confirmedEstimates.length ? "Strengthen this bullet using the confirmed evidence." : ""),
     ].filter(Boolean).join("\n\n");
     if (!text || processing) return;
     stopRecording();
@@ -195,7 +197,8 @@ export function BulletRefine({
         method: "POST",
         headers: { "Content-Type": "application/json", ...orderAuthHeaders() },
         body: JSON.stringify({
-          instruction: text,
+          instruction: instruction.trim() || "Strengthen this bullet using the confirmed evidence.",
+          confirmedEvidence: { sourceText: sourceText || bullet.text, notes: answer, estimates: confirmedEstimates },
           // Refine from the version on screen, not always the original.
           current: suggested?.text ?? bullet.text,
           originalBullet: sourceText || bullet.text,
@@ -363,10 +366,15 @@ export function BulletRefine({
 
       {!atTurnLimit && impactMetrics.map(metric => (
         <ImpactEstimator key={metric} metric={metric} onConfirm={confirmedAnswer => {
-          const combined = [answer.trim(), confirmedAnswer].filter(Boolean).join("\n\n");
-          setEvidenceAnswer(bullet.id, question || IMPACT_METRICS[metric].question, combined);
+          setConfirmedEstimate(bullet.id, sourceText || bullet.text, question || IMPACT_METRICS[metric].question, confirmedAnswer);
         }} />
       ))}
+
+      {confirmedEstimates.length > 0 && (
+        <div className="mt-3 text-xs text-ink-600">
+          {confirmedEstimates.map(estimate => <p key={estimate.metric}>Confirmed estimate: {estimate.description}</p>)}
+        </div>
+      )}
 
       {question && !atTurnLimit && (
         <div className="mt-3 rounded-md bg-ink-50 p-3">
@@ -377,7 +385,7 @@ export function BulletRefine({
           <textarea
             id={`evidence-${bullet.id}`}
             value={answer}
-            onChange={(event) => setEvidenceAnswer(bullet.id, question, event.target.value)}
+            onChange={(event) => setEvidenceAnswer(bullet.id, question, event.target.value, sourceText || bullet.text)}
             maxLength={3000}
             rows={3}
             className="mt-2 w-full rounded-md border border-ink-200 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-100"
@@ -443,7 +451,7 @@ export function BulletRefine({
             </span>
             <button
               onClick={submit}
-              disabled={processing || (!instruction.trim() && !answer.trim())}
+              disabled={processing || (!instruction.trim() && !answer.trim() && !confirmedEstimates.length)}
               className="btn btn-primary !py-1.5 !px-3 text-xs disabled:opacity-40"
             >
               {processing ? (

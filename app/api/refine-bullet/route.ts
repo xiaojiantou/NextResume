@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { requirePaidOrder } from "@/lib/entitlement";
+import { buildEvidenceLedger, confirmedEvidenceText, normalizeConfirmedEstimates } from "@/lib/evidenceLedger";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import {
   MAX_TURNS,
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
   try {
     const {
       instruction,
+      confirmedEvidence,
       current,
       originalBullet,
       originalBulletId,
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
       model,
     } = (await req.json()) as {
       instruction: string;
+      confirmedEvidence?: { sourceText: string; notes?: string; estimates?: unknown };
       current?: string;
       originalBullet: string;
       originalBulletId: string;
@@ -56,6 +59,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let ledger;
+    try {
+      if (confirmedEvidence && (confirmedEvidence.sourceText !== (originalBullet || "") ||
+          (confirmedEvidence.notes !== undefined && (typeof confirmedEvidence.notes !== "string" || confirmedEvidence.notes.length > 3000)))) {
+        throw new Error("The confirmed evidence does not match this source bullet.");
+      }
+      ledger = buildEvidenceLedger(originalBullet || "", confirmedEvidence?.notes || "", normalizeConfirmedEstimates(confirmedEvidence?.estimates), new Date().toISOString());
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid confirmed evidence." }, { status: 400 });
+    }
     const history = normalizeTurns(turns);
     if (history.length >= MAX_TURNS) {
       return NextResponse.json(
@@ -70,7 +83,7 @@ export async function POST(req: NextRequest) {
     const bullet = await jsonCompletion<OptimizedBullet>({
       system: REFINE_SYSTEM,
       user: buildRefineUserMessage({
-        instruction,
+        instruction: [confirmedEvidenceText(ledger), instruction].filter(Boolean).join("\n\n"),
         current,
         originalBullet: originalBullet || "",
         originalBulletId,
@@ -90,6 +103,7 @@ export async function POST(req: NextRequest) {
     if (originalBulletId) evidence.add(originalBulletId);
     evidence.add("voice-transcript");
     bullet.evidence = Array.from(evidence);
+    bullet.evidenceLedger = ledger;
 
     return NextResponse.json({ bullet });
   } catch (e) {

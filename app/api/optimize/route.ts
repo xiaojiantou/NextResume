@@ -2,32 +2,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
-import {
-  assembleOptimization,
-  buildChunkPrompt,
-  chunkKey,
-  chunksForIssues,
-  mapWithConcurrency,
-  planRewriteChunks,
-} from "@/lib/optimizeChunks";
-import {
-  normalizeOptimization,
-  validateOptimization,
-} from "@/lib/optimizeContract";
 import { requirePaidOrder } from "@/lib/entitlement";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 
-import {
-  calculateOptimizationAtsScore,
-  constrainPreservedOptimization,
-  constrainRoleOptimizedStructure,
-  createStructureIntegrity,
-  enforceLockedOptimization,
-  reconcileGroundedSkills,
-  validateGroundedOptimization,
-  validateLockedOptimization,
-  validatePreservedOptimization,
-} from "@/lib/resumeStructure";
 import type {
   AtsReport,
   ContentStructureMode,
@@ -36,30 +13,12 @@ import type {
   OptimizedBullet,
   Resume,
 } from "@/lib/types";
-import {
-  CONTENT_WRITING_STANDARD,
-  contentRevisionIssues,
-  restoreApprovedBullets,
-  qualityPairs,
-  reviewContentQuality,
-  selectReviewedContent,
-  type ContentReview,
-} from "@/lib/contentQuality";
+import { CONTENT_WRITING_STANDARD } from "@/lib/contentQuality";
+import { runOptimizationHarness } from "@/lib/optimizationHarness";
 import { reviewSemanticGrounding } from "@/lib/semanticResumeValidation";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-// The rewrite runs as one small completion per resume entry, in parallel
-// (see lib/optimizeChunks.ts), so a round is bounded by the slowest entry
-// rather than the whole document. The loop is still budgeted below Vercel's
-// maxDuration: a platform FUNCTION_INVOCATION_TIMEOUT answers with an HTML 504
-// the client cannot parse, so leave headroom to serialize a real JSON error.
-const TOTAL_BUDGET_MS = 270_000;
-const CHUNK_TIMEOUT_MS = 75_000;
-const CHUNK_CONCURRENCY = 5;
-// Below this there is no point starting another round; report instead.
-const MIN_ATTEMPT_MS = 20_000;
 
 const PREVIEW_SYSTEM = `You rewrite a SINGLE resume bullet to be tailored to a specific job description. The bullet you are rewriting is the candidate's weakest one for this role — show them how a strong rewrite would look.
 
@@ -205,218 +164,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const chunks = planRewriteChunks(resume, structureMode);
-    const results = new Map<string, unknown>();
-    const qualityReviews = new Map<string, ContentReview>();
-    const qualityRevised = new Set<string>();
-    const approvedBullets = new Map<string, OptimizedBullet>();
-    let bestSafeOptimization: Optimization | null = null;
-    const respondWithOptimization = (optimization: Optimization) => {
-      optimization.structureMode = structureMode;
-      optimization.structureIntegrity = createStructureIntegrity(resume, optimization, structureMode);
-      optimization.atsScore = calculateOptimizationAtsScore({ resume, optimization, job });
-      return NextResponse.json({ optimization });
-    };
-    let pending = chunks;
-    let feedbackByChunk = new Map<string, string[]>();
-    let lastIssues: string[] = [];
-    let ranOutOfTime = false;
-    const attempts = 3;
-    const deadline = Date.now() + TOTAL_BUDGET_MS;
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      const budgetLeft = deadline - Date.now();
-      if (budgetLeft < MIN_ATTEMPT_MS) {
-        ranOutOfTime = true;
-        break;
-      }
-      const controller = new AbortController();
-      const attemptTimer = setTimeout(
-        () => controller.abort(),
-        Math.min(budgetLeft, CHUNK_TIMEOUT_MS),
-      );
-      const startedAt = Date.now();
-      try {
-        await mapWithConcurrency(pending, CHUNK_CONCURRENCY, async (chunk) => {
-          const prompt = buildChunkPrompt({
-            chunk,
-            resume,
-            job,
-            report,
-            structureMode,
-            lockedContentIds,
-            baselineOptimization,
-            feedback: feedbackByChunk.get(chunkKey(chunk)) ?? [],
-          });
-          const raw = await jsonCompletion<unknown>({
-            ...prompt,
-            model,
-            signal: controller.signal,
-          });
-          results.set(chunkKey(chunk), raw);
-        });
-      } catch (attemptFailure) {
-        // A retry of a round that already blew the per-round ceiling just
-        // burns the rest of the budget, so stop and say so.
-        if (controller.signal.aborted) {
-          ranOutOfTime = true;
-          break;
-        }
-        if (bestSafeOptimization) return respondWithOptimization(bestSafeOptimization);
-        throw attemptFailure;
-      } finally {
-        clearTimeout(attemptTimer);
-      }
-      console.info(
-        `optimize round ${attempt}: ${pending.length} chunk(s) in ${((Date.now() - startedAt) / 1000).toFixed(1)}s (${structureMode}, model=${model ?? "default"})`,
-      );
-      const normalized = restoreApprovedBullets(normalizeOptimization(
-        assembleOptimization(resume, structureMode, results),
-      ), approvedBullets);
-      if (structureMode === "optimize") {
-        const grounded = reconcileGroundedSkills(
-          resume,
-          normalized.skills,
-          normalized.skillEvidence,
-        );
-        normalized.skills = grounded.skills;
-        normalized.skillEvidence = grounded.skillEvidence;
-      }
-      const structured =
-        structureMode === "preserve"
-          ? constrainPreservedOptimization({
-              resume,
-              candidate: normalized,
-              baseline: baselineOptimization,
-              lockedContentIds,
-            })
-          : constrainRoleOptimizedStructure({ resume, candidate: normalized });
-      let opt = enforceLockedOptimization({
-        resume,
-        candidate: structured,
-        baseline: baselineOptimization,
-        lockedContentIds,
-      });
-      const issues = [
-        ...validateOptimization(resume, opt, job),
-        ...validateGroundedOptimization(resume, opt),
-        ...(structureMode === "preserve"
-          ? validatePreservedOptimization(resume, opt)
-          : []),
-        ...validateLockedOptimization({
-          resume,
-          candidate: opt,
-          baseline: baselineOptimization,
-          lockedContentIds,
-        }),
-      ];
-      if (issues.length === 0) {
-        issues.push(
-          ...(await reviewSemanticGrounding({
-            resume,
-            candidate: opt,
-            model,
-          })),
-        );
-      }
-      if (issues.length > 0) {
-        lastIssues = issues;
-        feedbackByChunk = chunksForIssues({
-          resume,
-          candidate: opt,
-          issues,
-          chunks,
-        });
-        pending = chunks.filter((chunk) =>
-          feedbackByChunk.has(chunkKey(chunk)),
-        );
-        if (pending.length === 0) pending = chunks;
-        continue;
-      }
-      // Review only new text. Accepted entries survive retries of other entries.
-      const pairs = qualityPairs(resume, opt, lockedContentIds);
-      const fresh = pairs.filter(pair => {
-        const cached = qualityReviews.get(pair.id);
-        return !cached || cached.text !== pair.candidate || cached.sourceText !== pair.source;
-      });
-      const reviewed = await reviewContentQuality({
-        pairs: fresh, job,
-        complete: (args) => jsonCompletion({ ...args, model }),
-        timeoutMs: Math.max(1, Math.min(30_000, deadline - Date.now() - 5_000)),
-      });
-      for (const [id, review] of reviewed) qualityReviews.set(id, review);
-      for (const entry of [...opt.roles, ...(opt.projects ?? [])]) {
-        for (const bullet of entry.bullets) {
-          const review = qualityReviews.get(bullet.id);
-          if (review?.status === "improved" && review.text === bullet.text) {
-            approvedBullets.set(bullet.id, bullet);
-          }
-        }
-      }
-      opt = selectReviewedContent(opt, qualityReviews);
-      // Restoring source text can change keyword density; validate the actual deliverable.
-      const finalIssues = [
-        ...validateOptimization(resume, opt, job),
-        ...validateGroundedOptimization(resume, opt),
-        ...(structureMode === "preserve" ? validatePreservedOptimization(resume, opt) : []),
-        ...validateLockedOptimization({ resume, candidate: opt, baseline: baselineOptimization, lockedContentIds }),
-      ];
-      if (finalIssues.length) {
-        lastIssues = finalIssues;
-        feedbackByChunk = chunksForIssues({ resume, candidate: opt, issues: finalIssues, chunks });
-        pending = chunks.filter(chunk => feedbackByChunk.has(chunkKey(chunk)));
-        if (!pending.length) pending = chunks;
-        continue;
-      }
-      // Keep a fully validated deliverable before attempting optional uplift.
-      // A failed extra revision must not discard successful work.
-      bestSafeOptimization = opt;
-      const revisions = contentRevisionIssues(pairs, qualityReviews, qualityRevised);
-      if (revisions.length && attempt < attempts && deadline - Date.now() >= MIN_ATTEMPT_MS + 30_000) {
-        feedbackByChunk = chunksForIssues({ resume, candidate: opt, issues: revisions.map(item => item.issue), chunks });
-        pending = chunks.filter(chunk => feedbackByChunk.has(chunkKey(chunk)));
-        if (pending.length) {
-          for (const { id } of revisions) qualityRevised.add(id);
-          continue;
-        }
-      }
-      return respondWithOptimization(opt);
-    }
+    const result = await runOptimizationHarness({ resume, job, report, model, structureMode, lockedContentIds, baselineOptimization }, {
+      complete: args => jsonCompletion({ ...args, model }),
+      reviewGrounding: reviewSemanticGrounding,
+    });
+    if (result.ok) return NextResponse.json({ optimization: result.optimization });
+    return NextResponse.json({ error: result.error, issues: [...new Set(result.issues.map(publicOptimizationIssue))].slice(0, 12), harness: result.trace }, { status: result.status });
 
-    if (bestSafeOptimization) return respondWithOptimization(bestSafeOptimization);
-
-    // Concrete safety issues beat a generic timeout notice: if we collected
-    // any, the user gets something actionable even though we stopped early.
-    if (lastIssues.length > 0) {
-      console.error(
-        `optimize exhausted attempts (${structureMode}, model=${model ?? "default"})`,
-        lastIssues.slice(0, 20),
-      );
-    }
-
-    if (ranOutOfTime && lastIssues.length === 0) {
-      return NextResponse.json(
-        {
-          error:
-            "The model took too long to rewrite this resume. Nothing was changed — retry, or pick a faster model.",
-          code: "model_timeout",
-        },
-        { status: 504 },
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          structureMode === "preserve"
-            ? "The rewrite could not pass the factual safety checks while keeping the original structure."
-            : "The rewrite could not pass the factual safety checks.",
-        issues: [...new Set(lastIssues.map(publicOptimizationIssue))].slice(
-          0,
-          12,
-        ),
-      },
-      { status: 422 },
-    );
   } catch (e) {
     console.error("optimize failed", e);
     return NextResponse.json(

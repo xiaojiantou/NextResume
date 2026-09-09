@@ -7,6 +7,7 @@ import * as chunks from '../lib/optimizeChunks.ts';
 import * as contract from '../lib/optimizeContract.ts';
 import * as structure from '../lib/resumeStructure.ts';
 import * as quality from '../lib/contentQuality.ts';
+import * as harness from '../lib/optimizationHarness.ts';
 
 const resume = { name: 'Candidate', title: 'Engineer', summary: '', email: '', phone: '', location: '', skills: [], experience: [{ id: 'r1', company: 'Example', title: 'Engineer', start: '2020', end: 'Present', location: '', bullets: [{ id: 'b1', text: 'Built an API for invoice processing.' }] }], projects: [], education: [] };
 const job = { title: 'Engineer', company: '', seniority: '', requiredKeywords: [], niceToHaveKeywords: [], responsibilities: [] };
@@ -16,6 +17,7 @@ function loadRoute(complete) {
   const modules = {
     'next/server': { NextResponse: { json: (body, init) => ({ body, status: init?.status ?? 200 }) } },
     '@/lib/ai': { jsonCompletion: complete },
+    '@/lib/optimizationHarness': harness,
     '@/lib/optimizeChunks': chunks,
     '@/lib/optimizeContract': contract,
     '@/lib/resumeStructure': structure,

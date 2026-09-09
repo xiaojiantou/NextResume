@@ -1,0 +1,151 @@
+{
+  "mode": "live-smoke-not-human-preference",
+  "model": "deepseek/deepseek-v3.2",
+  "usage": [
+    {
+      "prompt_tokens": 1858,
+      "completion_tokens": 98,
+      "total_tokens": 1956,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "text_tokens": 0,
+        "image_tokens": 0,
+        "video_tokens": 0
+      },
+      "completion_tokens_details": null
+    },
+    {
+      "prompt_tokens": 1026,
+      "completion_tokens": 90,
+      "total_tokens": 1116,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    },
+    {
+      "prompt_tokens": 360,
+      "completion_tokens": 14,
+      "total_tokens": 374,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": null
+    },
+    {
+      "prompt_tokens": 1805,
+      "completion_tokens": 103,
+      "total_tokens": 1908,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "text_tokens": 0,
+        "image_tokens": 0,
+        "video_tokens": 0
+      },
+      "completion_tokens_details": null
+    }
+  ],
+  "cases": [
+    {
+      "scenario": "live-smoke",
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "live-smoke",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T07:47:51.188Z",
+        "elapsedMs": 10231,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "role:r1",
+            "attempt": 1,
+            "elapsedMs": 2854,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 5616,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 2085,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 2520,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "b1",
+            "sourceText": "Was responsible for writing API tests in Python.",
+            "candidates": [
+              {
+                "id": "b1:source",
+                "text": "Was responsible for writing API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "b1:candidate:1",
+                "text": "Developed API tests in Python to validate endpoints and ensure system reliability.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Developed API tests in Python to validate endpoints and ensure system reliability.",
+                  "sourceText": "Was responsible for writing API tests in Python.",
+                  "status": "improved",
+                  "reason": "The candidate's version clarifies the purpose of the work ('to validate endpoints and ensure system reliability'), which is a reasonable qualitative inference from writing API tests. The core action and method are preserved.",
+                  "dimensions": [
+                    "clarity",
+                    "impact"
+                  ],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "b1:candidate:1",
+            "state": "ready"
+          }
+        ]
+      }
+    }
+  ]
+}

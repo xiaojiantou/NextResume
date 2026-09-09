@@ -1,0 +1,385 @@
+{
+  "mode": "deterministic-regression",
+  "cases": [
+    {
+      "scenario": "improved",
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "improved",
+        "model": "fixture",
+        "startedAt": "2026-09-09T07:47:16.622Z",
+        "elapsedMs": 4,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:r1",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "b1",
+            "sourceText": "Was responsible for writing API tests in Python.",
+            "candidates": [
+              {
+                "id": "b1:source",
+                "text": "Was responsible for writing API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "b1:candidate:1",
+                "text": "Wrote API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Wrote API tests in Python.",
+                  "sourceText": "Was responsible for writing API tests in Python.",
+                  "status": "improved",
+                  "reason": "The action is stated directly.",
+                  "dimensions": [
+                    "clarity"
+                  ],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "b1:candidate:1",
+            "state": "ready"
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "ask",
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "ask",
+        "model": "fixture",
+        "startedAt": "2026-09-09T07:47:16.626Z",
+        "elapsedMs": 0,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:r1",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "b1",
+            "sourceText": "Was responsible for writing API tests in Python.",
+            "candidates": [
+              {
+                "id": "b1:source",
+                "text": "Was responsible for writing API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "b1:candidate:1",
+                "text": "Wrote API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Wrote API tests in Python.",
+                  "sourceText": "Was responsible for writing API tests in Python.",
+                  "status": "retained",
+                  "reason": "The action is stated directly.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "ask",
+                  "question": "Which workflows did the tests cover?"
+                }
+              }
+            ],
+            "selectedId": "b1:source",
+            "state": "needs_evidence"
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "outage",
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "outage",
+        "model": "fixture",
+        "startedAt": "2026-09-09T07:47:16.626Z",
+        "elapsedMs": 1,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:r1",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 1,
+            "outcome": "failed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "b1",
+            "sourceText": "Was responsible for writing API tests in Python.",
+            "candidates": [
+              {
+                "id": "b1:source",
+                "text": "Was responsible for writing API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "b1:candidate:1",
+                "text": "Wrote API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Wrote API tests in Python.",
+                  "sourceText": "Was responsible for writing API tests in Python.",
+                  "status": "unreviewed",
+                  "reason": "Content review was unavailable; the original wording was kept.",
+                  "dimensions": []
+                }
+              }
+            ],
+            "selectedId": "b1:source",
+            "state": "review_unavailable"
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "fallback",
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "fallback",
+        "model": "fixture",
+        "startedAt": "2026-09-09T07:47:16.627Z",
+        "elapsedMs": 0,
+        "outcome": "fallback",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:r1",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 0,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:r1",
+            "attempt": 2,
+            "elapsedMs": 0,
+            "outcome": "failed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "b1",
+            "sourceText": "Was responsible for writing API tests in Python.",
+            "candidates": [
+              {
+                "id": "b1:source",
+                "text": "Was responsible for writing API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "b1:candidate:1",
+                "text": "Wrote API tests in Python.",
+                "evidence": [
+                  "b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Wrote API tests in Python.",
+                  "sourceText": "Was responsible for writing API tests in Python.",
+                  "status": "retained",
+                  "reason": "The action is stated directly.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "revise",
+                  "revisionInstruction": "Clarify the documented task."
+                }
+              }
+            ],
+            "selectedId": "b1:source",
+            "state": "ready"
+          }
+        ]
+      }
+    }
+  ]
+}

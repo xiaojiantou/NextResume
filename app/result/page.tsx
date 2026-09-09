@@ -2487,7 +2487,7 @@ function BulletDiffRow({
   focused: boolean;
   onFocus: () => void;
   onToggleLock: () => void;
-  onReplace: (next: OptimizedBullet) => void;
+  onReplace: (next: OptimizedBullet, action?: "accept" | "edit" | "restore") => void;
   onQuotaConsume: () => void;
 }) {
   const [refining, setRefining] = useState(false);
@@ -2548,7 +2548,7 @@ function BulletDiffRow({
                     evidence: [source.id],
                     matchedKeywords: [],
                     rationale: "Restored from the original resume by the user.",
-                  });
+                  }, "restore");
                 }}
                 className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10 disabled:cursor-not-allowed disabled:opacity-40"
                 title="Restore the source wording and lock it"
@@ -2643,7 +2643,7 @@ function BulletDiffRow({
           job={job}
           model={model}
           quotaRemaining={quotaRemaining}
-          onAccept={(rid, bid, next) => onReplace({ ...next, id: bid })}
+          onAccept={(rid, bid, next) => onReplace({ ...next, id: bid }, "accept")}
           onQuotaConsume={onQuotaConsume}
           onClose={() => setRefining(false)}
         />
@@ -2709,8 +2709,8 @@ function BulletDiff({
       onFocusBullet?.(bullet.id);
     },
     onToggleLock: () => toggleLockedContentId(bullet.id),
-    onReplace: (next: OptimizedBullet) =>
-      replaceOptimizedBullet(ownerId, bullet.id, next),
+    onReplace: (next: OptimizedBullet, action?: "accept" | "edit" | "restore") =>
+      replaceOptimizedBullet(ownerId, bullet.id, next, action),
     onQuotaConsume: incrementVoiceCount,
   });
   const roleTeamBulletIds = (role: Resume["experience"][number]) =>
