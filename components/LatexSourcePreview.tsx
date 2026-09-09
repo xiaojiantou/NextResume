@@ -61,11 +61,15 @@ export function LatexSourcePreview({
   resume,
   optimization,
   includeSummary = true,
+  pageSize,
 }: {
   source: string;
   resume: Resume;
   optimization: Optimization | null;
   includeSummary?: boolean;
+  /** Output paper size; when given, the pane takes the page's shape so it
+   *  lines up with the PDF pane beside it instead of ending mid-column. */
+  pageSize?: { widthPt: number; heightPt: number };
 }) {
   const { lines, changingCount } = useMemo(
     () => buildLines(source, resume, optimization, includeSummary),
@@ -74,7 +78,12 @@ export function LatexSourcePreview({
 
   return (
     <div
-      className="rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+      className="flex flex-col rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+      style={
+        pageSize
+          ? { aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}` }
+          : undefined
+      }
       role="region"
       aria-label="Original LaTeX source"
     >
@@ -96,7 +105,11 @@ export function LatexSourcePreview({
           </span>
         ) : null}
       </div>
-      <div className="max-h-[46rem] overflow-auto rounded-b-lg bg-white">
+      <div
+        className={`overflow-auto rounded-b-lg bg-white ${
+          pageSize ? "min-h-0 flex-1" : "max-h-[46rem]"
+        }`}
+      >
         <pre className="min-w-full w-max text-[12px] leading-[1.6]">
           {lines.map((line) => (
             <div
