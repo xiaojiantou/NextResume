@@ -341,8 +341,11 @@ export function LivePdfPreview({
   }
   return (
     <div className="relative h-full w-full">
+      {/* Fit the whole page in the panel: fit-to-width in a half-width column
+          leaves the bottom of page one cut off, so the reader can't check
+          page fill without scrolling. */}
       <iframe
-        src={`${url}#toolbar=1&view=FitH`}
+        src={`${url}#toolbar=1&view=Fit`}
         title="Edited resume PDF preview"
         className="h-full w-full rounded-lg"
       />

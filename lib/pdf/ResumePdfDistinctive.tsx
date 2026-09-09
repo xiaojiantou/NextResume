@@ -166,6 +166,10 @@ function createStyles(
       fontSize: body(),
       lineHeight: lh(1.45),
     },
+    skillGroupLabel: {
+      fontFamily: isTech ? "Courier-Bold" : "Helvetica-Bold",
+      color: palette.text,
+    },
     compactAdditional: {
       marginTop: px(7),
       color: palette.text,
@@ -330,6 +334,7 @@ export function ResumePdfDistinctive({
     summary,
     title,
     skills,
+    skillGroups,
     experience,
     experienceGroups,
     projects,
@@ -434,11 +439,24 @@ export function ResumePdfDistinctive({
       ) : null;
     }
     if (ref === "skills") {
-      return skills.length > 0 ? (
+      return skills.length > 0 || skillGroups.length > 0 ? (
         <View key={ref} style={styles.section}>
           <Text style={styles.sectionLabel}>{sectionLabel(labels.skills)}</Text>
           <View style={styles.skillsBand}>
-            <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+            {skillGroups.length > 0 ? (
+              // The trailing group carries skills no source category claims;
+              // it runs on without a label rather than borrowing one.
+              skillGroups.map((group, index) => (
+                <Text key={group.label || `ungrouped-${index}`} style={styles.skills}>
+                  {group.label ? (
+                    <Text style={styles.skillGroupLabel}>{group.label}: </Text>
+                  ) : null}
+                  {group.skills.join(", ")}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+            )}
           </View>
         </View>
       ) : null;
