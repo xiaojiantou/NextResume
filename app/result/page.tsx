@@ -1397,6 +1397,39 @@ function ResultPageInner() {
       pdfStyle === "personalized" &&
       personalizedStatus !== "ready");
 
+  // The optimized preview is the deliverable itself, shown the same way in
+  // every view. The iframe is sized h-full, so it needs a container with a
+  // definite height; taking it from the output paper makes the pane
+  // page-shaped, which is what puts it on the same footing as the page
+  // images opposite in the Side-by-side view.
+  const optimizedPreviewPane = resume ? (
+    <div
+      className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+      style={{
+        aspectRatio: `${outputPage.widthPt} / ${outputPage.heightPt}`,
+      }}
+    >
+      <LivePdfPreview
+        resume={displayedResume ?? resume}
+        optimization={displayedOptimization}
+        style={pdfStyle}
+        palette={pdfPalette}
+        targetPages={fittedViewActive ? targetPages : "auto"}
+        pageSize={outputPage}
+        fitVariant={fittedViewActive ? activeFitVariant : null}
+        sourceRevision={sourceRevision}
+        personalizedStyleProfile={personalizedStyleProfile}
+        personalizedStatus={personalizedStatus}
+        personalizedError={personalizedError}
+        includeSummary={summaryEnabled}
+        onRetryPersonalized={() => {
+          personalizeRan.current = true;
+          void generatePersonalized();
+        }}
+      />
+    </div>
+  ) : null;
+
   return (
     <AppShell step="result">
       <div className="mx-auto w-full max-w-[1800px] px-4 py-8 sm:px-6 lg:px-8 2xl:px-10">
@@ -2067,31 +2100,7 @@ function ResultPageInner() {
                     container with a definite height. Taking it from the output
                     paper makes the pane page-shaped, which is what puts it on
                     the same footing as the page images opposite. */}
-                <div
-                  className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
-                  style={{
-                    aspectRatio: `${outputPage.widthPt} / ${outputPage.heightPt}`,
-                  }}
-                >
-                  <LivePdfPreview
-                    resume={displayedResume ?? resume}
-                    optimization={displayedOptimization}
-                    style={pdfStyle}
-                    palette={pdfPalette}
-                    targetPages={fittedViewActive ? targetPages : "auto"}
-                    pageSize={outputPage}
-                    fitVariant={fittedViewActive ? activeFitVariant : null}
-                    sourceRevision={sourceRevision}
-                    personalizedStyleProfile={personalizedStyleProfile}
-                    personalizedStatus={personalizedStatus}
-                    personalizedError={personalizedError}
-                    includeSummary={summaryEnabled}
-                    onRetryPersonalized={() => {
-                      personalizeRan.current = true;
-                      void generatePersonalized();
-                    }}
-                  />
-                </div>
+                {optimizedPreviewPane}
               </PaneWrapper>
             ) : null}
           </div>
@@ -2104,7 +2113,10 @@ function ResultPageInner() {
 
         {/* Bullet diff */}
         {view === "bullets" && (
-          <BulletDiff onFocusBullet={setHoveredOptimizedId} />
+          <BulletDiff
+            onFocusBullet={setHoveredOptimizedId}
+            preview={optimizedPreviewPane}
+          />
         )}
 
         {view !== "edit" && (
@@ -2630,8 +2642,12 @@ function BulletDiff({
   // evidence trace follows it — reusing the focus signal the rows already had
   // rather than adding a hover one the file deliberately avoided.
   onFocusBullet,
+  // The same page-shaped PDF pane the Side-by-side and edit views show, so
+  // every view previews the deliverable rather than an HTML approximation.
+  preview,
 }: {
   onFocusBullet?: (bulletId: string) => void;
+  preview?: React.ReactNode;
 } = {}) {
   const {
     resume,
@@ -2709,22 +2725,31 @@ function BulletDiff({
       </div>
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="card hidden max-h-[calc(100vh-7rem)] overflow-y-auto p-5 lg:sticky lg:top-6 lg:block">
-          <div className="mb-3 text-[10px] font-medium uppercase tracking-widest text-ink-400">
-            Live preview
+        {preview ? (
+          <div className="hidden lg:sticky lg:top-6 lg:block">
+            <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-ink-400">
+              Live preview
+            </div>
+            {preview}
           </div>
-          <ResumeView
-            mode="optimized"
-            resume={resume}
-            optimization={optimization}
-            hoveredEvidence={[]}
-            hoveredOptimizedId={previewHoverId}
-            setHoveredOptimizedId={setPreviewHoverId}
-            evidenceMode={false}
-            includeSummary={includeSummary ?? Boolean(resume.summary)}
-            focusedBulletId={focusedBulletId}
-          />
-        </div>
+        ) : (
+          <div className="card hidden max-h-[calc(100vh-7rem)] overflow-y-auto p-5 lg:sticky lg:top-6 lg:block">
+            <div className="mb-3 text-[10px] font-medium uppercase tracking-widest text-ink-400">
+              Live preview
+            </div>
+            <ResumeView
+              mode="optimized"
+              resume={resume}
+              optimization={optimization}
+              hoveredEvidence={[]}
+              hoveredOptimizedId={previewHoverId}
+              setHoveredOptimizedId={setPreviewHoverId}
+              evidenceMode={false}
+              includeSummary={includeSummary ?? Boolean(resume.summary)}
+              focusedBulletId={focusedBulletId}
+            />
+          </div>
+        )}
 
         <div className="card overflow-hidden">
         {optimization.roles.map((role) => {
