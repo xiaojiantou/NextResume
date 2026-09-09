@@ -36,6 +36,13 @@ import type {
   OptimizedBullet,
   Resume,
 } from "@/lib/types";
+import {
+  CONTENT_WRITING_STANDARD,
+  qualityPairs,
+  reviewContentQuality,
+  selectReviewedContent,
+  type ContentReview,
+} from "@/lib/contentQuality";
 import { reviewSemanticGrounding } from "@/lib/semanticResumeValidation";
 
 export const runtime = "nodejs";
@@ -62,11 +69,12 @@ Output ONLY valid JSON:
   "id": "preview",
   "text": string,             // the rewritten bullet
   "evidence": string[],       // ORIGINAL bullet ids that ground this rewrite (must include the target bullet id)
-  "matchedKeywords": string[],// JD keywords now satisfied (2-4)
+  "matchedKeywords": string[],// JD keywords actually supported (0-4)
   "rationale": string         // 1 sentence on WHY this rewrite is stronger
 }
 
-Start with a strong ownership verb (Led, Built, Shipped, Owned, Drove, Designed, Migrated, Architected, Mentored, Partnered). Weave keywords into the factual claim itself — NEVER append meta-commentary like "showcasing proficiency in X" or "demonstrating expertise in Y". End with a concrete outcome, not a comment about the candidate's skills.`;
+${CONTENT_WRITING_STANDARD}
+Start with an accurate action verb supported by the source. Weave keywords into the factual claim itself — NEVER append meta-commentary like "showcasing proficiency in X" or "demonstrating expertise in Y". End with a concrete supported fact; an outcome is optional when the source has none.`;
 
 function publicOptimizationIssue(issue: string): string {
   const skill = issue.match(/^Skill "([^"]+)"/i)?.[1];
@@ -193,6 +201,8 @@ export async function POST(req: NextRequest) {
 
     const chunks = planRewriteChunks(resume, structureMode);
     const results = new Map<string, unknown>();
+    const qualityReviews = new Map<string, ContentReview>();
+    const qualityRevised = new Set<string>();
     let pending = chunks;
     let feedbackByChunk = new Map<string, string[]>();
     let lastIssues: string[] = [];
@@ -265,7 +275,7 @@ export async function POST(req: NextRequest) {
               lockedContentIds,
             })
           : constrainRoleOptimizedStructure({ resume, candidate: normalized });
-      const opt = enforceLockedOptimization({
+      let opt = enforceLockedOptimization({
         resume,
         candidate: structured,
         baseline: baselineOptimization,
@@ -305,6 +315,44 @@ export async function POST(req: NextRequest) {
           feedbackByChunk.has(chunkKey(chunk)),
         );
         if (pending.length === 0) pending = chunks;
+        continue;
+      }
+      // Review only new text. Accepted entries survive retries of other entries.
+      const pairs = qualityPairs(resume, opt, lockedContentIds);
+      const fresh = pairs.filter(pair => {
+        const cached = qualityReviews.get(pair.id);
+        return !cached || cached.text !== pair.candidate || cached.sourceText !== pair.source;
+      });
+      const reviewed = await reviewContentQuality({
+        pairs: fresh, job,
+        complete: (args) => jsonCompletion({ ...args, model }),
+        timeoutMs: Math.max(1, Math.min(30_000, deadline - Date.now() - 5_000)),
+      });
+      for (const [id, review] of reviewed) qualityReviews.set(id, review);
+      const qualityIssues = pairs.flatMap(pair => {
+        const review = qualityReviews.get(pair.id);
+        if (!review || review.status !== "retained" || pair.source === pair.candidate || qualityRevised.has(pair.id)) return [];
+        qualityRevised.add(pair.id);
+        return [`Content quality for bullet "${pair.id}": ${review.reason} Improve using only the original evidence, or return the original verbatim. Previous candidate: ${pair.candidate}`];
+      });
+      if (qualityIssues.length && attempt < attempts && deadline - Date.now() >= MIN_ATTEMPT_MS + 30_000) {
+        feedbackByChunk = chunksForIssues({ resume, candidate: opt, issues: qualityIssues, chunks });
+        pending = chunks.filter(chunk => feedbackByChunk.has(chunkKey(chunk)));
+        if (pending.length) continue;
+      }
+      opt = selectReviewedContent(opt, qualityReviews);
+      // Restoring source text can change keyword density; validate the actual deliverable.
+      const finalIssues = [
+        ...validateOptimization(resume, opt, job),
+        ...validateGroundedOptimization(resume, opt),
+        ...(structureMode === "preserve" ? validatePreservedOptimization(resume, opt) : []),
+        ...validateLockedOptimization({ resume, candidate: opt, baseline: baselineOptimization, lockedContentIds }),
+      ];
+      if (finalIssues.length) {
+        lastIssues = finalIssues;
+        feedbackByChunk = chunksForIssues({ resume, candidate: opt, issues: finalIssues, chunks });
+        pending = chunks.filter(chunk => feedbackByChunk.has(chunkKey(chunk)));
+        if (!pending.length) pending = chunks;
         continue;
       }
       opt.structureMode = structureMode;
