@@ -1,4 +1,5 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
+import { bulletAtsGain } from "./bulletAtsGain.ts";
 import { RESUME_IMPACT_GUIDANCE, normalizeImpactMetrics, type ImpactMetric } from "./resumeImpact.ts";
 import type { JobAnalysis, Optimization, OptimizedBullet, Resume } from "./types";
 
@@ -83,7 +84,7 @@ export function explicitTaskRevision(source: string): string | undefined {
   return `Replace the opening responsibility scaffolding with a direct description of the documented ${match[1].toLowerCase()} task. Rewrite from the original source, not the rejected candidate. Keep its object, method, scope, users, and stated results. Leave the measurement clause intact, including units, denominator, comparison conditions, time period, and approximate wording; do not calculate new figures, upgrade the responsibility, or add a result.`;
 }
 
-export function parseContentReviews(raw: unknown, pairs: ReviewPair[]): Map<string, ContentReview> {
+export function parseContentReviews(raw: unknown, pairs: ReviewPair[], job?: JobAnalysis | null): Map<string, ContentReview> {
   const rows = raw && typeof raw === "object" && "reviews" in raw && Array.isArray(raw.reviews) ? raw.reviews : [];
   const allowed = new Set(["clarity", "specificity", "contribution", "impact", "relevance"]);
   return new Map(pairs.map(pair => {
@@ -91,17 +92,30 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[]): Map<stri
     const row = matches.length === 1 ? matches[0] : null;
     const dimensions = Array.isArray(row?.dimensions) ? [...new Set<string>(row.dimensions.filter((d: unknown): d is string => typeof d === "string" && allowed.has(d)))] : [];
     const valid = row && typeof row.supported === "boolean" && typeof row.detailsPreserved === "boolean" && typeof row.causalityPreserved === "boolean" && ["improved", "retain"].includes(row.decision) && typeof row.reason === "string" && row.reason.trim() && (row.decision !== "improved" || dimensions.length > 0);
-    const improved = valid && row.supported && row.detailsPreserved && row.causalityPreserved && row.decision === "improved" && pair.source.trim() !== pair.candidate.trim();
+    const audited = valid && row.supported && row.detailsPreserved && row.causalityPreserved && pair.source.trim() !== pair.candidate.trim();
+    // The reviewer is told to ignore verbs and keywords, so a rewrite whose
+    // only change is the one the ATS rubric pays for comes back "retain" as
+    // cosmetic. When the reviewer itself has certified the facts intact, that
+    // change is the deliverable, not a cosmetic edit.
+    const atsGain = audited && row.decision === "retain" ? bulletAtsGain({ source: pair.source, candidate: pair.candidate, job }) : null;
+    const improved = audited && (row.decision === "improved" || atsGain !== null);
     const missedRevision = valid && !improved && row.nextStep === "keep"
       ? explicitTaskRevision(pair.source) : undefined;
+    const reason = missedRevision
+      ? `${row.reason.trim().slice(0, 450)} The source still buries a documented task behind responsibility scaffolding; retry from its complete evidence.`
+      : atsGain
+        ? `${row.reason.trim().slice(0, 400)} Kept the rewrite: it preserves every stated fact and ${atsGain}.`
+        : valid ? row.reason.trim().slice(0, 600) : "Content review was unavailable; the original wording was kept.";
     return [pair.id, {
       text: pair.candidate, sourceText: pair.source,
       status: valid ? (improved ? "improved" : "retained") : "unreviewed",
-      reason: missedRevision ? `${row.reason.trim().slice(0, 450)} The source still buries a documented task behind responsibility scaffolding; retry from its complete evidence.` : valid ? row.reason.trim().slice(0, 600) : "Content review was unavailable; the original wording was kept.",
-      dimensions: improved ? dimensions : [],
+      reason,
+      dimensions: improved ? (atsGain && dimensions.length === 0 ? ["relevance"] : dimensions) : [],
       ...(valid ? { audit: { supported: row.supported, detailsPreserved: row.detailsPreserved, causalityPreserved: row.causalityPreserved }, impactMetrics: normalizeImpactMetrics(row.impactMetrics, pair.source) } : {}),
-      ...(valid && ["keep", "revise", "ask"].includes(row.nextStep) ? { nextStep: row.nextStep } : {}),
-      ...(valid && row.nextStep === "revise" && typeof row.revisionInstruction === "string" && row.revisionInstruction.trim()
+      // An accepted rewrite has nothing left to revise, but the reviewer's
+      // evidence question still stands.
+      ...(atsGain ? { nextStep: (row.nextStep === "ask" ? "ask" : "keep") as "ask" | "keep" } : valid && ["keep", "revise", "ask"].includes(row.nextStep) ? { nextStep: row.nextStep } : {}),
+      ...(!atsGain && valid && row.nextStep === "revise" && typeof row.revisionInstruction === "string" && row.revisionInstruction.trim()
         ? { revisionInstruction: row.revisionInstruction.trim().slice(0, 800) } : {}),
       ...(missedRevision ? { nextStep: "revise", revisionInstruction: missedRevision } : {}),
       ...(valid && typeof row.question === "string" && row.question.trim() ? { question: row.question.trim().slice(0, 400) } : {}),
@@ -145,7 +159,7 @@ export async function reviewContentQuality({ pairs, job, complete, timeoutMs = R
             });
           } catch { /* Keep this batch's originals when review is unavailable. */ }
         }
-        for (const [id, review] of parseContentReviews(raw, batch)) reviews.set(id, review);
+        for (const [id, review] of parseContentReviews(raw, batch, job)) reviews.set(id, review);
       }
     }));
     return reviews;

@@ -62,10 +62,63 @@ const STRONG_IRREGULAR_VERBS = new Set([
 ]);
 
 // Mirrors the weak openers pickWeakestBullet() looks for in app/api/optimize.
-const WEAK_OPENERS = [
+export const WEAK_OPENERS = [
   "worked on", "helped", "assisted", "responsible for", "involved in",
   "participated", "tasked with", "duties included", "contributed to",
 ];
+
+export type OpenerStrength = "weak" | "neutral" | "strong";
+
+// Chinese resumes open bullets the same two ways English ones do: with a
+// responsibility frame ("负责…", "参与…", "协助…") or with the action itself.
+// Without these lists every Chinese bullet scored neutral, so the category
+// could neither penalise "负责" nor reward a rewrite that removed it.
+const CJK_WEAK_OPENERS = [
+  "负责", "参与", "协助", "帮助", "配合", "辅助", "支持", "跟进", "涉及",
+];
+// A closed list necessarily misses some verbs; anything not listed scores
+// neutral, the same credit an English bullet gets for an unrecognised opener.
+const CJK_STRONG_OPENERS = [
+  "主导", "带领", "牵头", "统筹", "组织", "主持", "设计", "重新设计", "搭建",
+  "构建", "打造", "开发", "实现", "落地", "上线", "发布", "交付", "优化",
+  "改进", "重构", "迭代", "提升", "提高", "降低", "减少", "缩短", "推动",
+  "建立", "创建", "制定", "编写", "撰写", "整理", "梳理", "汇总", "综合",
+  "分析", "评估", "调研", "研究", "输出", "完成", "部署", "迁移", "测试",
+  "排查", "定位", "修复", "解决", "处理", "定义", "规划", "拆解", "对接",
+  "核对", "验证", "校验", "审核", "清洗", "建模", "训练", "调优", "压测",
+  "联调", "集成", "接入", "引入", "采用", "应用", "配置", "维护", "监控",
+  "运营", "执行", "培训", "指导", "复盘", "沉淀", "拓展", "扩展", "转化",
+];
+// Pronoun scaffolding that precedes the verb: "我负责…", "我还整理了…".
+// Longest alternatives first: "我还" must win over "我" or "还" becomes the verb.
+const CJK_LEAD_IN = /^(?:我还|我也|本人|我|并|及)\s*/u;
+
+/** The opener of a Chinese bullet, when it starts with a Han character. */
+export function cjkOpener(text: string): { verb: string; strength: OpenerStrength } | null {
+  const body = text.trim().replace(CJK_LEAD_IN, "");
+  if (!/^\p{Script=Han}/u.test(body)) return null;
+  const weak = CJK_WEAK_OPENERS.find((w) => body.startsWith(w));
+  if (weak) return { verb: weak, strength: "weak" };
+  const strong = [...CJK_STRONG_OPENERS].sort((a, b) => b.length - a.length).find((w) => body.startsWith(w));
+  if (strong) return { verb: strong, strength: "strong" };
+  return { verb: body.slice(0, 2).trim(), strength: "neutral" };
+}
+
+/** How the verb scorer classifies a bullet's opening: the single signal the
+ *  "Action verbs" category is built from. */
+export function openerStrength(text: string): OpenerStrength {
+  const cjk = cjkOpener(text);
+  if (cjk) return cjk.strength;
+  const lower = text.trim().toLowerCase();
+  if (WEAK_OPENERS.some((w) => lower.startsWith(w))) return "weak";
+  const first = lower.split(/[\s,]+/)[0]?.replace(/[^a-z]/g, "") ?? "";
+  // "-ed" covers regular past tense, which is how most ownership verbs on a
+  // resume are written. The irregular set catches the rest.
+  if (STRONG_IRREGULAR_VERBS.has(first) || (first.length > 3 && first.endsWith("ed"))) {
+    return "strong";
+  }
+  return "neutral";
+}
 
 // Words that describe the level of a role rather than the role itself. Dropped
 // before comparing titles so "Intern: AI Engineering" matches "AI Engineer".
@@ -287,20 +340,9 @@ function scoreActionVerbs(bullets: ResumeBulletRef[]) {
   let strong = 0;
   let weak = 0;
   for (const bullet of bullets) {
-    const lower = bullet.text.trim().toLowerCase();
-    if (WEAK_OPENERS.some((w) => lower.startsWith(w))) {
-      weak += 1;
-      continue;
-    }
-    const first = lower.split(/[\s,]+/)[0]?.replace(/[^a-z]/g, "") ?? "";
-    // "-ed" covers regular past tense, which is how most ownership verbs on a
-    // resume are written. The irregular set catches the rest.
-    if (
-      STRONG_IRREGULAR_VERBS.has(first) ||
-      (first.length > 3 && first.endsWith("ed"))
-    ) {
-      strong += 1;
-    }
+    const strength = openerStrength(bullet.text);
+    if (strength === "weak") weak += 1;
+    else if (strength === "strong") strong += 1;
   }
   const neutral = bullets.length - strong - weak;
   const score = Math.round(((strong + neutral * 0.5) / bullets.length) * 100);

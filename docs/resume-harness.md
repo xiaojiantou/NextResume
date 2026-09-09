@@ -142,3 +142,45 @@ other reviewed bullet. This is recovery evidence, not measured writing uplift.
 See `eval/uplift/README.md` for commands, artifacts, denominators, review protocol
 and the next content-quality hypotheses. Production cost gates, consented real
 resume examples, blind human judgments and broader validation remain open.
+
+## Fourth delivery: rubric-aware acceptance and an honest projection
+
+Replaying the seven completed uplift traces through the deterministic ATS
+rubric showed why customers saw little difference before and after: 9 of 14
+bullets shipped as source text. The content reviewer is instructed to ignore
+verb strength and keyword counts, so a rewrite whose only change was removing
+responsibility scaffolding or naming the posting's term came back "retain" as
+cosmetic, while "Action verbs" and "Keyword match" are exactly those changes.
+The pre-purchase projection compounded this: it promised a 30% close on
+"Quantified impact", which the rewrite prompt forbids, and 90 on verbs for
+bullets the scorer could not classify. On the corpus it overshot the re-scored
+result by 9.9 points.
+
+Three changes, all deterministic and covered by tests:
+
+1. `lib/bulletAtsGain.ts` accepts a reviewer-retained rewrite only when the
+   reviewer's own audit flags (supported, details preserved, causality
+   preserved) are all true and the rewrite measurably moves the rubric: a
+   stronger opener that is not an ownership verb the source never used, or a
+   posting keyword the source lacked (aliases such as K8s/Kubernetes do not
+   count). The reviewer's evidence question survives; its revision instruction
+   does not. Replayed on the corpus, 2 of the 5 retained-but-audited candidates
+   would now ship, both result-first restructures of a "responsible for" bullet.
+2. `lib/atsProjection.ts` replaces the inline formula: quantified impact is not
+   projected to rise, verbs cap at 85 and only for bullets the scorer can
+   classify, the total never drops below the source, and the UI calls the
+   number "up to". Preserve mode now sets the headline to the posting's title
+   like optimize mode, since "Title match" is 20 points of any projection.
+3. `openerStrength` in `lib/atsScore.ts` classifies Chinese openers: "负责",
+   "参与", "协助" score weak like "helped"; a listed action verb scores strong;
+   anything else stays neutral. Before this every Chinese bullet was neutral, so
+   the category could neither penalise scaffolding nor reward its removal.
+
+After all three, the projection overshoots the re-scored corpus by 6.3 points
+instead of 9.9. The remainder is the headline, which the bullet-only evaluator
+does not emit, and English rewrites whose openers the reviewer's retained
+version left unchanged. These are rubric measurements on an authored corpus,
+not evidence of customer-perceived quality. Open: the keyword close rate (40%
+of the gap) is uncalibrated and needs real before/after pairs; rewrites that
+derive a number the source lacks still restore the whole bullet after retries;
+the Chinese verb list is closed and will miss verbs.

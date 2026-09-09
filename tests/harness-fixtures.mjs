@@ -11,7 +11,12 @@ export function completion(scenario = 'improved') {
     }
     if (system.includes('ONE entry')) {
       if (++writes > 1 && scenario === 'fallback') throw new Error('Fixture optional revision outage');
-      return { id: 'r1', bullets: [{ id: 'b1', text: 'Wrote API tests in Python.', evidence: ['b1'], matchedKeywords: [], rationale: 'Direct action.' }] };
+      // A stronger opener the audit certifies ships on ATS grounds even when
+      // the reviewer says retain, so the fallback scenario, which needs a
+      // retained candidate to reach its revision retry, keeps a same-strength
+      // rewrite.
+      const text = scenario === 'fallback' ? 'Writing API tests in Python.' : 'Wrote API tests in Python.';
+      return { id: 'r1', bullets: [{ id: 'b1', text, evidence: ['b1'], matchedKeywords: [], rationale: 'Direct action.' }] };
     }
     return { title: resume.title, summary: '', skills: [] };
   };

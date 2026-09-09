@@ -5,7 +5,7 @@
 // This used to promise more than the optimizer is allowed to deliver: it
 // projected "Quantified impact" closing 30% of its gap while the rewrite
 // prompt forbids introducing any number the source lacks, and it projected
-// "Action verbs" at 90 for resumes whose bullets are not in Latin script,
+// "Action verbs" at 90 for resumes in a script the verb scorer cannot read,
 // which the verb scorer can never mark as strong. Measured on the uplift
 // corpus, that formula overshot the re-scored result by ~10 points. Every rule
 // below corresponds to something the pipeline actually does.
@@ -35,14 +35,16 @@ function weightOf(label: string): number {
   }
 }
 
-// The verb scorer recognises an opener by its "-ed" ending or an English
-// irregular list, so only a bullet that opens with Latin letters can ever be
-// scored strong. Chinese bullets stay neutral no matter how they are written.
-function latinOpenerShare(resume: Resume): number {
+// The verb scorer recognises English openers ("-ed" or an irregular list) and
+// Chinese ones (a verb list). A bullet in any other script stays neutral no
+// matter how it is written, so it cannot be projected upward.
+function scorableOpenerShare(resume: Resume): number {
   const bullets = collectBullets(resume);
   if (bullets.length === 0) return 0;
-  const latin = bullets.filter((b) => /^[A-Za-z]/.test(b.text.trim())).length;
-  return latin / bullets.length;
+  const scorable = bullets.filter((b) =>
+    /^(?:[A-Za-z]|(?:我还|我也|本人|我|并|及)?\s*\p{Script=Han})/u.test(b.text.trim()),
+  ).length;
+  return scorable / bullets.length;
 }
 
 export function projectAfter(
@@ -52,7 +54,7 @@ export function projectAfter(
 ): { overallAfter: number; categoriesAfter: AtsCategory[] } {
   const close = (score: number, share: number) =>
     Math.round(score + (100 - score) * share);
-  const latinShare = latinOpenerShare(resume);
+  const latinShare = scorableOpenerShare(resume);
 
   const categoriesAfter = categories.map((c) => {
     switch (c.label) {
@@ -65,8 +67,8 @@ export function projectAfter(
           detail: "Achievable by matching the headline to the posting's title.",
         };
       case "Action verbs": {
-        // Latin-script bullets can be reopened with an ownership verb; the
-        // rest keep their neutral credit.
+        // English and Chinese bullets can be reopened with an action verb the
+        // scorer recognises; bullets in other scripts keep their neutral credit.
         const reachable = Math.round(
           (latinShare + (1 - latinShare) * 0.5) * 100,
         );
@@ -77,7 +79,7 @@ export function projectAfter(
           detail:
             score > c.score
               ? "Achievable by reopening each bullet with an ownership verb."
-              : "Unchanged: the verb check only recognises English openers.",
+              : "Unchanged: the verb check only recognises English and Chinese openers.",
         };
       }
       case "Keyword match":
