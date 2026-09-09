@@ -1,0 +1,1441 @@
+[
+  {
+    "id": "dev-ai-inference-measured",
+    "split": "development",
+    "roleFamily": "backend_ai_engineering",
+    "seniority": "senior",
+    "evidenceLevel": "measured",
+    "label": "AI engineer: measured inference improvement with separate token-volume context",
+    "sourceFacts": [
+      "The application was an internal LLM assistant.",
+      "The candidate implemented prompt caching.",
+      "A replay of the same request set measured input-token processing cost at $12 before and $9 after per 1,000 requests.",
+      "The model and cache-hit mix were held fixed for that comparison.",
+      "Monthly observed volume was approximately 18 million input tokens.",
+      "Monthly observed output volume was approximately 3 million tokens.",
+      "The candidate maintained volume monitoring.",
+      "Failure alerts covered assistant requests."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 01",
+        "title": "Senior AI Engineer",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "LLM",
+          "prompt caching",
+          "monitoring"
+        ],
+        "experience": [
+          {
+            "id": "dev-ai-inference-measured-role",
+            "company": "Example Inference Studio",
+            "title": "Senior AI Engineer",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-ai-inference-measured-b1",
+                "text": "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed."
+              },
+              {
+                "id": "dev-ai-inference-measured-b2",
+                "text": "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Senior AI Platform Engineer",
+        "company": "Example Hiring Team",
+        "seniority": "senior",
+        "requiredKeywords": [
+          "LLM",
+          "prompt caching",
+          "monitoring"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Improve inference cost using comparable measurements.",
+          "Operate request monitoring for internal AI applications."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "LLM",
+          "prompt caching",
+          "monitoring"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-data-reporting-qualitative-zh",
+    "split": "development",
+    "roleFamily": "data_analytics",
+    "seniority": "mid",
+    "evidenceLevel": "qualitative",
+    "label": "数据分析：有使用场景但没有量化收益",
+    "sourceFacts": [
+      "数据来源是门店销售记录。",
+      "候选人使用 SQL 整理数据。",
+      "销售趋势按品类拆分。",
+      "区域经理在每周经营会上看到这些趋势。",
+      "数据字典包含销售报表的退货口径。",
+      "候选人与财务同事核对两种日期的区别。",
+      "核对的日期分别是退款日期与订单日期。"
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 02",
+        "title": "数据分析师",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "SQL",
+          "销售分析",
+          "数据字典"
+        ],
+        "experience": [
+          {
+            "id": "dev-data-reporting-qualitative-zh-role",
+            "company": "示例零售分析公司",
+            "title": "数据分析师",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-data-reporting-qualitative-zh-b1",
+                "text": "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。"
+              },
+              {
+                "id": "dev-data-reporting-qualitative-zh-b2",
+                "text": "把销售报表里的退货口径写进数据字典，并和财务同事核对了退款日期和订单日期的区别。"
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "业务数据分析师",
+        "company": "Example Hiring Team",
+        "seniority": "mid",
+        "requiredKeywords": [
+          "SQL",
+          "销售分析",
+          "数据字典"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "通过销售分析支持经营讨论。",
+          "与财务协作明确报表口径。"
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "SQL",
+          "销售分析",
+          "数据字典"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-product-research-sparse",
+    "split": "development",
+    "roleFamily": "product",
+    "seniority": "entry",
+    "evidenceLevel": "sparse",
+    "label": "Associate product manager: limited contribution detail",
+    "sourceFacts": [
+      "Customer interview notes were prepared with the product manager.",
+      "The candidate assisted with those notes.",
+      "The candidate updated a product backlog.",
+      "The product concerned scheduling."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 03",
+        "title": "Associate Product Manager",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "customer interviews",
+          "backlog management"
+        ],
+        "experience": [
+          {
+            "id": "dev-product-research-sparse-role",
+            "company": "Example Workflow Tools",
+            "title": "Associate Product Manager",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-product-research-sparse-b1",
+                "text": "Helped the product manager prepare customer interview notes."
+              },
+              {
+                "id": "dev-product-research-sparse-b2",
+                "text": "Updated the backlog for the team’s scheduling product."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Associate Product Manager",
+        "company": "Example Hiring Team",
+        "seniority": "entry",
+        "requiredKeywords": [
+          "customer interviews",
+          "backlog management"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Support customer interview documentation.",
+          "Maintain a product backlog with the product manager."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "customer interviews",
+          "backlog management"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-design-usability-measured-zh",
+    "split": "development",
+    "roleFamily": "design_research",
+    "seniority": "mid",
+    "evidenceLevel": "measured",
+    "label": "交互设计：可用性测试结果与独立研究交付物",
+    "sourceFacts": [
+      "重新设计的对象是报销表单错误提示。",
+      "进行了两轮可用性测试。",
+      "两轮使用相同任务与主持脚本。",
+      "每轮参加者都是首次使用者，共 10 名。",
+      "第一轮成功人数为 6 人。",
+      "第二轮成功人数为 9 人。",
+      "研究发现来源包括访谈记录与操作录像。",
+      "问题清单按照流程步骤分类。",
+      "产品与工程团队评审该清单。"
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 04",
+        "title": "交互设计师",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "交互设计",
+          "可用性测试",
+          "用户访谈"
+        ],
+        "experience": [
+          {
+            "id": "dev-design-usability-measured-zh-role",
+            "company": "示例协作设计公司",
+            "title": "交互设计师",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-design-usability-measured-zh-b1",
+                "text": "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。"
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b2",
+                "text": "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。"
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "产品交互设计师",
+        "company": "Example Hiring Team",
+        "seniority": "mid",
+        "requiredKeywords": [
+          "交互设计",
+          "可用性测试",
+          "用户访谈"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "设计清晰的表单交互。",
+          "通过可用性测试和访谈支持产品决策。"
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "交互设计",
+          "可用性测试",
+          "用户访谈"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-operations-supplier-qualitative",
+    "split": "development",
+    "roleFamily": "operations",
+    "seniority": "senior",
+    "evidenceLevel": "qualitative",
+    "label": "Operations lead: documented decision support without invented savings",
+    "sourceFacts": [
+      "The candidate prepared a shared supplier review.",
+      "The review contained delivery issues.",
+      "Contract renewal dates were included.",
+      "Follow-up items each had a named next owner.",
+      "Procurement used the review in monthly supplier meetings.",
+      "Purchase-order exception escalation was documented.",
+      "Finance and the warehouse team were possible escalation destinations."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 05",
+        "title": "Senior Operations Specialist",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "supplier reviews",
+          "purchase orders",
+          "process documentation"
+        ],
+        "experience": [
+          {
+            "id": "dev-operations-supplier-qualitative-role",
+            "company": "Example Equipment Supply",
+            "title": "Senior Operations Specialist",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-operations-supplier-qualitative-b1",
+                "text": "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings."
+              },
+              {
+                "id": "dev-operations-supplier-qualitative-b2",
+                "text": "Was responsible for documenting how purchase-order exceptions should be escalated to finance or the warehouse team."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Senior Procurement Operations Specialist",
+        "company": "Example Hiring Team",
+        "seniority": "senior",
+        "requiredKeywords": [
+          "supplier reviews",
+          "purchase orders",
+          "process documentation"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Coordinate supplier review information.",
+          "Clarify purchasing exception handling across teams."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "supplier reviews",
+          "purchase orders",
+          "process documentation"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-marketing-campaign-sparse",
+    "split": "development",
+    "roleFamily": "marketing_customer_success",
+    "seniority": "entry",
+    "evidenceLevel": "sparse",
+    "label": "Marketing assistant: sparse execution detail",
+    "sourceFacts": [
+      "The campaigns used email.",
+      "Campaigns supported course launches.",
+      "The candidate assisted with campaign preparation.",
+      "The candidate maintained the marketing event calendar."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 06",
+        "title": "Marketing Assistant",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "email campaigns",
+          "event coordination"
+        ],
+        "experience": [
+          {
+            "id": "dev-marketing-campaign-sparse-role",
+            "company": "Example Learning Products",
+            "title": "Marketing Assistant",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-marketing-campaign-sparse-b1",
+                "text": "Helped prepare email campaigns for course launches."
+              },
+              {
+                "id": "dev-marketing-campaign-sparse-b2",
+                "text": "Updated the marketing team’s event calendar."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Marketing Coordinator",
+        "company": "Example Hiring Team",
+        "seniority": "entry",
+        "requiredKeywords": [
+          "email campaigns",
+          "event coordination"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Support email campaign preparation.",
+          "Maintain launch and event schedules."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "email campaigns",
+          "event coordination"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-backend-runbooks-qualitative",
+    "split": "development",
+    "roleFamily": "backend_ai_engineering",
+    "seniority": "mid",
+    "evidenceLevel": "qualitative",
+    "label": "Backend engineer: qualitative operating context and defensible purpose",
+    "sourceFacts": [
+      "The candidate authored runbooks for invoice-import failures.",
+      "The runbooks listed log locations.",
+      "They described replay steps.",
+      "Support engineers used them for incident triage.",
+      "PostgreSQL constraints rejected duplicate external invoice identifiers.",
+      "Integration tests covered repeated import requests."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 07",
+        "title": "Backend Engineer",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "PostgreSQL",
+          "integration tests",
+          "incident triage"
+        ],
+        "experience": [
+          {
+            "id": "dev-backend-runbooks-qualitative-role",
+            "company": "Example Ledger Software",
+            "title": "Backend Engineer",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-backend-runbooks-qualitative-b1",
+                "text": "Was responsible for writing runbooks for failed invoice imports, including log locations and replay steps, and the support engineers used them during incident triage."
+              },
+              {
+                "id": "dev-backend-runbooks-qualitative-b2",
+                "text": "Added PostgreSQL constraints to reject duplicate external invoice IDs and wrote integration tests covering repeated import requests."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Backend Engineer",
+        "company": "Example Hiring Team",
+        "seniority": "mid",
+        "requiredKeywords": [
+          "PostgreSQL",
+          "integration tests",
+          "incident triage"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Build reliable invoice import services.",
+          "Support production debugging through tests and documentation."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "PostgreSQL",
+          "integration tests",
+          "incident triage"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-data-dashboard-sparse",
+    "split": "development",
+    "roleFamily": "data_analytics",
+    "seniority": "entry",
+    "evidenceLevel": "sparse",
+    "label": "Junior analyst: ambiguous dashboard contribution",
+    "sourceFacts": [
+      "The candidate contributed to a delivery-data dashboard.",
+      "Spreadsheet data was checked ahead of a weekly report.",
+      "The candidate assisted with those checks."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 08",
+        "title": "Junior Data Analyst",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "dashboards",
+          "spreadsheets"
+        ],
+        "experience": [
+          {
+            "id": "dev-data-dashboard-sparse-role",
+            "company": "Example Delivery Analytics",
+            "title": "Junior Data Analyst",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-data-dashboard-sparse-b1",
+                "text": "Worked on a dashboard for delivery data."
+              },
+              {
+                "id": "dev-data-dashboard-sparse-b2",
+                "text": "Helped check spreadsheet data before the weekly report."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Junior Data Analyst",
+        "company": "Example Hiring Team",
+        "seniority": "entry",
+        "requiredKeywords": [
+          "dashboards",
+          "spreadsheets"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Support delivery reporting.",
+          "Check data used in recurring reports."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "dashboards",
+          "spreadsheets"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-product-onboarding-measured",
+    "split": "development",
+    "roleFamily": "product",
+    "seniority": "senior",
+    "evidenceLevel": "measured",
+    "label": "Product manager: randomized activation evidence without downstream revenue",
+    "sourceFacts": [
+      "The candidate led prioritization and rollout of guided workspace setup.",
+      "Design and engineering collaborated on the work.",
+      "The test used randomized groups over two weeks.",
+      "Each group contained 2,000 new workspaces.",
+      "Seven-day setup completion was 52% in control.",
+      "The guided flow group recorded 61% setup completion.",
+      "The candidate authored a rollout brief.",
+      "The brief defined eligibility and completion tracking.",
+      "A support-ticket increase was the documented rollback condition."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 09",
+        "title": "Senior Product Manager",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "product prioritization",
+          "experimentation",
+          "rollout planning"
+        ],
+        "experience": [
+          {
+            "id": "dev-product-onboarding-measured-role",
+            "company": "Example Team Workspace",
+            "title": "Senior Product Manager",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-product-onboarding-measured-b1",
+                "text": "Led prioritization and rollout of a guided workspace setup with design and engineering; in a two-week randomized test with 2,000 new workspaces per group, seven-day setup completion was 52% for control and 61% for the guided flow."
+              },
+              {
+                "id": "dev-product-onboarding-measured-b2",
+                "text": "Wrote the rollout brief defining eligibility, setup-completion tracking, and the rollback condition for increased support tickets."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Senior Product Manager",
+        "company": "Example Hiring Team",
+        "seniority": "senior",
+        "requiredKeywords": [
+          "product prioritization",
+          "experimentation",
+          "rollout planning"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Prioritize and evaluate onboarding improvements.",
+          "Coordinate rollout measurement with design and engineering."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "product prioritization",
+          "experimentation",
+          "rollout planning"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-design-accessibility-qualitative",
+    "split": "development",
+    "roleFamily": "design_research",
+    "seniority": "senior",
+    "evidenceLevel": "qualitative",
+    "label": "Senior designer: accessible components with scoped adoption",
+    "sourceFacts": [
+      "Shared form components received keyboard interaction specifications.",
+      "The candidate produced examples of focus states.",
+      "Implementation reviews were conducted with engineers.",
+      "The design library documented component usage.",
+      "Error-message patterns were also documented.",
+      "Designers used the documentation for case-management screens."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 10",
+        "title": "Senior Product Designer",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "interaction design",
+          "design systems",
+          "keyboard accessibility"
+        ],
+        "experience": [
+          {
+            "id": "dev-design-accessibility-qualitative-role",
+            "company": "Example Case Management",
+            "title": "Senior Product Designer",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-design-accessibility-qualitative-b1",
+                "text": "Created keyboard interaction specifications and focus-state examples for shared form components, and paired with engineers to review the implementation."
+              },
+              {
+                "id": "dev-design-accessibility-qualitative-b2",
+                "text": "Documented component usage and error-message patterns in the design library; designers used the documentation when preparing case-management screens."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Senior Product Designer",
+        "company": "Example Hiring Team",
+        "seniority": "senior",
+        "requiredKeywords": [
+          "interaction design",
+          "design systems",
+          "keyboard accessibility"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Define reusable interaction patterns.",
+          "Partner with engineers on keyboard-accessible components."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "interaction design",
+          "design systems",
+          "keyboard accessibility"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-operations-inventory-sparse",
+    "split": "development",
+    "roleFamily": "operations",
+    "seniority": "entry",
+    "evidenceLevel": "sparse",
+    "label": "Warehouse coordinator: sparse support work without scope inflation",
+    "sourceFacts": [
+      "Inventory counts took place in a warehouse.",
+      "The candidate helped with the counts.",
+      "Shipment details were entered into a tracking spreadsheet."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 11",
+        "title": "Warehouse Coordinator",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "inventory counts",
+          "shipment tracking",
+          "spreadsheets"
+        ],
+        "experience": [
+          {
+            "id": "dev-operations-inventory-sparse-role",
+            "company": "Example Parts Warehouse",
+            "title": "Warehouse Coordinator",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-operations-inventory-sparse-b1",
+                "text": "Assisted with inventory counts in the warehouse."
+              },
+              {
+                "id": "dev-operations-inventory-sparse-b2",
+                "text": "Entered shipment details in the tracking spreadsheet."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Operations Coordinator",
+        "company": "Example Hiring Team",
+        "seniority": "entry",
+        "requiredKeywords": [
+          "inventory counts",
+          "shipment tracking",
+          "spreadsheets"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Support warehouse inventory checks.",
+          "Maintain shipment records."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "inventory counts",
+          "shipment tracking",
+          "spreadsheets"
+        ]
+      }
+    }
+  },
+  {
+    "id": "dev-customer-success-adoption-measured",
+    "split": "development",
+    "roleFamily": "marketing_customer_success",
+    "seniority": "senior",
+    "evidenceLevel": "measured",
+    "label": "Customer success manager: strong adoption bullet plus separately scoped delivery",
+    "sourceFacts": [
+      "The same group of 40 customer accounts was tracked over one quarter.",
+      "Weekly use of the reporting feature moved from 35% to 58%.",
+      "Targeted training and follow-up office hours drove the reported adoption change.",
+      "The candidate wrote a reporting-feature guide.",
+      "Six training sessions were delivered.",
+      "Attendees were administrators from the tracked account group."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 12",
+        "title": "Senior Customer Success Manager",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "customer training",
+          "feature adoption",
+          "customer success"
+        ],
+        "experience": [
+          {
+            "id": "dev-customer-success-adoption-measured-role",
+            "company": "Example Reporting Platform",
+            "title": "Senior Customer Success Manager",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "dev-customer-success-adoption-measured-b1",
+                "text": "Increased weekly reporting-feature adoption from 35% to 58% among the same 40 customer accounts over one quarter through targeted training and follow-up office hours."
+              },
+              {
+                "id": "dev-customer-success-adoption-measured-b2",
+                "text": "I was responsible for writing a reporting-feature guide and delivering six training sessions for administrators from that account group."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Senior Customer Success Manager",
+        "company": "Example Hiring Team",
+        "seniority": "senior",
+        "requiredKeywords": [
+          "customer training",
+          "feature adoption",
+          "customer success"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Support customer adoption with targeted enablement.",
+          "Measure feature use and deliver administrator training."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "customer training",
+          "feature adoption",
+          "customer success"
+        ]
+      }
+    }
+  },
+  {
+    "id": "val-backend-deployment-sparse",
+    "split": "validation",
+    "roleFamily": "backend_ai_engineering",
+    "seniority": "entry",
+    "evidenceLevel": "sparse",
+    "label": "Reserved: junior infrastructure contribution with little supporting detail",
+    "sourceFacts": [
+      "The candidate assisted with deployment-script maintenance.",
+      "Build failures were investigated.",
+      "A senior engineer participated in the investigation."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 13",
+        "title": "Junior Software Engineer",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "deployment scripts",
+          "build troubleshooting"
+        ],
+        "experience": [
+          {
+            "id": "val-backend-deployment-sparse-role",
+            "company": "Example Build Systems",
+            "title": "Junior Software Engineer",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "val-backend-deployment-sparse-b1",
+                "text": "Helped maintain deployment scripts."
+              },
+              {
+                "id": "val-backend-deployment-sparse-b2",
+                "text": "Investigated failed builds with a senior engineer."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Junior Backend Engineer",
+        "company": "Example Hiring Team",
+        "seniority": "entry",
+        "requiredKeywords": [
+          "deployment scripts",
+          "build troubleshooting"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Assist with deployment automation.",
+          "Investigate build failures with the engineering team."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "deployment scripts",
+          "build troubleshooting"
+        ]
+      }
+    }
+  },
+  {
+    "id": "val-data-reconciliation-measured",
+    "split": "validation",
+    "roleFamily": "data_analytics",
+    "seniority": "senior",
+    "evidenceLevel": "measured",
+    "label": "Reserved: finance reconciliation with a bounded time-saving comparison",
+    "sourceFacts": [
+      "The candidate built invoice reconciliation checks in SQL.",
+      "The invoices related to subscriptions.",
+      "The comparison covered four monthly closes.",
+      "The review checklist stayed the same.",
+      "Each close contained approximately 8,000 invoices.",
+      "Finance review took 12 hours per close before and 5 hours after.",
+      "The candidate published an exceptions table for finance.",
+      "Its columns included invoice identifiers, mismatch categories, and review status."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 14",
+        "title": "Senior Data Analyst",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "SQL",
+          "reconciliation",
+          "finance reporting"
+        ],
+        "experience": [
+          {
+            "id": "val-data-reconciliation-measured-role",
+            "company": "Example Subscription Finance",
+            "title": "Senior Data Analyst",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "val-data-reconciliation-measured-b1",
+                "text": "Built SQL reconciliation checks for subscription invoices; across four monthly closes with the same review checklist and approximately 8,000 invoices per close, finance review time fell from 12 hours to 5 hours per close."
+              },
+              {
+                "id": "val-data-reconciliation-measured-b2",
+                "text": "Published an exceptions table with invoice IDs, mismatch categories, and review status for finance to resolve discrepancies."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Senior Data Analyst",
+        "company": "Example Hiring Team",
+        "seniority": "senior",
+        "requiredKeywords": [
+          "SQL",
+          "reconciliation",
+          "finance reporting"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Automate recurring finance data checks.",
+          "Make reconciliation exceptions actionable for finance."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "SQL",
+          "reconciliation",
+          "finance reporting"
+        ]
+      }
+    }
+  },
+  {
+    "id": "val-product-permissions-qualitative",
+    "split": "validation",
+    "roleFamily": "product",
+    "seniority": "mid",
+    "evidenceLevel": "qualitative",
+    "label": "Reserved: product discovery and permissions scope without delivery metrics",
+    "sourceFacts": [
+      "Research inputs included support tickets and administrator interviews.",
+      "The research concerned confusing workspace permission settings.",
+      "The candidate organized the findings into a problem brief.",
+      "Design and engineering were the brief’s audience.",
+      "Acceptance criteria for permission settings were defined with a security reviewer.",
+      "Unresolved cases were recorded in a release checklist."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 15",
+        "title": "Product Manager",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "customer discovery",
+          "acceptance criteria",
+          "release planning"
+        ],
+        "experience": [
+          {
+            "id": "val-product-permissions-qualitative-role",
+            "company": "Example Team Documents",
+            "title": "Product Manager",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "val-product-permissions-qualitative-b1",
+                "text": "Compared support tickets and administrator interviews to map where workspace permission settings caused confusion, then organized the findings into a problem brief for design and engineering."
+              },
+              {
+                "id": "val-product-permissions-qualitative-b2",
+                "text": "Defined permission-setting acceptance criteria with the security reviewer and captured the unresolved cases in the release checklist."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Product Manager",
+        "company": "Example Hiring Team",
+        "seniority": "mid",
+        "requiredKeywords": [
+          "customer discovery",
+          "acceptance criteria",
+          "release planning"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Translate administrator problems into product requirements.",
+          "Coordinate permission-setting requirements across teams."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "customer discovery",
+          "acceptance criteria",
+          "release planning"
+        ]
+      }
+    }
+  },
+  {
+    "id": "val-design-mobile-sparse",
+    "split": "validation",
+    "roleFamily": "design_research",
+    "seniority": "entry",
+    "evidenceLevel": "sparse",
+    "label": "Reserved: junior mobile designer with unspecified research participation",
+    "sourceFacts": [
+      "The candidate assisted with mobile search wireframes.",
+      "The candidate recorded notes during usability sessions."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 16",
+        "title": "Junior UX Designer",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "wireframing",
+          "usability testing"
+        ],
+        "experience": [
+          {
+            "id": "val-design-mobile-sparse-role",
+            "company": "Example Local Discovery",
+            "title": "Junior UX Designer",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "val-design-mobile-sparse-b1",
+                "text": "Helped create wireframes for the mobile search screen."
+              },
+              {
+                "id": "val-design-mobile-sparse-b2",
+                "text": "Took notes during usability sessions."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Junior Product Designer",
+        "company": "Example Hiring Team",
+        "seniority": "entry",
+        "requiredKeywords": [
+          "wireframing",
+          "usability testing"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Support mobile search design.",
+          "Document observations from usability sessions."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "wireframing",
+          "usability testing"
+        ]
+      }
+    }
+  },
+  {
+    "id": "val-operations-dispatch-measured",
+    "split": "validation",
+    "roleFamily": "operations",
+    "seniority": "mid",
+    "evidenceLevel": "measured",
+    "label": "Reserved: dispatch process impact with separate documentation work",
+    "sourceFacts": [
+      "The candidate changed the dispatch handoff checklist.",
+      "Packers recorded carrier cutoff times in the revised process.",
+      "Missed same-day handoffs were 24 per week before and 9 after.",
+      "The comparison used matched four-week periods.",
+      "Shipment volume averaged 1,200 per week in those periods.",
+      "The candidate documented cutoff escalation steps.",
+      "Evening-shift coordinators were trained on the checklist."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 17",
+        "title": "Logistics Operations Specialist",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "dispatch operations",
+          "process improvement",
+          "staff training"
+        ],
+        "experience": [
+          {
+            "id": "val-operations-dispatch-measured-role",
+            "company": "Example Regional Dispatch",
+            "title": "Logistics Operations Specialist",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "val-operations-dispatch-measured-b1",
+                "text": "Changed the dispatch handoff checklist so packers recorded carrier cutoff times; missed same-day handoffs fell from 24 to 9 per week across matched four-week periods averaging 1,200 shipments per week."
+              },
+              {
+                "id": "val-operations-dispatch-measured-b2",
+                "text": "Documented the revised cutoff escalation steps and trained the evening-shift coordinators on the checklist."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Logistics Operations Specialist",
+        "company": "Example Hiring Team",
+        "seniority": "mid",
+        "requiredKeywords": [
+          "dispatch operations",
+          "process improvement",
+          "staff training"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Improve dispatch handoffs using operational measurements.",
+          "Maintain escalation procedures and coordinator training."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "dispatch operations",
+          "process improvement",
+          "staff training"
+        ]
+      }
+    }
+  },
+  {
+    "id": "val-marketing-lifecycle-qualitative",
+    "split": "validation",
+    "roleFamily": "marketing_customer_success",
+    "seniority": "mid",
+    "evidenceLevel": "qualitative",
+    "label": "Reserved: lifecycle marketing coordination without attributed conversion",
+    "sourceFacts": [
+      "Welcome-email content was mapped to member setup steps.",
+      "The candidate worked with customer support.",
+      "The collaboration replaced confusing activation instructions.",
+      "A shared campaign checklist was created.",
+      "It covered audience exclusions, link checks, and approval ownership.",
+      "Marketing used the checklist before onboarding email sends."
+    ],
+    "input": {
+      "resume": {
+        "name": "Evaluation Candidate 18",
+        "title": "Lifecycle Marketing Specialist",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "summary": "",
+        "skills": [
+          "lifecycle marketing",
+          "email campaigns",
+          "campaign quality assurance"
+        ],
+        "experience": [
+          {
+            "id": "val-marketing-lifecycle-qualitative-role",
+            "company": "Example Membership Services",
+            "title": "Lifecycle Marketing Specialist",
+            "location": "",
+            "start": "2023-01",
+            "end": "2025-12",
+            "bullets": [
+              {
+                "id": "val-marketing-lifecycle-qualitative-b1",
+                "text": "Mapped welcome-email content to the member setup steps and worked with customer support to replace confusing account-activation instructions."
+              },
+              {
+                "id": "val-marketing-lifecycle-qualitative-b2",
+                "text": "Created a shared campaign checklist covering audience exclusions, link checks, and approval owners, which the marketing team used before sending onboarding emails."
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "education": [],
+        "links": []
+      },
+      "job": {
+        "title": "Lifecycle Marketing Specialist",
+        "company": "Example Hiring Team",
+        "seniority": "mid",
+        "requiredKeywords": [
+          "lifecycle marketing",
+          "email campaigns",
+          "campaign quality assurance"
+        ],
+        "niceToHaveKeywords": [],
+        "responsibilities": [
+          "Create useful onboarding email content.",
+          "Coordinate campaign checks and support input."
+        ]
+      },
+      "report": {
+        "overallBefore": 0,
+        "overallAfter": 0,
+        "categoriesBefore": [],
+        "categoriesAfter": [],
+        "missingKeywords": [],
+        "presentKeywords": [
+          "lifecycle marketing",
+          "email campaigns",
+          "campaign quality assurance"
+        ]
+      }
+    }
+  }
+]

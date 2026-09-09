@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "runId": "be270c41-905d-489c-99d0-6e6312aa5d8b",
+  "createdAt": "2026-09-09T20:11:00.082Z",
+  "status": "completed",
+  "comparison": "source_vs_production",
+  "split": "development",
+  "corpusHash": "42998454c83f15272cf6cda7bed1d3fc098d1821e9a2d59a14e12b10abbf34ed",
+  "codeRevision": "1b80b04232a32068fa00c80b9ff559e6ccbb0963",
+  "codeHashes": {
+    "lib/optimizationHarness.ts": "8d776f31fc7f3055a8f5dfb2bc6f31b1c2c30ae4e32b69b8bd050ce87102548c",
+    "lib/contentQuality.ts": "8cc70d8e37249186e60f4754f0d1f0b99497fc590ab09643500d124aa52ff2bc",
+    "lib/optimizeChunks.ts": "9a70033806587874d1d753fffb66426a75a5dd567da2b12c7a4d12ec97112f9a",
+    "lib/optimizeContract.ts": "461bc6d2424a5ccf1367dfdace9b917e234a015e6d8eeb35377218cb87f40659",
+    "lib/resumeStructure.ts": "2b9230ac3ac1e07f74940e5db5c7825caf571361b6a574a94a3ad3a161c87a84",
+    "lib/semanticGrounding.ts": "b07cc021089068e88a8d9cd75cc3a9fcfb13ffe288baa58f3c9b2ef9480625b3",
+    "lib/resumeImpact.ts": "f8bb917e337210ceb1a898e29b05a67d7a4d6615c19c87f8e3c5d424ddf1d999",
+    "scripts/eval-uplift.mjs": "cfc5ed90b08fceb4f14ae52d5ce1682c635504ba6b56c053d62213abb1fc0536",
+    "scripts/lib/uplift-evaluation.mjs": "e9a215e0f5a359efe27611e587874acb76b4225c1c7ee9271a665195ef57c3f2"
+  },
+  "model": "deepseek/deepseek-v3.2",
+  "cases": [
+    {
+      "id": "dev-design-usability-measured-zh",
+      "roleFamily": "design_research",
+      "evidenceLevel": "measured",
+      "seniority": "mid",
+      "target": {
+        "title": "产品交互设计师",
+        "seniority": "mid",
+        "responsibilities": [
+          "设计清晰的表单交互。",
+          "通过可用性测试和访谈支持产品决策。"
+        ]
+      },
+      "sourceFacts": [
+        "重新设计的对象是报销表单错误提示。",
+        "进行了两轮可用性测试。",
+        "两轮使用相同任务与主持脚本。",
+        "每轮参加者都是首次使用者，共 10 名。",
+        "第一轮成功人数为 6 人。",
+        "第二轮成功人数为 9 人。",
+        "研究发现来源包括访谈记录与操作录像。",
+        "问题清单按照流程步骤分类。",
+        "产品与工程团队评审该清单。"
+      ],
+      "source": [
+        "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+        "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。"
+      ],
+      "candidate": null,
+      "ok": false,
+      "error": "The rewrite could not pass the factual safety checks.",
+      "trace": {
+        "version": 1,
+        "id": "dev-design-usability-measured-zh",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T20:11:00.088Z",
+        "elapsedMs": 29032,
+        "outcome": "failed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 5282,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-design-usability-measured-zh-role",
+            "attempt": 1,
+            "elapsedMs": 6539,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-design-usability-measured-zh-role",
+            "attempt": 2,
+            "elapsedMs": 9316,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-design-usability-measured-zh-role",
+            "attempt": 3,
+            "elapsedMs": 13156,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": [
+              "The summary introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"04\", \"2023\", \"01\", \"2025\", \"12\", \"dev-design-usability-measured-zh-b1\", \"10\", \"6\", \"9\", \"dev-design-usability-measured-zh-b2\".",
+              "dev-design-usability-measured-zh-b1 introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"10\", \"6\", \"9\"."
+            ]
+          },
+          {
+            "attempt": 2,
+            "stage": "candidate",
+            "issues": [
+              "The summary introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"04\", \"2023\", \"01\", \"2025\", \"12\", \"dev-design-usability-measured-zh-b1\", \"10\", \"6\", \"9\", \"dev-design-usability-measured-zh-b2\".",
+              "dev-design-usability-measured-zh-b1 introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"10\", \"6\", \"9\"."
+            ]
+          },
+          {
+            "attempt": 3,
+            "stage": "candidate",
+            "issues": [
+              "The summary introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"04\", \"2023\", \"01\", \"2025\", \"12\", \"dev-design-usability-measured-zh-b1\", \"10\", \"6\", \"9\", \"dev-design-usability-measured-zh-b2\".",
+              "dev-design-usability-measured-zh-b1 introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"10\", \"6\", \"9\"."
+            ]
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-design-usability-measured-zh-b1",
+            "sourceText": "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+            "candidates": [
+              {
+                "id": "dev-design-usability-measured-zh-b1:source",
+                "text": "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b1:candidate:1",
+                "text": "通过重新设计报销表单的错误提示，在可用性测试中将首次用户的表单任务成功率从 60% 提升至 90%。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b1:candidate:2",
+                "text": "通过重新设计报销表单的错误提示，在可用性测试中将首次使用者的任务完成率从 60% 提升至 90%（每轮测试 10 名参与者）。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "model",
+                "attempt": 2
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b1:candidate:3",
+                "text": "通过重新设计报销表单的错误提示，在可用性测试中将首次用户的任务成功率从60%提升至90%。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "model",
+                "attempt": 3
+              }
+            ]
+          },
+          {
+            "bulletId": "dev-design-usability-measured-zh-b2",
+            "sourceText": "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。",
+            "candidates": [
+              {
+                "id": "dev-design-usability-measured-zh-b2:source",
+                "text": "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b2:candidate:1",
+                "text": "分析用户访谈记录与操作录像，将发现的问题按流程步骤分类，形成研究清单，为产品和工程团队的评审提供支持。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b2:candidate:2",
+                "text": "将用户访谈记录和操作录像中的发现，整理成一份按流程步骤分类的研究清单，为产品和工程团队的评审决策提供支持。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "model",
+                "attempt": 2
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b2:candidate:3",
+                "text": "分析用户访谈记录和操作录像，将发现的问题按流程步骤分类，形成供产品和工程团队评审的研究清单。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "model",
+                "attempt": 3
+              }
+            ]
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 5281,
+          "ok": true,
+          "inputTokens": 1273,
+          "outputTokens": 134
+        },
+        {
+          "elapsedMs": 6539,
+          "ok": true,
+          "inputTokens": 2099,
+          "outputTokens": 273
+        },
+        {
+          "elapsedMs": 9316,
+          "ok": true,
+          "inputTokens": 2255,
+          "outputTokens": 280
+        },
+        {
+          "elapsedMs": 13156,
+          "ok": true,
+          "inputTokens": 2255,
+          "outputTokens": 258
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "attempted": 1,
+  "completed": 0,
+  "failed": [
+    "dev-design-usability-measured-zh"
+  ],
+  "unchanged": 0,
+  "medianElapsedMs": 29032,
+  "maxElapsedMs": 29032,
+  "modelCalls": 4,
+  "knownInputTokens": 7882,
+  "knownOutputTokens": 945,
+  "callsWithoutUsage": 0,
+  "scope": "Experience/project content only. Technical completion and model review labels do not measure human preference or whole-document layout quality."
+}

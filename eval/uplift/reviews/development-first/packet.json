@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "title": "Resume content review",
+  "criteria": [
+    {
+      "id": "value",
+      "label": "Value / impact",
+      "description": "Explains what the work changed or enabled. Relevant qualitative value counts; a number is not required."
+    },
+    {
+      "id": "contribution",
+      "label": "Contribution",
+      "description": "Makes the person’s own action clear without upgrading participation to leadership."
+    },
+    {
+      "id": "specificity",
+      "label": "Specificity",
+      "description": "Keeps useful methods, scope and evidence; avoids generic claims."
+    },
+    {
+      "id": "relevance",
+      "label": "Role relevance",
+      "description": "Highlights evidence that matters for this role without adding job-description facts."
+    },
+    {
+      "id": "clarity",
+      "label": "Clarity",
+      "description": "Communicates the work directly and reads naturally; extra length is not automatically better."
+    }
+  ],
+  "items": [
+    {
+      "id": "0aad4618985a2f30c8c7944a",
+      "target": {
+        "title": "Senior AI Platform Engineer",
+        "seniority": "senior",
+        "responsibilities": [
+          "Improve inference cost using comparable measurements.",
+          "Operate request monitoring for internal AI applications."
+        ]
+      },
+      "sourceFacts": [
+        "The application was an internal LLM assistant.",
+        "The candidate implemented prompt caching.",
+        "A replay of the same request set measured input-token processing cost at $12 before and $9 after per 1,000 requests.",
+        "The model and cache-hit mix were held fixed for that comparison.",
+        "Monthly observed volume was approximately 18 million input tokens.",
+        "Monthly observed output volume was approximately 3 million tokens.",
+        "The candidate maintained volume monitoring.",
+        "Failure alerts covered assistant requests."
+      ],
+      "A": [
+        "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures."
+      ],
+      "B": [
+        "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures."
+      ]
+    },
+    {
+      "id": "d895566774cfbff931ae8337",
+      "target": {
+        "title": "Associate Product Manager",
+        "seniority": "entry",
+        "responsibilities": [
+          "Support customer interview documentation.",
+          "Maintain a product backlog with the product manager."
+        ]
+      },
+      "sourceFacts": [
+        "Customer interview notes were prepared with the product manager.",
+        "The candidate assisted with those notes.",
+        "The candidate updated a product backlog.",
+        "The product concerned scheduling."
+      ],
+      "A": [
+        "Documented customer interview notes to support feature discovery for the product manager.",
+        "Updated the backlog for the team’s scheduling product."
+      ],
+      "B": [
+        "Helped the product manager prepare customer interview notes.",
+        "Updated the backlog for the team’s scheduling product."
+      ]
+    },
+    {
+      "id": "42b603bca545033b20f4053a",
+      "target": {
+        "title": "Marketing Coordinator",
+        "seniority": "entry",
+        "responsibilities": [
+          "Support email campaign preparation.",
+          "Maintain launch and event schedules."
+        ]
+      },
+      "sourceFacts": [
+        "The campaigns used email.",
+        "Campaigns supported course launches.",
+        "The candidate assisted with campaign preparation.",
+        "The candidate maintained the marketing event calendar."
+      ],
+      "A": [
+        "Helped prepare email campaigns for course launches.",
+        "Updated the marketing team’s event calendar."
+      ],
+      "B": [
+        "Helped prepare email campaigns for course launches.",
+        "Updated the marketing team’s event calendar."
+      ]
+    },
+    {
+      "id": "b054c43f09420ea39d3f1a42",
+      "target": {
+        "title": "业务数据分析师",
+        "seniority": "mid",
+        "responsibilities": [
+          "通过销售分析支持经营讨论。",
+          "与财务协作明确报表口径。"
+        ]
+      },
+      "sourceFacts": [
+        "数据来源是门店销售记录。",
+        "候选人使用 SQL 整理数据。",
+        "销售趋势按品类拆分。",
+        "区域经理在每周经营会上看到这些趋势。",
+        "数据字典包含销售报表的退货口径。",
+        "候选人与财务同事核对两种日期的区别。",
+        "核对的日期分别是退款日期与订单日期。"
+      ],
+      "A": [
+        "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。",
+        "把销售报表里的退货口径写进数据字典，并和财务同事核对了退款日期和订单日期的区别。"
+      ],
+      "B": [
+        "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。",
+        "与财务同事协作，将销售报表中的退货口径及退款日期与订单日期的区别定义并写入数据字典，明确了报表口径。"
+      ]
+    },
+    {
+      "id": "9247090c245f927c51271c92",
+      "target": {
+        "title": "Senior Procurement Operations Specialist",
+        "seniority": "senior",
+        "responsibilities": [
+          "Coordinate supplier review information.",
+          "Clarify purchasing exception handling across teams."
+        ]
+      },
+      "sourceFacts": [
+        "The candidate prepared a shared supplier review.",
+        "The review contained delivery issues.",
+        "Contract renewal dates were included.",
+        "Follow-up items each had a named next owner.",
+        "Procurement used the review in monthly supplier meetings.",
+        "Purchase-order exception escalation was documented.",
+        "Finance and the warehouse team were possible escalation destinations."
+      ],
+      "A": [
+        "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings.",
+        "Was responsible for documenting how purchase-order exceptions should be escalated to finance or the warehouse team."
+      ],
+      "B": [
+        "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings.",
+        "Documented the escalation process for purchase-order exceptions to finance or warehouse teams."
+      ]
+    }
+  ],
+  "mappingDigest": "e0191c60c7b22ca58426328356b8cb6bca902b578eeb2f849d24d1394d08311b",
+  "packetId": "3885e68fb99411019033208662617fe65749d1522e4257e34d757778fb998e70"
+}

@@ -20,7 +20,10 @@
     "eval:content": "node --experimental-strip-types scripts/eval-content.mjs --live",
     "test:content-ui": "node --experimental-strip-types tests/content-quality-ui.mjs",
     "eval:harness": "node --experimental-strip-types scripts/eval-harness.mjs",
-    "eval:refinement": "node --experimental-strip-types scripts/eval-refinement.mjs"
+    "eval:refinement": "node --experimental-strip-types scripts/eval-refinement.mjs",
+    "eval:uplift": "node --experimental-strip-types scripts/eval-uplift.mjs",
+    "eval:uplift:summary": "node --experimental-strip-types scripts/summarize-uplift.mjs",
+    "test:uplift-ui": "node --experimental-strip-types tests/uplift-review-ui.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.20",

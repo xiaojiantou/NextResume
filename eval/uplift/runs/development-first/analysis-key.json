@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "packetId": "c4c33b168bb11f058744cc16c72c063cc7eadd4015fb65ba312cb79136f08ca1",
+  "runId": "36916f52-73ee-4793-846c-ad0b01ec7b14",
+  "corpusHash": "42998454c83f15272cf6cda7bed1d3fc098d1821e9a2d59a14e12b10abbf34ed",
+  "attemptedCases": 6,
+  "failedCases": [
+    "dev-design-usability-measured-zh"
+  ],
+  "items": {
+    "9f6cb0eacce08447c49fabc7": {
+      "caseId": "dev-product-research-sparse",
+      "roleFamily": "product",
+      "evidenceLevel": "sparse",
+      "candidateSide": "B",
+      "sourceHash": "6ec7ed7727765e0dce8d7e78bdaf867cf597f9ec18b8c4736545315e77a6c492",
+      "candidateHash": "5d28f0975093283beb06fe1ca9701a9d022dc1df4c7fe16a382ab76f3c0afd48",
+      "unchanged": false
+    },
+    "3537e57c4f71e32a29dc8693": {
+      "caseId": "dev-marketing-campaign-sparse",
+      "roleFamily": "marketing_customer_success",
+      "evidenceLevel": "sparse",
+      "candidateSide": "A",
+      "sourceHash": "c975eee3ef40a22086201b16743a82f457f59ef3866c4c2bc9d9cb3aac94b655",
+      "candidateHash": "c975eee3ef40a22086201b16743a82f457f59ef3866c4c2bc9d9cb3aac94b655",
+      "unchanged": true
+    },
+    "c65c9a4d299bcf51c73629c0": {
+      "caseId": "dev-ai-inference-measured",
+      "roleFamily": "backend_ai_engineering",
+      "evidenceLevel": "measured",
+      "candidateSide": "B",
+      "sourceHash": "a94efc560abcfad37c7c4b3c788567fc9a0ef873fe50d05341b8137f1290ce0a",
+      "candidateHash": "a94efc560abcfad37c7c4b3c788567fc9a0ef873fe50d05341b8137f1290ce0a",
+      "unchanged": true
+    },
+    "570f12a7cf7ebc0d208d3437": {
+      "caseId": "dev-data-reporting-qualitative-zh",
+      "roleFamily": "data_analytics",
+      "evidenceLevel": "qualitative",
+      "candidateSide": "A",
+      "sourceHash": "678cfd62bcaf4eb111dd3e21e5f6248efdb69b0dfda42d9467f5baa3b6bc75a0",
+      "candidateHash": "6c2a1539994a9461e3f778c44e804694f4df007c7fa5b767c29a7da7f229ee29",
+      "unchanged": false
+    },
+    "e718aed9fb1d33f357bf1888": {
+      "caseId": "dev-operations-supplier-qualitative",
+      "roleFamily": "operations",
+      "evidenceLevel": "qualitative",
+      "candidateSide": "B",
+      "sourceHash": "9737dbc3267e20371fd3ae8c5754d669398a806799df52ce0440d7d0c1c58287",
+      "candidateHash": "66b35732cb57c320983b61d6e98c0aae6275ab27d23df66a13c98fc2d4022c4f",
+      "unchanged": false
+    }
+  }
+}

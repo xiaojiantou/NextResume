@@ -1,0 +1,1350 @@
+{
+  "version": 1,
+  "runId": "36916f52-73ee-4793-846c-ad0b01ec7b14",
+  "createdAt": "2026-09-09T17:36:56.255Z",
+  "status": "completed",
+  "comparison": "source_vs_production",
+  "split": "development",
+  "corpusHash": "42998454c83f15272cf6cda7bed1d3fc098d1821e9a2d59a14e12b10abbf34ed",
+  "codeRevision": "1b80b04232a32068fa00c80b9ff559e6ccbb0963",
+  "codeHashes": {
+    "lib/optimizationHarness.ts": "8d776f31fc7f3055a8f5dfb2bc6f31b1c2c30ae4e32b69b8bd050ce87102548c",
+    "lib/contentQuality.ts": "b07b21387b76bfa23ed6f1b281060fdcc47ff1f50aadc353e5c4eec57793fcee",
+    "lib/optimizeChunks.ts": "9a70033806587874d1d753fffb66426a75a5dd567da2b12c7a4d12ec97112f9a",
+    "lib/optimizeContract.ts": "461bc6d2424a5ccf1367dfdace9b917e234a015e6d8eeb35377218cb87f40659",
+    "lib/resumeStructure.ts": "c727e463a1a46a1f94d4eb9c4951048963f84857e39c5867c7e9bab135f23666",
+    "lib/semanticGrounding.ts": "b07cc021089068e88a8d9cd75cc3a9fcfb13ffe288baa58f3c9b2ef9480625b3",
+    "lib/resumeImpact.ts": "f8bb917e337210ceb1a898e29b05a67d7a4d6615c19c87f8e3c5d424ddf1d999",
+    "scripts/eval-uplift.mjs": "7413f8eb31c076aa00dbed75a8d0c2d5147eceeb6823aa2fc4f00c2e8e0b6268",
+    "scripts/lib/uplift-evaluation.mjs": "e0df7c20afe6ef6d087ac25af858dabbeb9283c200d766cc5f68d723ca4e1375"
+  },
+  "model": "deepseek/deepseek-v3.2",
+  "cases": [
+    {
+      "id": "dev-ai-inference-measured",
+      "roleFamily": "backend_ai_engineering",
+      "evidenceLevel": "measured",
+      "seniority": "senior",
+      "target": {
+        "title": "Senior AI Platform Engineer",
+        "seniority": "senior",
+        "responsibilities": [
+          "Improve inference cost using comparable measurements.",
+          "Operate request monitoring for internal AI applications."
+        ]
+      },
+      "sourceFacts": [
+        "The application was an internal LLM assistant.",
+        "The candidate implemented prompt caching.",
+        "A replay of the same request set measured input-token processing cost at $12 before and $9 after per 1,000 requests.",
+        "The model and cache-hit mix were held fixed for that comparison.",
+        "Monthly observed volume was approximately 18 million input tokens.",
+        "Monthly observed output volume was approximately 3 million tokens.",
+        "The candidate maintained volume monitoring.",
+        "Failure alerts covered assistant requests."
+      ],
+      "source": [
+        "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures."
+      ],
+      "candidate": [
+        "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures."
+      ],
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "dev-ai-inference-measured",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T17:36:56.266Z",
+        "elapsedMs": 32822,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 4641,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-ai-inference-measured-role",
+            "attempt": 1,
+            "elapsedMs": 9905,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-ai-inference-measured-role",
+            "attempt": 2,
+            "elapsedMs": 10106,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 2,
+            "elapsedMs": 1978,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 2,
+            "elapsedMs": 10810,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": [
+              "dev-ai-inference-measured-b1 introduces an unsupported number: unsupported \"25%\"; source evidence has \"$12\", \"$9\", \"1,000\".",
+              "dev-ai-inference-measured-b2 introduces an unsupported number: unsupported \"21 million\"; source evidence has \"18 million\", \"3 million\"."
+            ]
+          },
+          {
+            "attempt": 2,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 2,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-ai-inference-measured-b1",
+            "sourceText": "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+            "candidates": [
+              {
+                "id": "dev-ai-inference-measured-b1:source",
+                "text": "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+                "evidence": [
+                  "dev-ai-inference-measured-b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-ai-inference-measured-b1:candidate:1",
+                "text": "Reduced input-token processing cost by 25% from $12 to $9 per 1,000 requests by implementing prompt caching for an internal LLM assistant, validated through a controlled replay test.",
+                "evidence": [
+                  "dev-ai-inference-measured-b1"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-ai-inference-measured-b1:candidate:2",
+                "text": "Reduced input-token processing cost from $12 to $9 per 1,000 requests by implementing prompt caching for an internal LLM assistant, using a fixed model and cache-hit mix in a replay test.",
+                "evidence": [
+                  "dev-ai-inference-measured-b1"
+                ],
+                "origin": "model",
+                "attempt": 2,
+                "review": {
+                  "text": "Reduced input-token processing cost from $12 to $9 per 1,000 requests by implementing prompt caching for an internal LLM assistant, using a fixed model and cache-hit mix in a replay test.",
+                  "sourceText": "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+                  "status": "retained",
+                  "reason": "The candidate's revision is a faithful and concise paraphrase that correctly attributes the cost reduction to the implementation of prompt caching. It retains the key measurement, scope, and test conditions. The original is already clear and specific, so no meaningful improvement is available.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [
+                    "cost_reduction"
+                  ],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-ai-inference-measured-b1:source",
+            "state": "needs_evidence"
+          },
+          {
+            "bulletId": "dev-ai-inference-measured-b2",
+            "sourceText": "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures.",
+            "candidates": [
+              {
+                "id": "dev-ai-inference-measured-b2:source",
+                "text": "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures.",
+                "evidence": [
+                  "dev-ai-inference-measured-b2"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-ai-inference-measured-b2:candidate:1",
+                "text": "Operated monitoring for an internal AI assistant processing ~21 million tokens monthly and implemented alerts for request failures.",
+                "evidence": [
+                  "dev-ai-inference-measured-b2"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-ai-inference-measured-b2:candidate:2",
+                "text": "Operated monitoring for approximately 18 million input and 3 million output tokens monthly across the assistant and implemented alerts for request failures.",
+                "evidence": [
+                  "dev-ai-inference-measured-b2"
+                ],
+                "origin": "model",
+                "attempt": 2,
+                "review": {
+                  "text": "Operated monitoring for approximately 18 million input and 3 million output tokens monthly across the assistant and implemented alerts for request failures.",
+                  "sourceText": "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures.",
+                  "status": "retained",
+                  "reason": "The candidate's revision is a direct and accurate rewrite of the source. It preserves the scale (monthly token volumes) and the action of adding alerts. The original is already strong and job-relevant, stating operational monitoring and proactive alerting.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [
+                    "monthly_tokens"
+                  ],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-ai-inference-measured-b2:source",
+            "state": "needs_evidence"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 4640,
+          "ok": true,
+          "inputTokens": 1286,
+          "outputTokens": 131
+        },
+        {
+          "elapsedMs": 9904,
+          "ok": true,
+          "inputTokens": 2085,
+          "outputTokens": 277
+        },
+        {
+          "elapsedMs": 10106,
+          "ok": true,
+          "inputTokens": 2175,
+          "outputTokens": 298
+        },
+        {
+          "elapsedMs": 1978,
+          "ok": true,
+          "inputTokens": 680,
+          "outputTokens": 14
+        },
+        {
+          "elapsedMs": 10810,
+          "ok": true,
+          "inputTokens": 2018,
+          "outputTokens": 297
+        }
+      ]
+    },
+    {
+      "id": "dev-data-reporting-qualitative-zh",
+      "roleFamily": "data_analytics",
+      "evidenceLevel": "qualitative",
+      "seniority": "mid",
+      "target": {
+        "title": "业务数据分析师",
+        "seniority": "mid",
+        "responsibilities": [
+          "通过销售分析支持经营讨论。",
+          "与财务协作明确报表口径。"
+        ]
+      },
+      "sourceFacts": [
+        "数据来源是门店销售记录。",
+        "候选人使用 SQL 整理数据。",
+        "销售趋势按品类拆分。",
+        "区域经理在每周经营会上看到这些趋势。",
+        "数据字典包含销售报表的退货口径。",
+        "候选人与财务同事核对两种日期的区别。",
+        "核对的日期分别是退款日期与订单日期。"
+      ],
+      "source": [
+        "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。",
+        "把销售报表里的退货口径写进数据字典，并和财务同事核对了退款日期和订单日期的区别。"
+      ],
+      "candidate": [
+        "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。",
+        "与财务同事协作，将销售报表中的退货口径及退款日期与订单日期的区别定义并写入数据字典，明确了报表口径。"
+      ],
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "dev-data-reporting-qualitative-zh",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T17:37:29.089Z",
+        "elapsedMs": 16682,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 5777,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-data-reporting-qualitative-zh-role",
+            "attempt": 1,
+            "elapsedMs": 6580,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 2033,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 8065,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-data-reporting-qualitative-zh-b1",
+            "sourceText": "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。",
+            "candidates": [
+              {
+                "id": "dev-data-reporting-qualitative-zh-b1:source",
+                "text": "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。",
+                "evidence": [
+                  "dev-data-reporting-qualitative-zh-b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-data-reporting-qualitative-zh-b1:candidate:1",
+                "text": "在每周经营会上向区域经理展示按品类拆分的销售趋势，支持经营讨论，所用数据通过 SQL 整理门店销售数据获得。",
+                "evidence": [
+                  "dev-data-reporting-qualitative-zh-b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "在每周经营会上向区域经理展示按品类拆分的销售趋势，支持经营讨论，所用数据通过 SQL 整理门店销售数据获得。",
+                  "sourceText": "负责用 SQL 整理门店销售数据，并在每周经营会上向区域经理展示按品类拆分的销售趋势。",
+                  "status": "retained",
+                  "reason": "候选版本颠倒了原始版本的因果顺序（先整理数据，后展示），并插入了'支持经营讨论'这一目标职位要求，但未提供新的证据。原始版本已清晰陈述了行动（SQL整理数据）、方法（按品类拆分）、受众（区域经理）和频率（每周），且因果关系直接。候选版本的改动仅为结构重组，未在清晰度、具体性或相关性上带来实质性提升，反而可能弱化了行动的直接性。",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-data-reporting-qualitative-zh-b1:source",
+            "state": "ready"
+          },
+          {
+            "bulletId": "dev-data-reporting-qualitative-zh-b2",
+            "sourceText": "把销售报表里的退货口径写进数据字典，并和财务同事核对了退款日期和订单日期的区别。",
+            "candidates": [
+              {
+                "id": "dev-data-reporting-qualitative-zh-b2:source",
+                "text": "把销售报表里的退货口径写进数据字典，并和财务同事核对了退款日期和订单日期的区别。",
+                "evidence": [
+                  "dev-data-reporting-qualitative-zh-b2"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-data-reporting-qualitative-zh-b2:candidate:1",
+                "text": "与财务同事协作，将销售报表中的退货口径及退款日期与订单日期的区别定义并写入数据字典，明确了报表口径。",
+                "evidence": [
+                  "dev-data-reporting-qualitative-zh-b2"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "与财务同事协作，将销售报表中的退货口径及退款日期与订单日期的区别定义并写入数据字典，明确了报表口径。",
+                  "sourceText": "把销售报表里的退货口径写进数据字典，并和财务同事核对了退款日期和订单日期的区别。",
+                  "status": "improved",
+                  "reason": "候选版本将原始行动（写入数据字典、核对区别）整合为更连贯的成就描述，明确将'协作'与'明确报表口径'（职位要求）联系起来，提升了相关性和贡献的清晰度。保留了所有关键细节（销售报表、退货口径、退款/订单日期区别、财务同事），因果关系未改变。",
+                  "dimensions": [
+                    "clarity",
+                    "relevance"
+                  ],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-data-reporting-qualitative-zh-b2:candidate:1",
+            "state": "ready"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 5777,
+          "ok": true,
+          "inputTokens": 1243,
+          "outputTokens": 130
+        },
+        {
+          "elapsedMs": 6580,
+          "ok": true,
+          "inputTokens": 2023,
+          "outputTokens": 277
+        },
+        {
+          "elapsedMs": 2033,
+          "ok": true,
+          "inputTokens": 610,
+          "outputTokens": 14
+        },
+        {
+          "elapsedMs": 8064,
+          "ok": true,
+          "inputTokens": 1949,
+          "outputTokens": 364
+        }
+      ]
+    },
+    {
+      "id": "dev-product-research-sparse",
+      "roleFamily": "product",
+      "evidenceLevel": "sparse",
+      "seniority": "entry",
+      "target": {
+        "title": "Associate Product Manager",
+        "seniority": "entry",
+        "responsibilities": [
+          "Support customer interview documentation.",
+          "Maintain a product backlog with the product manager."
+        ]
+      },
+      "sourceFacts": [
+        "Customer interview notes were prepared with the product manager.",
+        "The candidate assisted with those notes.",
+        "The candidate updated a product backlog.",
+        "The product concerned scheduling."
+      ],
+      "source": [
+        "Helped the product manager prepare customer interview notes.",
+        "Updated the backlog for the team’s scheduling product."
+      ],
+      "candidate": [
+        "Documented customer interview notes to support feature discovery for the product manager.",
+        "Updated the backlog for the team’s scheduling product."
+      ],
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "dev-product-research-sparse",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T17:37:45.772Z",
+        "elapsedMs": 43465,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 2446,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-product-research-sparse-role",
+            "attempt": 1,
+            "elapsedMs": 8246,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 1176,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 13675,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-product-research-sparse-role",
+            "attempt": 2,
+            "elapsedMs": 8183,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 2,
+            "elapsedMs": 1296,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 2,
+            "elapsedMs": 10885,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          },
+          {
+            "attempt": 2,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 2,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-product-research-sparse-b1",
+            "sourceText": "Helped the product manager prepare customer interview notes.",
+            "candidates": [
+              {
+                "id": "dev-product-research-sparse-b1:source",
+                "text": "Helped the product manager prepare customer interview notes.",
+                "evidence": [
+                  "dev-product-research-sparse-b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-product-research-sparse-b1:candidate:1",
+                "text": "Documented customer interviews to capture insights for product decisions.",
+                "evidence": [
+                  "dev-product-research-sparse-b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Documented customer interviews to capture insights for product decisions.",
+                  "sourceText": "Helped the product manager prepare customer interview notes.",
+                  "status": "retained",
+                  "reason": "The candidate version ('Documented customer interviews to capture insights for product decisions') is a clear and concise paraphrase that accurately reflects the source action ('Helped...prepare customer interview notes') and reasonably infers its purpose ('for product decisions'). It is a strong qualitative statement that matches the job requirement for supporting customer interview documentation. The original is also clear, so retaining it is acceptable.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              },
+              {
+                "id": "dev-product-research-sparse-b1:candidate:2",
+                "text": "Documented customer interview notes to support feature discovery for the product manager.",
+                "evidence": [
+                  "dev-product-research-sparse-b1"
+                ],
+                "origin": "model",
+                "attempt": 2,
+                "review": {
+                  "text": "Documented customer interview notes to support feature discovery for the product manager.",
+                  "sourceText": "Helped the product manager prepare customer interview notes.",
+                  "status": "improved",
+                  "reason": "The candidate version clarifies the purpose ('to support feature discovery') and the beneficiary ('for the product manager'), making the contribution and its value more explicit while preserving the core action of documenting notes.",
+                  "dimensions": [
+                    "clarity",
+                    "contribution",
+                    "relevance"
+                  ],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-product-research-sparse-b1:candidate:2",
+            "state": "ready"
+          },
+          {
+            "bulletId": "dev-product-research-sparse-b2",
+            "sourceText": "Updated the backlog for the team’s scheduling product.",
+            "candidates": [
+              {
+                "id": "dev-product-research-sparse-b2:source",
+                "text": "Updated the backlog for the team’s scheduling product.",
+                "evidence": [
+                  "dev-product-research-sparse-b2"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-product-research-sparse-b2:candidate:1",
+                "text": "Maintained the product backlog for a scheduling product, ensuring tasks were prioritized and current.",
+                "evidence": [
+                  "dev-product-research-sparse-b2"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Maintained the product backlog for a scheduling product, ensuring tasks were prioritized and current.",
+                  "sourceText": "Updated the backlog for the team’s scheduling product.",
+                  "status": "retained",
+                  "reason": "The candidate version adds responsibility ('ensuring tasks were prioritized and current') not present in the source ('Updated the backlog'). This upgrades the candidate's contribution from performing an update to owning prioritization and currency, which is not supported by the evidence. The original is a simple, factual statement that matches the job's 'Maintain a product backlog' responsibility.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": false,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "revise",
+                  "revisionInstruction": "Revise to accurately reflect the action from the source ('Updated') and, if supported, its purpose or scope (e.g., 'Updated the product backlog for a scheduling tool to reflect new feature requests and bug fixes'). Do not add unsupported claims about prioritization or ensuring currency.",
+                  "question": "What was the scope or outcome of updating the backlog? For example, did it help the team track upcoming features or clarify sprint goals?"
+                }
+              },
+              {
+                "id": "dev-product-research-sparse-b2:candidate:2",
+                "text": "Updated the product backlog for a scheduling tool to reflect new feature requests and bug fixes.",
+                "evidence": [
+                  "dev-product-research-sparse-b2"
+                ],
+                "origin": "model",
+                "attempt": 2,
+                "review": {
+                  "text": "Updated the product backlog for a scheduling tool to reflect new feature requests and bug fixes.",
+                  "sourceText": "Updated the backlog for the team’s scheduling product.",
+                  "status": "retained",
+                  "reason": "The candidate version adds specifics ('new feature requests and bug fixes') not present in the source. The original 'Updated the backlog for the team’s scheduling product' is already clear, specific to the product, and directly relevant to the job's 'backlog management' responsibility.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": false,
+                    "detailsPreserved": false,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "ask",
+                  "question": "What specific types of items did you add or update in the backlog (e.g., user stories, bugs, improvements)?"
+                }
+              }
+            ],
+            "selectedId": "dev-product-research-sparse-b2:source",
+            "state": "needs_evidence"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 2446,
+          "ok": true,
+          "inputTokens": 1183,
+          "outputTokens": 99
+        },
+        {
+          "elapsedMs": 8246,
+          "ok": true,
+          "inputTokens": 2011,
+          "outputTokens": 219
+        },
+        {
+          "elapsedMs": 1176,
+          "ok": true,
+          "inputTokens": 461,
+          "outputTokens": 13
+        },
+        {
+          "elapsedMs": 13675,
+          "ok": true,
+          "inputTokens": 1907,
+          "outputTokens": 418
+        },
+        {
+          "elapsedMs": 8183,
+          "ok": true,
+          "inputTokens": 2193,
+          "outputTokens": 226
+        },
+        {
+          "elapsedMs": 1296,
+          "ok": true,
+          "inputTokens": 464,
+          "outputTokens": 13
+        },
+        {
+          "elapsedMs": 10885,
+          "ok": true,
+          "inputTokens": 1910,
+          "outputTokens": 315
+        }
+      ]
+    },
+    {
+      "id": "dev-design-usability-measured-zh",
+      "roleFamily": "design_research",
+      "evidenceLevel": "measured",
+      "seniority": "mid",
+      "target": {
+        "title": "产品交互设计师",
+        "seniority": "mid",
+        "responsibilities": [
+          "设计清晰的表单交互。",
+          "通过可用性测试和访谈支持产品决策。"
+        ]
+      },
+      "sourceFacts": [
+        "重新设计的对象是报销表单错误提示。",
+        "进行了两轮可用性测试。",
+        "两轮使用相同任务与主持脚本。",
+        "每轮参加者都是首次使用者，共 10 名。",
+        "第一轮成功人数为 6 人。",
+        "第二轮成功人数为 9 人。",
+        "研究发现来源包括访谈记录与操作录像。",
+        "问题清单按照流程步骤分类。",
+        "产品与工程团队评审该清单。"
+      ],
+      "source": [
+        "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+        "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。"
+      ],
+      "candidate": null,
+      "ok": false,
+      "error": "The rewrite could not pass the factual safety checks.",
+      "trace": {
+        "version": 1,
+        "id": "dev-design-usability-measured-zh",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T17:38:29.239Z",
+        "elapsedMs": 21581,
+        "outcome": "failed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 2614,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-design-usability-measured-zh-role",
+            "attempt": 1,
+            "elapsedMs": 8854,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-design-usability-measured-zh-role",
+            "attempt": 2,
+            "elapsedMs": 6394,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-design-usability-measured-zh-role",
+            "attempt": 3,
+            "elapsedMs": 6329,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": [
+              "dev-design-usability-measured-zh-b1 introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"10\", \"6\", \"9\"."
+            ]
+          },
+          {
+            "attempt": 2,
+            "stage": "candidate",
+            "issues": [
+              "dev-design-usability-measured-zh-b1 introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"10\", \"6\", \"9\"."
+            ]
+          },
+          {
+            "attempt": 3,
+            "stage": "candidate",
+            "issues": [
+              "dev-design-usability-measured-zh-b1 introduces an unsupported number: unsupported \"60%\", \"90%\"; source evidence has \"10\", \"6\", \"9\"."
+            ]
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-design-usability-measured-zh-b1",
+            "sourceText": "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+            "candidates": [
+              {
+                "id": "dev-design-usability-measured-zh-b1:source",
+                "text": "重新设计了报销表单的错误提示；在同样任务和主持脚本的两轮可用性测试中，每轮各 10 名首次使用者，成功完成任务的人数从 6 人变为 9 人。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b1:candidate:1",
+                "text": "通过重新设计报销表单的错误提示，在可用性测试中将首次用户的任务成功率从 60% 提升至 90%（每轮测试 10 名参与者）。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b1:candidate:2",
+                "text": "通过重新设计报销表单的错误提示，在可用性测试中将首次使用者的任务成功率从 60% 提升至 90%（每轮测试 10 人）。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "model",
+                "attempt": 2
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b1:candidate:3",
+                "text": "通过重新设计表单的错误提示，在可用性测试中将首次用户的任务成功率从 60% 提升至 90%（基于两轮各 10 名参与者的测试）。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b1"
+                ],
+                "origin": "model",
+                "attempt": 3
+              }
+            ]
+          },
+          {
+            "bulletId": "dev-design-usability-measured-zh-b2",
+            "sourceText": "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。",
+            "candidates": [
+              {
+                "id": "dev-design-usability-measured-zh-b2:source",
+                "text": "我还整理了访谈记录和操作录像中的问题，形成一份按流程步骤分类的研究发现清单，供产品和工程团队评审。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b2:candidate:1",
+                "text": "分析用户访谈记录和操作录像，将发现的问题按流程步骤分类，形成研究报告供产品和工程团队评审。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b2:candidate:2",
+                "text": "分析用户访谈记录和操作录像，将发现的问题整理为按流程步骤分类的研究清单，支持产品和工程团队的评审与决策。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "model",
+                "attempt": 2
+              },
+              {
+                "id": "dev-design-usability-measured-zh-b2:candidate:3",
+                "text": "分析用户访谈记录和操作录像，将发现的问题整理成按流程步骤分类的研究清单，供产品和工程团队评审。",
+                "evidence": [
+                  "dev-design-usability-measured-zh-b2"
+                ],
+                "origin": "model",
+                "attempt": 3
+              }
+            ]
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 2614,
+          "ok": true,
+          "inputTokens": 1250,
+          "outputTokens": 105
+        },
+        {
+          "elapsedMs": 8854,
+          "ok": true,
+          "inputTokens": 2081,
+          "outputTokens": 257
+        },
+        {
+          "elapsedMs": 6394,
+          "ok": true,
+          "inputTokens": 2117,
+          "outputTokens": 294
+        },
+        {
+          "elapsedMs": 6329,
+          "ok": true,
+          "inputTokens": 2117,
+          "outputTokens": 272
+        }
+      ]
+    },
+    {
+      "id": "dev-operations-supplier-qualitative",
+      "roleFamily": "operations",
+      "evidenceLevel": "qualitative",
+      "seniority": "senior",
+      "target": {
+        "title": "Senior Procurement Operations Specialist",
+        "seniority": "senior",
+        "responsibilities": [
+          "Coordinate supplier review information.",
+          "Clarify purchasing exception handling across teams."
+        ]
+      },
+      "sourceFacts": [
+        "The candidate prepared a shared supplier review.",
+        "The review contained delivery issues.",
+        "Contract renewal dates were included.",
+        "Follow-up items each had a named next owner.",
+        "Procurement used the review in monthly supplier meetings.",
+        "Purchase-order exception escalation was documented.",
+        "Finance and the warehouse team were possible escalation destinations."
+      ],
+      "source": [
+        "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings.",
+        "Was responsible for documenting how purchase-order exceptions should be escalated to finance or the warehouse team."
+      ],
+      "candidate": [
+        "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings.",
+        "Documented the escalation process for purchase-order exceptions to finance or warehouse teams."
+      ],
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "dev-operations-supplier-qualitative",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T17:38:50.822Z",
+        "elapsedMs": 18660,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 2496,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-operations-supplier-qualitative-role",
+            "attempt": 1,
+            "elapsedMs": 9039,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 2385,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 1,
+            "elapsedMs": 7234,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 1,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-operations-supplier-qualitative-b1",
+            "sourceText": "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings.",
+            "candidates": [
+              {
+                "id": "dev-operations-supplier-qualitative-b1:source",
+                "text": "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings.",
+                "evidence": [
+                  "dev-operations-supplier-qualitative-b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-operations-supplier-qualitative-b1:candidate:1",
+                "text": "Prepared a shared supplier review document tracking delivery issues, contract renewal dates, and follow-up owners, which procurement used in monthly supplier meetings.",
+                "evidence": [
+                  "dev-operations-supplier-qualitative-b1"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Prepared a shared supplier review document tracking delivery issues, contract renewal dates, and follow-up owners, which procurement used in monthly supplier meetings.",
+                  "sourceText": "Prepared a shared supplier review with delivery issues, contract renewal dates, and the next owner for each follow-up; procurement used it in monthly supplier meetings.",
+                  "status": "retained",
+                  "reason": "The candidate version is a faithful paraphrase, removing the awkward 'with...for each follow-up' phrasing while preserving all original facts: the document's content (delivery issues, renewal dates, next owner), its shared nature, and its use by procurement in monthly meetings. No concrete improvement in clarity, specificity, or impact is achieved beyond minor wording polish.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-operations-supplier-qualitative-b1:source",
+            "state": "ready"
+          },
+          {
+            "bulletId": "dev-operations-supplier-qualitative-b2",
+            "sourceText": "Was responsible for documenting how purchase-order exceptions should be escalated to finance or the warehouse team.",
+            "candidates": [
+              {
+                "id": "dev-operations-supplier-qualitative-b2:source",
+                "text": "Was responsible for documenting how purchase-order exceptions should be escalated to finance or the warehouse team.",
+                "evidence": [
+                  "dev-operations-supplier-qualitative-b2"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-operations-supplier-qualitative-b2:candidate:1",
+                "text": "Documented the escalation process for purchase-order exceptions to finance or warehouse teams.",
+                "evidence": [
+                  "dev-operations-supplier-qualitative-b2"
+                ],
+                "origin": "model",
+                "attempt": 1,
+                "review": {
+                  "text": "Documented the escalation process for purchase-order exceptions to finance or warehouse teams.",
+                  "sourceText": "Was responsible for documenting how purchase-order exceptions should be escalated to finance or the warehouse team.",
+                  "status": "improved",
+                  "reason": "The candidate revision removes the weak scaffolding 'Was responsible for' and leads with the concrete action 'Documented,' improving clarity and contribution specificity. The original method (documenting) and scope (escalation process for purchase-order exceptions to finance or warehouse) are preserved. This directly aligns with the job's responsibility to 'Clarify purchasing exception handling across teams.'",
+                  "dimensions": [
+                    "clarity",
+                    "specificity",
+                    "contribution",
+                    "relevance"
+                  ],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-operations-supplier-qualitative-b2:candidate:1",
+            "state": "ready"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 2496,
+          "ok": true,
+          "inputTokens": 1232,
+          "outputTokens": 107
+        },
+        {
+          "elapsedMs": 9039,
+          "ok": true,
+          "inputTokens": 2052,
+          "outputTokens": 266
+        },
+        {
+          "elapsedMs": 2385,
+          "ok": true,
+          "inputTokens": 567,
+          "outputTokens": 14
+        },
+        {
+          "elapsedMs": 7234,
+          "ok": true,
+          "inputTokens": 1935,
+          "outputTokens": 348
+        }
+      ]
+    },
+    {
+      "id": "dev-marketing-campaign-sparse",
+      "roleFamily": "marketing_customer_success",
+      "evidenceLevel": "sparse",
+      "seniority": "entry",
+      "target": {
+        "title": "Marketing Coordinator",
+        "seniority": "entry",
+        "responsibilities": [
+          "Support email campaign preparation.",
+          "Maintain launch and event schedules."
+        ]
+      },
+      "sourceFacts": [
+        "The campaigns used email.",
+        "Campaigns supported course launches.",
+        "The candidate assisted with campaign preparation.",
+        "The candidate maintained the marketing event calendar."
+      ],
+      "source": [
+        "Helped prepare email campaigns for course launches.",
+        "Updated the marketing team’s event calendar."
+      ],
+      "candidate": [
+        "Helped prepare email campaigns for course launches.",
+        "Updated the marketing team’s event calendar."
+      ],
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "dev-marketing-campaign-sparse",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-09T17:39:09.484Z",
+        "elapsedMs": 26580,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 4217,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-marketing-campaign-sparse-role",
+            "attempt": 1,
+            "elapsedMs": 7225,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 1,
+            "elapsedMs": 2880,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-marketing-campaign-sparse-role",
+            "attempt": 2,
+            "elapsedMs": 7348,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 2,
+            "elapsedMs": 1965,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 2,
+            "elapsedMs": 7159,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": [
+              "Semantic grounding failed for dev-marketing-campaign-sparse-b1: Candidate sentence changes 'Helped prepare' to 'Prepared', which implies sole or primary responsibility not supported by the evidence.",
+              "Semantic grounding failed for dev-marketing-campaign-sparse-b2: Candidate sentence adds 'to coordinate schedules', introducing a new, unsupported purpose or outcome."
+            ]
+          },
+          {
+            "attempt": 2,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 2,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-marketing-campaign-sparse-b1",
+            "sourceText": "Helped prepare email campaigns for course launches.",
+            "candidates": [
+              {
+                "id": "dev-marketing-campaign-sparse-b1:source",
+                "text": "Helped prepare email campaigns for course launches.",
+                "evidence": [
+                  "dev-marketing-campaign-sparse-b1"
+                ],
+                "origin": "source",
+                "attempt": 0,
+                "review": {
+                  "text": "Helped prepare email campaigns for course launches.",
+                  "sourceText": "Helped prepare email campaigns for course launches.",
+                  "status": "retained",
+                  "reason": "The candidate's wording is identical to the source. It accurately describes the action ('Helped prepare') and the object ('email campaigns for course launches'). No factual details are lost or altered, and there is no unsupported upgrade of responsibility. While the statement is general, it is a faithful and complete representation of the source.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "ask",
+                  "question": "What was your specific contribution to preparing the email campaigns? (e.g., writing copy, segmenting lists, designing layouts)"
+                }
+              },
+              {
+                "id": "dev-marketing-campaign-sparse-b1:candidate:1",
+                "text": "Prepared email campaigns for course launches.",
+                "evidence": [
+                  "dev-marketing-campaign-sparse-b1"
+                ],
+                "origin": "model",
+                "attempt": 1
+              }
+            ],
+            "selectedId": "dev-marketing-campaign-sparse-b1:source",
+            "state": "needs_evidence"
+          },
+          {
+            "bulletId": "dev-marketing-campaign-sparse-b2",
+            "sourceText": "Updated the marketing team’s event calendar.",
+            "candidates": [
+              {
+                "id": "dev-marketing-campaign-sparse-b2:source",
+                "text": "Updated the marketing team’s event calendar.",
+                "evidence": [
+                  "dev-marketing-campaign-sparse-b2"
+                ],
+                "origin": "source",
+                "attempt": 0,
+                "review": {
+                  "text": "Updated the marketing team’s event calendar.",
+                  "sourceText": "Updated the marketing team’s event calendar.",
+                  "status": "retained",
+                  "reason": "The candidate's wording is identical to the source. It accurately describes the action ('Updated') and the object ('the marketing team’s event calendar'). No factual details are lost or altered. The statement is clear and specific to the task performed.",
+                  "dimensions": [],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "ask",
+                  "question": "What was the scope or frequency of these updates? (e.g., weekly, for all team events)"
+                }
+              },
+              {
+                "id": "dev-marketing-campaign-sparse-b2:candidate:1",
+                "text": "Maintained the marketing team’s event calendar to coordinate schedules.",
+                "evidence": [
+                  "dev-marketing-campaign-sparse-b2"
+                ],
+                "origin": "model",
+                "attempt": 1
+              }
+            ],
+            "selectedId": "dev-marketing-campaign-sparse-b2:source",
+            "state": "needs_evidence"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 4218,
+          "ok": true,
+          "inputTokens": 1192,
+          "outputTokens": 99
+        },
+        {
+          "elapsedMs": 7225,
+          "ok": true,
+          "inputTokens": 1999,
+          "outputTokens": 223
+        },
+        {
+          "elapsedMs": 2879,
+          "ok": true,
+          "inputTokens": 447,
+          "outputTokens": 106
+        },
+        {
+          "elapsedMs": 7348,
+          "ok": true,
+          "inputTokens": 2091,
+          "outputTokens": 202
+        },
+        {
+          "elapsedMs": 1966,
+          "ok": true,
+          "inputTokens": 467,
+          "outputTokens": 14
+        },
+        {
+          "elapsedMs": 7158,
+          "ok": true,
+          "inputTokens": 1867,
+          "outputTokens": 346
+        }
+      ]
+    }
+  ]
+}

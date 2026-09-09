@@ -1,0 +1,276 @@
+{
+  "version": 1,
+  "packetId": "3885e68fb99411019033208662617fe65749d1522e4257e34d757778fb998e70",
+  "runId": "36916f52-73ee-4793-846c-ad0b01ec7b14",
+  "status": "pending_human_review",
+  "basis": "Self-attested human exports; reviewer identity is not independently verified. Model scores are excluded.",
+  "coverageRequirement": 2,
+  "reviewers": 0,
+  "ratings": 0,
+  "attemptedCases": 6,
+  "failedCases": [
+    "dev-design-usability-measured-zh"
+  ],
+  "overall": {
+    "cases": 5,
+    "attemptedCases": 6,
+    "failedCases": [
+      "dev-design-usability-measured-zh"
+    ],
+    "covered": 0,
+    "candidateWins": 0,
+    "sourceWins": 0,
+    "ties": 0,
+    "neither": 0,
+    "mixed": 0,
+    "decisiveComparisons": 0,
+    "decisiveCandidateWinRate": null,
+    "candidatePreferredShareOfCovered": null,
+    "candidateConcernRatings": 0
+  },
+  "byRole": {
+    "backend_ai_engineering": {
+      "cases": 1,
+      "attemptedCases": 1,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    },
+    "product": {
+      "cases": 1,
+      "attemptedCases": 1,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    },
+    "marketing_customer_success": {
+      "cases": 1,
+      "attemptedCases": 1,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    },
+    "data_analytics": {
+      "cases": 1,
+      "attemptedCases": 1,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    },
+    "operations": {
+      "cases": 1,
+      "attemptedCases": 1,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    },
+    "design_research": {
+      "cases": 0,
+      "attemptedCases": 1,
+      "failedCases": [
+        "dev-design-usability-measured-zh"
+      ],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    }
+  },
+  "byEvidence": {
+    "measured": {
+      "cases": 1,
+      "attemptedCases": 2,
+      "failedCases": [
+        "dev-design-usability-measured-zh"
+      ],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    },
+    "sparse": {
+      "cases": 2,
+      "attemptedCases": 2,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    },
+    "qualitative": {
+      "cases": 2,
+      "attemptedCases": 2,
+      "failedCases": [],
+      "covered": 0,
+      "candidateWins": 0,
+      "sourceWins": 0,
+      "ties": 0,
+      "neither": 0,
+      "mixed": 0,
+      "decisiveComparisons": 0,
+      "decisiveCandidateWinRate": null,
+      "candidatePreferredShareOfCovered": null,
+      "candidateConcernRatings": 0
+    }
+  },
+  "cases": [
+    {
+      "itemId": "0aad4618985a2f30c8c7944a",
+      "caseId": "dev-ai-inference-measured",
+      "roleFamily": "backend_ai_engineering",
+      "evidenceLevel": "measured",
+      "candidateSide": "A",
+      "sourceHash": "a94efc560abcfad37c7c4b3c788567fc9a0ef873fe50d05341b8137f1290ce0a",
+      "candidateHash": "a94efc560abcfad37c7c4b3c788567fc9a0ef873fe50d05341b8137f1290ce0a",
+      "unchanged": true,
+      "reviews": 0,
+      "counts": {
+        "candidate": 0,
+        "source": 0,
+        "tie": 0,
+        "neither": 0
+      },
+      "consensus": "pending",
+      "candidateConcerns": 0,
+      "sourceConcerns": 0
+    },
+    {
+      "itemId": "d895566774cfbff931ae8337",
+      "caseId": "dev-product-research-sparse",
+      "roleFamily": "product",
+      "evidenceLevel": "sparse",
+      "candidateSide": "A",
+      "sourceHash": "6ec7ed7727765e0dce8d7e78bdaf867cf597f9ec18b8c4736545315e77a6c492",
+      "candidateHash": "5d28f0975093283beb06fe1ca9701a9d022dc1df4c7fe16a382ab76f3c0afd48",
+      "unchanged": false,
+      "reviews": 0,
+      "counts": {
+        "candidate": 0,
+        "source": 0,
+        "tie": 0,
+        "neither": 0
+      },
+      "consensus": "pending",
+      "candidateConcerns": 0,
+      "sourceConcerns": 0
+    },
+    {
+      "itemId": "42b603bca545033b20f4053a",
+      "caseId": "dev-marketing-campaign-sparse",
+      "roleFamily": "marketing_customer_success",
+      "evidenceLevel": "sparse",
+      "candidateSide": "B",
+      "sourceHash": "c975eee3ef40a22086201b16743a82f457f59ef3866c4c2bc9d9cb3aac94b655",
+      "candidateHash": "c975eee3ef40a22086201b16743a82f457f59ef3866c4c2bc9d9cb3aac94b655",
+      "unchanged": true,
+      "reviews": 0,
+      "counts": {
+        "candidate": 0,
+        "source": 0,
+        "tie": 0,
+        "neither": 0
+      },
+      "consensus": "pending",
+      "candidateConcerns": 0,
+      "sourceConcerns": 0
+    },
+    {
+      "itemId": "b054c43f09420ea39d3f1a42",
+      "caseId": "dev-data-reporting-qualitative-zh",
+      "roleFamily": "data_analytics",
+      "evidenceLevel": "qualitative",
+      "candidateSide": "B",
+      "sourceHash": "678cfd62bcaf4eb111dd3e21e5f6248efdb69b0dfda42d9467f5baa3b6bc75a0",
+      "candidateHash": "6c2a1539994a9461e3f778c44e804694f4df007c7fa5b767c29a7da7f229ee29",
+      "unchanged": false,
+      "reviews": 0,
+      "counts": {
+        "candidate": 0,
+        "source": 0,
+        "tie": 0,
+        "neither": 0
+      },
+      "consensus": "pending",
+      "candidateConcerns": 0,
+      "sourceConcerns": 0
+    },
+    {
+      "itemId": "9247090c245f927c51271c92",
+      "caseId": "dev-operations-supplier-qualitative",
+      "roleFamily": "operations",
+      "evidenceLevel": "qualitative",
+      "candidateSide": "B",
+      "sourceHash": "9737dbc3267e20371fd3ae8c5754d669398a806799df52ce0440d7d0c1c58287",
+      "candidateHash": "66b35732cb57c320983b61d6e98c0aae6275ab27d23df66a13c98fc2d4022c4f",
+      "unchanged": false,
+      "reviews": 0,
+      "counts": {
+        "candidate": 0,
+        "source": 0,
+        "tie": 0,
+        "neither": 0
+      },
+      "consensus": "pending",
+      "candidateConcerns": 0,
+      "sourceConcerns": 0
+    }
+  ]
+}
