@@ -20,7 +20,9 @@ const os = require("node:os");
 const path = require("node:path");
 
 const PORT = Number(process.env.PORT || 8080);
-const TOKEN = process.env.COMPILE_TOKEN || "";
+// Trimmed because a secret created from a shell pipeline arrives with its
+// trailing newline, and the header it is compared against never has one.
+const TOKEN = (process.env.COMPILE_TOKEN || "").trim();
 const TIMEOUT_MS = Number(process.env.COMPILE_TIMEOUT_MS || 20_000);
 const MAX_SOURCE_BYTES = Number(process.env.MAX_SOURCE_BYTES || 2 * 1024 * 1024);
 const MAX_PDF_BYTES = Number(process.env.MAX_PDF_BYTES || 20 * 1024 * 1024);

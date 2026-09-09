@@ -40,24 +40,28 @@ docker run --rm -p 8099:8080 -e COMPILE_TOKEN=dev --memory=1g --cpus=1 nextresum
 
 ## Deploy to Cloud Run
 
-The image is ~2 GB, which is mostly TeX Live. Cloud Run handles that, but keep
-min-instances at 0 only if a slow first request is acceptable; a cold start
-pulls the image.
+The app stays on Vercel; only this container runs on GCP. `deploy.sh` does the
+whole thing and is safe to re-run:
 
 ```sh
-PROJECT=$(gcloud config get-value project)
-gcloud builds submit --tag gcr.io/$PROJECT/nextresume-latex
-gcloud run deploy nextresume-latex \
-  --image gcr.io/$PROJECT/nextresume-latex \
-  --region us-central1 \
-  --memory 2Gi --cpu 1 --timeout 60 --concurrency 4 \
-  --no-allow-unauthenticated \
-  --set-env-vars COMPILE_TOKEN=$(openssl rand -hex 24)
+PROJECT_ID=<gcp project> ./services/latex-compiler/deploy.sh
 ```
 
-Prefer `--no-allow-unauthenticated` plus a service-to-service identity. If the
-service must be public, the `COMPILE_TOKEN` is what stands between it and
-anyone who finds the URL — treat it as a credential.
+It enables the APIs, creates an Artifact Registry repo and a Secret Manager
+secret for `COMPILE_TOKEN` (generated once, reused after), builds with Cloud
+Build, deploys to Cloud Run in `us-east1` (the same side of the US as Vercel's
+`iad1`) with 1 CPU / 1 GiB / concurrency 2, health-checks the service, and
+prints the three Vercel variables. `REGION`, `SERVICE`, and `MIN_INSTANCES`
+can be overridden in the environment.
+
+The image is ~2 GB, which is mostly TeX Live, so a cold start takes 10-20s.
+The script keeps one instance warm (`MIN_INSTANCES=1`, roughly $10-15/month);
+set `MIN_INSTANCES=0` only if a slow first compile is acceptable.
+
+The service is reachable without a Google identity because Vercel functions
+have none to present; `COMPILE_TOKEN` (checked as `X-Compile-Token`, wrong
+token is a 401) is what stands between it and anyone who finds the URL, so
+treat it as a credential and rotate it by adding a new secret version.
 
 ## Wire it into the app
 
