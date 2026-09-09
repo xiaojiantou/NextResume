@@ -500,6 +500,8 @@ export type StructureIntegrity = {
 
 export type Optimization = {
   harness?: import("./harnessTrace").HarnessTrace;
+  /** OPTIMIZATION_PIPELINE_VERSION of the pipeline that produced this result. */
+  pipelineVersion?: number;
   summary: string;
   title: string;
   skills: string[];

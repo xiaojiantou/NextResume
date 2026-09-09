@@ -5,6 +5,7 @@ import {
 } from "./optimizeChunks.ts";
 import { normalizeOptimization, validateOptimization } from "./optimizeContract.ts";
 import {
+  OPTIMIZATION_PIPELINE_VERSION,
   calculateOptimizationAtsScore, constrainPreservedOptimization,
   constrainRoleOptimizedStructure, createStructureIntegrity, enforceLockedOptimization,
   reconcileGroundedSkills, validateGroundedOptimization, validateLockedOptimization,
@@ -58,6 +59,7 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
     let bestSafeOptimization: Optimization | null = null;
     let numericRecovery = false;
     const respondWithOptimization = (optimization: Optimization, fallback = numericRecovery) => {
+      optimization.pipelineVersion = OPTIMIZATION_PIPELINE_VERSION;
       optimization.structureMode = structureMode;
       optimization.structureIntegrity = createStructureIntegrity(resume, optimization, structureMode);
       optimization.atsScore = calculateOptimizationAtsScore({ resume, optimization, job });

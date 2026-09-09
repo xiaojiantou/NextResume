@@ -43,12 +43,14 @@ import {
 import { isCurrentResumeStyleProfile } from "@/lib/resumeStyle";
 import {
   createOptimizationCacheKey,
+  OPTIMIZATION_PIPELINE_VERSION,
   findOptimizationVariant,
 } from "@/lib/resumeStructure";
 import type {
   ContentStructureMode,
   AtsReport,
   JobAnalysis,
+  Optimization,
   OptimizedBullet,
   Resume,
   ResumeBullet,
@@ -121,6 +123,9 @@ function formatElapsed(seconds: number): string {
 // A platform-level failure (gateway timeout, crashed function) answers with an
 // HTML body, so `data.error` is undefined and the user used to get a bare
 // "Optimization failed" with nothing to act on. Name the failure by status.
+const staleOptimization = (candidate: Optimization) =>
+  candidate.pipelineVersion !== OPTIMIZATION_PIPELINE_VERSION;
+
 function describeFailure(status: number): string {
   if (status === 504 || status === 408) {
     return "The optimizer timed out. Retry, or pick a faster model.";
@@ -1078,7 +1083,14 @@ function ResultPageInner() {
           ) {
             setContentStructure(snap.contentStructure);
           }
-          if (snap?.optimization && snap?.optimizationModel) {
+          // A result from an older pipeline is regenerated rather than shown:
+          // the pipeline changed precisely because what it produced was wrong.
+          const snapshotCurrent = Boolean(
+            snap?.optimization &&
+              snap?.optimizationModel &&
+              !staleOptimization(snap.optimization),
+          );
+          if (snapshotCurrent && snap.optimization && snap.optimizationModel) {
             setOptimization(
               snap.optimization,
               snap.optimizationModel,
@@ -1100,8 +1112,8 @@ function ResultPageInner() {
           if (order?.status === "paid") markPaid();
           setHydrating(false);
 
-          // If snapshot has no optimization yet, run it now.
-          if (!snap?.optimization && snap?.resume && snap?.job) {
+          // If the snapshot has no current optimization, run it now.
+          if (!snapshotCurrent && snap?.resume && snap?.job) {
             await runOptimize(
               selectedModel,
               snap?.contentStructure ?? "optimize",
@@ -1138,7 +1150,7 @@ function ResultPageInner() {
       router.replace("/upload");
       return;
     }
-    if (optimization) return;
+    if (optimization && !staleOptimization(optimization)) return;
     runOptimize(selectedModel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
