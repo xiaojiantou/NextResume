@@ -146,20 +146,17 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
         baseline: baselineOptimization,
         lockedContentIds,
       });
-      // On a revision retry, offer a verbatim-evidence alternative for an
-      // explicit task whose quality review already rejected the rewrite. Only
-      // review rejections make a bullet eligible: a numeric failure alone must
-      // still go through a normal retry and be reviewed, or the proposal
-      // replaces the candidate before the reviewer ever sees it and the
-      // revision round never happens. It receives exactly the same validators
-      // and independent review below.
+      // On an existing retry, offer a verbatim-evidence alternative for an
+      // explicit task whose numeric rewrite or quality review already failed.
+      // Numeric failures need this path too: otherwise they can exhaust every
+      // generation round before a faithful candidate ever reaches review.
       const proposed = proposeSourceTaskEdits(resume, opt,
         new Set([...sourceEditEligible].filter(id => !sourceEditAttempted.has(id))),
         lockedContentIds, new Set(approvedBullets.keys()));
       opt = proposed.optimization;
-      for (const id of proposed.proposedIds) { sourceEditAttempted.add(id); qualityRevised.add(id); }
       recordCandidates(trace, opt, attempt, "source_edit", new Set(proposed.proposedIds));
       const recovered = restoreUnsupportedNumericText(resume, opt, lockedContentIds);
+      for (const id of recovered.restoredIds) sourceEditEligible.add(id);
       if (attempt === attempts) {
         if (recovered.restoredIds.length) {
           opt = recovered.optimization;
@@ -218,6 +215,9 @@ export async function runOptimizationHarness(input: HarnessInput, adapters: Harn
       });
       recordCandidateReviews(trace, reviewed);
       for (const [id, review] of reviewed) qualityReviews.set(id, review);
+      // A sibling's validation failure must not consume an unreviewed proposal.
+      // Once reviewed (including unavailable), it gets no further quality retry.
+      for (const id of proposed.proposedIds) { sourceEditAttempted.add(id); qualityRevised.add(id); }
       for (const entry of [...opt.roles, ...(opt.projects ?? [])]) {
         for (const bullet of entry.bullets) {
           const review = qualityReviews.get(bullet.id);

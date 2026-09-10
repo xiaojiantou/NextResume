@@ -17,7 +17,7 @@ export function sourceTaskText(source: string): string | undefined {
   // Assignment alone does not establish completion. Avoid speculative,
   // assisted or coordinated tasks that a prefix replacement cannot resolve.
   if (/\b(?:not|never|yet|only|help(?:ed|ing)?|assist(?:ed|ing|ance)?|supporting|assigned|expected|intended|attempt(?:ed|ing)?|trying|aim(?:ed|ing)?|could|should|might|may|pending|incomplete|unfinished)\b/i.test(source)) return undefined;
-  if (/\b(?:and|or|while|as well as)\s+(?:\w+ly\s+)?\w+ing\b|,\s*(?:\w+ly\s+)?\w+ing\b/i.test(match[2])) return undefined;
+  if (/(?:\b(?:and|or|while|as well as)\s+|[,&]\s*)(?:(?:also|then|\w+ly)\s+)*\w+ing\b/i.test(match[2])) return undefined;
   return pastTasks[match[1].toLowerCase()] + match[2];
 }
 

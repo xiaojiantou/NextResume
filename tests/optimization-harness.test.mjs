@@ -87,7 +87,7 @@ test('repeated numeric rewrite violations restore source only after retries and 
   assert.ok(result.optimization.harness.validation.some(v => v.stage === 'selected' && !v.issues.length));
 });
 
-test('dense source repair uses the remaining round after numeric correction and preserves an approved sibling', async () => {
+test('dense source repair replaces a rejected rewrite while preserving an approved sibling', async () => {
   const data = structuredClone(input);
   const source = 'I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.';
   const faithful = 'Added prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.';
@@ -97,23 +97,94 @@ test('dense source repair uses the remaining round after numeric correction and 
   const result = await runOptimizationHarness(data, { reviewGrounding: reviewSemanticGrounding, complete: async ({ system, user }) => {
     if (system.includes('ONE entry')) {
       writes++;
-      if (writes === 3) assert.match(user, /original source/);
+      if (writes === 2) assert.match(user, /original source/);
       return { id: 'r1', bullets: [
-        { id: 'b1', text: writes === 1 ? 'Reduced input-token processing cost by 25% using prompt caching.' : writes === 2 ? 'Reduced input-token processing cost from $12 to $9 per 1,000 requests by adding prompt caching in a replay test.' : faithful, evidence: ['b1'], matchedKeywords: [], rationale: '' },
-        { id: 'b2', text: writes === 3 ? 'Led 100 engineers.' : 'Documented the request-failure escalation process.', evidence: ['b2'], matchedKeywords: [], rationale: '' },
+        { id: 'b1', text: 'Reduced input-token processing cost from $12 to $9 per 1,000 requests by adding prompt caching in a replay test.', evidence: ['b1'], matchedKeywords: [], rationale: '' },
+        { id: 'b2', text: writes === 2 ? 'Led 100 engineers.' : 'Documented the request-failure escalation process.', evidence: ['b2'], matchedKeywords: [], rationale: '' },
       ] };
     }
     if (system.includes('independently compare')) {
       const pairs = JSON.parse(user).bullets; reviewed.push(pairs.map(p => p.id));
-      return { reviews: pairs.map(p => ({ id: p.id, decision: p.id === 'b1' && writes === 2 ? 'retain' : 'improved', supported: true, detailsPreserved: p.id !== 'b1' || writes !== 2, causalityPreserved: true, reason: p.id === 'b1' && writes === 2 ? 'The same request set and fixed mix are missing.' : 'Names the documented task directly, preserving the rest.', dimensions: ['clarity'], nextStep: 'keep' })) };
+      if (writes === 2) assert.equal(pairs[0].candidate, faithful);
+      return { reviews: pairs.map(p => ({ id: p.id, decision: p.id === 'b1' && writes === 1 ? 'retain' : 'improved', supported: true, detailsPreserved: p.id !== 'b1' || writes !== 1, causalityPreserved: true, reason: p.id === 'b1' && writes === 1 ? 'The same request set and fixed mix are missing.' : 'Names the documented task directly, preserving the rest.', dimensions: ['clarity'], nextStep: 'keep' })) };
+    }
+    if (system.includes('conservative resume evidence reviewer')) return { valid: true, issues: [] };
+    return { title: data.resume.title, summary: '', skills: [] };
+  } });
+  assert.equal(result.ok, true);
+  assert.equal(writes, 2);
+  assert.equal(result.optimization.roles[0].bullets[0].text, faithful);
+  assert.equal(result.optimization.roles[0].bullets[1].text, 'Documented the request-failure escalation process.');
+  assert.deepEqual(reviewed, [['b1', 'b2'], ['b1']]);
+  assert.equal(result.optimization.structureIntegrity.valid, true);
+});
+
+for (const decision of ['improved', 'retain', 'unavailable']) test('numeric failure offers a reviewed source edit on the existing retry: ' + decision, async () => {
+  const data = structuredClone(input);
+  const tail = ' prompt caching to an internal assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests on the same request set with the model and cache-hit mix fixed.';
+  const source = 'I was responsible for adding' + tail, proposal = 'Added' + tail;
+  data.resume.experience[0].bullets[0].text = source;
+  let writes = 0, grounding = 0, reviews = 0;
+  const result = await runOptimizationHarness(data, { reviewGrounding: async ({ candidate }) => {
+    grounding++;
+    assert.equal(candidate.roles[0].bullets[0].text, proposal);
+    return [];
+  }, complete: async ({ system, user }) => {
+    if (system.includes('ONE entry')) { writes++; return { id: 'r1', bullets: [{ id: 'b1', text: 'Reduced total inference costs by 25%.', evidence: ['b1'], matchedKeywords: [], rationale: '' }] }; }
+    if (system.includes('independently compare')) {
+      reviews++; assert.equal(JSON.parse(user).bullets[0].candidate, proposal);
+      if (decision === 'unavailable') throw new Error('Review unavailable');
+      return { reviews: [{ id: 'b1', decision, supported: decision !== 'retain', detailsPreserved: true, causalityPreserved: true, reason: decision === 'retain' ? 'The source does not establish execution.' : 'Compared source framing with direct action.', dimensions: ['clarity'], nextStep: 'keep' }] };
+    }
+    return { title: data.resume.title, summary: '', skills: [] };
+  } });
+  assert.equal(result.ok, true);
+  assert.equal(writes, 2);
+  assert.equal(grounding, 1);
+  assert.equal(reviews, 1);
+  const bullet = result.optimization.roles[0].bullets[0];
+  assert.equal(bullet.text, decision === 'improved' ? proposal : source);
+  assert.equal(bullet.contentReview.status, decision === 'improved' ? 'improved' : decision === 'retain' ? 'retained' : 'unreviewed');
+  const trace = result.optimization.harness, run = trace.bullets[0];
+  assert.equal(run.candidates.find(c => c.text === proposal).origin, 'source_edit');
+  assert.ok(run.candidates.some(c => c.origin === 'model' && /25%/.test(c.text)));
+  assert.equal(run.candidates.find(c => c.id === run.selectedId).text, bullet.text);
+  assert.ok(trace.validation.find(v => v.stage === 'candidate' && v.attempt === 1).issues.length > 0);
+  assert.deepEqual(trace.validation.find(v => v.stage === 'selected').issues, []);
+});
+
+test('an unrelated validation failure cannot consume a source proposal before review', async () => {
+  const data = structuredClone(input);
+  const source = 'Was responsible for adding prompt caching to the assistant; processing cost fell from $12 to $9 per 1,000 requests in the same replay.';
+  const proposal = source.replace('Was responsible for adding', 'Added');
+  const sibling = 'Tested form changes; 6 of 10 participants completed the task before and 9 of 10 after.';
+  data.resume.experience[0].bullets = [{ id: 'b1', text: source }, { id: 'b2', text: sibling }];
+  let writes = 0, reviews = 0;
+  const result = await runOptimizationHarness(data, { reviewGrounding: reviewSemanticGrounding, complete: async ({ system, user }) => {
+    if (system.includes('ONE entry')) {
+      writes++;
+      return { id: 'r1', bullets: [
+        { id: 'b1', text: 'Reduced processing costs by 25%.', evidence: ['b1'], matchedKeywords: [], rationale: '' },
+        { id: 'b2', text: writes === 2 ? 'Tested form changes; completion increased from 60% to 90%.' : sibling, evidence: ['b2'], matchedKeywords: [], rationale: '' },
+      ] };
+    }
+    if (system.includes('independently compare')) {
+      reviews++;
+      const pairs = JSON.parse(user).bullets;
+      assert.equal(writes, 3);
+      assert.equal(pairs.find(b => b.id === 'b1').candidate, proposal);
+      return { reviews: pairs.map(b => ({ id: b.id, decision: b.id === 'b1' ? 'improved' : 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Preserves the entire evidence clause.', dimensions: ['clarity'], nextStep: 'keep' })) };
     }
     if (system.includes('conservative resume evidence reviewer')) return { valid: true, issues: [] };
     return { title: data.resume.title, summary: '', skills: [] };
   } });
   assert.equal(result.ok, true);
   assert.equal(writes, 3);
-  assert.equal(result.optimization.roles[0].bullets[0].text, faithful);
-  assert.equal(result.optimization.roles[0].bullets[1].text, 'Documented the request-failure escalation process.');
-  assert.deepEqual(reviewed, [['b1', 'b2'], ['b1']]);
-  assert.equal(result.optimization.structureIntegrity.valid, true);
+  assert.equal(reviews, 1);
+  assert.equal(result.optimization.roles[0].bullets[0].text, proposal);
+  assert.equal(result.optimization.roles[0].bullets[1].text, sibling);
+  const run = result.optimization.harness.bullets[0];
+  const selected = run.candidates.find(c => c.id === run.selectedId);
+  assert.equal(selected.origin, 'source_edit');
+  assert.equal(selected.review.status, 'improved');
 });
