@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "runId": "974afc5b-8c2a-4450-b4ae-017d27ee4f8e",
+  "createdAt": "2026-09-10T03:28:56.156Z",
+  "status": "completed",
+  "comparison": "source_vs_production",
+  "split": "development",
+  "corpusHash": "42998454c83f15272cf6cda7bed1d3fc098d1821e9a2d59a14e12b10abbf34ed",
+  "codeRevision": "24f3bf7378213d680681a8fdadc0e87eb9e21e56",
+  "codeHashes": {
+    "lib/optimizationHarness.ts": "4ea95176a8fa447130160339eb07dbacee4483a83ce06b9abc4db8bfda678bdd",
+    "lib/numericRewriteFallback.ts": "f99bd99ca506335777babd86eb8e60cc6ecc1675c8078f55cacf45c687ae40a7",
+    "lib/sourceTaskRewrite.ts": "a762665e13ef96421c317bdfc48f4d58d2fc95c6a32b46a898957e8a672a82ae",
+    "lib/harnessTrace.ts": "7602c181fcb1d091a6288e1910cd43ce4d25c56b84bf09f14cad2101fe586157",
+    "lib/contentQuality.ts": "27a3ecaa7be787cc6653ebcf7e66e8d15e9e97a9c2061b709de4b8d7ccbe4afb",
+    "lib/bulletAtsGain.ts": "18c390df256ff10fb00085e49fee906de0007bff6a6ae6daf6d025d82df0fb67",
+    "lib/atsScore.ts": "84c601a1967737adc2b563e488c1302df8f7679dff282dcfa7a99f1a5753b286",
+    "lib/keywordAliases.ts": "4e39e1c13dc9f4e157e74748adddd6fc9ae88145755f113c7f17f2c032057ac3",
+    "lib/optimizeChunks.ts": "1fa75f6464a5fbb26a1f21ceb76b966396fb84e38bc38066c0391d40b77063ed",
+    "lib/optimizeContract.ts": "461bc6d2424a5ccf1367dfdace9b917e234a015e6d8eeb35377218cb87f40659",
+    "lib/resumeStructure.ts": "414c0fb64326874cf441cc5419e26ea4a3ff5ed9dd6b171f59a470fe6c0bad22",
+    "lib/semanticGrounding.ts": "b07cc021089068e88a8d9cd75cc3a9fcfb13ffe288baa58f3c9b2ef9480625b3",
+    "lib/resumeImpact.ts": "f8bb917e337210ceb1a898e29b05a67d7a4d6615c19c87f8e3c5d424ddf1d999",
+    "scripts/eval-uplift.mjs": "824b2b946982e57bfd97b66e6dea4c5e63bec7e96b16a8ff07a5349d112f4ef7",
+    "scripts/lib/uplift-evaluation.mjs": "3694c4f7d9a56ab75329f7f133bcea026a6065851a29bcd53cb94993bd733597"
+  },
+  "model": "deepseek/deepseek-v3.2",
+  "cases": [
+    {
+      "id": "dev-ai-inference-measured",
+      "roleFamily": "backend_ai_engineering",
+      "evidenceLevel": "measured",
+      "seniority": "senior",
+      "target": {
+        "title": "Senior AI Platform Engineer",
+        "seniority": "senior",
+        "responsibilities": [
+          "Improve inference cost using comparable measurements.",
+          "Operate request monitoring for internal AI applications."
+        ]
+      },
+      "sourceFacts": [
+        "The application was an internal LLM assistant.",
+        "The candidate implemented prompt caching.",
+        "A replay of the same request set measured input-token processing cost at $12 before and $9 after per 1,000 requests.",
+        "The model and cache-hit mix were held fixed for that comparison.",
+        "Monthly observed volume was approximately 18 million input tokens.",
+        "Monthly observed output volume was approximately 3 million tokens.",
+        "The candidate maintained volume monitoring.",
+        "Failure alerts covered assistant requests."
+      ],
+      "source": [
+        "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures."
+      ],
+      "candidate": [
+        "Added prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+        "Operated monitoring for an internal LLM assistant handling ~18M input and ~3M output tokens monthly and implemented alerts for request failures."
+      ],
+      "ok": true,
+      "trace": {
+        "version": 1,
+        "id": "dev-ai-inference-measured",
+        "model": "deepseek/deepseek-v3.2",
+        "startedAt": "2026-09-10T03:28:56.165Z",
+        "elapsedMs": 39062,
+        "outcome": "completed",
+        "calls": [
+          {
+            "stage": "generate",
+            "scope": "global",
+            "attempt": 1,
+            "elapsedMs": 4858,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-ai-inference-measured-role",
+            "attempt": 1,
+            "elapsedMs": 11125,
+            "outcome": "completed"
+          },
+          {
+            "stage": "generate",
+            "scope": "role:dev-ai-inference-measured-role",
+            "attempt": 2,
+            "elapsedMs": 11501,
+            "outcome": "completed"
+          },
+          {
+            "stage": "grounding",
+            "attempt": 2,
+            "elapsedMs": 1868,
+            "outcome": "completed"
+          },
+          {
+            "stage": "content_review",
+            "attempt": 2,
+            "elapsedMs": 14543,
+            "outcome": "completed"
+          }
+        ],
+        "validation": [
+          {
+            "attempt": 1,
+            "stage": "candidate",
+            "issues": [
+              "dev-ai-inference-measured-b1 introduces an unsupported number: unsupported \"25%\"; source evidence has \"$12\", \"$9\", \"1,000\"."
+            ]
+          },
+          {
+            "attempt": 2,
+            "stage": "candidate",
+            "issues": []
+          },
+          {
+            "attempt": 2,
+            "stage": "selected",
+            "issues": []
+          }
+        ],
+        "bullets": [
+          {
+            "bulletId": "dev-ai-inference-measured-b1",
+            "sourceText": "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+            "candidates": [
+              {
+                "id": "dev-ai-inference-measured-b1:source",
+                "text": "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+                "evidence": [
+                  "dev-ai-inference-measured-b1"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-ai-inference-measured-b1:candidate:1",
+                "text": "Reduced LLM inference cost by 25% by implementing prompt caching, lowering input-token processing from $12 to $9 per 1,000 requests in a controlled replay test with fixed model and cache-hit conditions.",
+                "evidence": [
+                  "dev-ai-inference-measured-b1"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-ai-inference-measured-b1:candidate:2",
+                "text": "Reduced LLM inference cost by 25% through prompt caching, lowering input-token processing from $12 to $9 per 1,000 requests in a controlled replay test.",
+                "evidence": [
+                  "dev-ai-inference-measured-b1"
+                ],
+                "origin": "model",
+                "attempt": 2
+              },
+              {
+                "id": "dev-ai-inference-measured-b1:candidate:3",
+                "text": "Added prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+                "evidence": [
+                  "dev-ai-inference-measured-b1"
+                ],
+                "origin": "source_edit",
+                "attempt": 2,
+                "review": {
+                  "text": "Added prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+                  "sourceText": "I was responsible for adding prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.",
+                  "status": "improved",
+                  "reason": "The candidate version is a direct, concise paraphrase of the source. It removes the weak scaffolding 'I was responsible for' while preserving all key facts: the action (adding prompt caching), the object (an internal LLM assistant), the specific measured result (cost reduction from $12 to $9 per 1,000 requests), and the critical testing conditions (replay of the same request set, model and cache-h Kept the rewrite: it preserves every stated fact and opens with an action verb (\"Added\") the verb check rewards.",
+                  "dimensions": [
+                    "relevance"
+                  ],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-ai-inference-measured-b1:candidate:3",
+            "state": "ready"
+          },
+          {
+            "bulletId": "dev-ai-inference-measured-b2",
+            "sourceText": "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures.",
+            "candidates": [
+              {
+                "id": "dev-ai-inference-measured-b2:source",
+                "text": "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures.",
+                "evidence": [
+                  "dev-ai-inference-measured-b2"
+                ],
+                "origin": "source",
+                "attempt": 0
+              },
+              {
+                "id": "dev-ai-inference-measured-b2:candidate:1",
+                "text": "Operated monitoring for an internal LLM assistant processing ~18M input and 3M output tokens monthly and implemented alerts for request failures.",
+                "evidence": [
+                  "dev-ai-inference-measured-b2"
+                ],
+                "origin": "model",
+                "attempt": 1
+              },
+              {
+                "id": "dev-ai-inference-measured-b2:candidate:2",
+                "text": "Operated monitoring for an internal LLM assistant handling ~18M input and ~3M output tokens monthly and implemented alerts for request failures.",
+                "evidence": [
+                  "dev-ai-inference-measured-b2"
+                ],
+                "origin": "model",
+                "attempt": 2,
+                "review": {
+                  "text": "Operated monitoring for an internal LLM assistant handling ~18M input and ~3M output tokens monthly and implemented alerts for request failures.",
+                  "sourceText": "Maintained monitoring for approximately 18 million input tokens and 3 million output tokens per month across the assistant, and added alerts for request failures.",
+                  "status": "improved",
+                  "reason": "The candidate version improves clarity and relevance. It uses a more active verb ('Operated') and foregrounds the scale ('~18M input and ~3M output tokens monthly'), which is directly relevant to the job's responsibility for operating request monitoring. The term 'implemented' for alerts is a reasonable synonym for 'added'. All original facts are preserved, and the bullet is now more concise and directly aligned with the job's language.",
+                  "dimensions": [
+                    "clarity",
+                    "relevance"
+                  ],
+                  "audit": {
+                    "supported": true,
+                    "detailsPreserved": true,
+                    "causalityPreserved": true
+                  },
+                  "impactMetrics": [
+                    "monthly_tokens"
+                  ],
+                  "nextStep": "keep"
+                }
+              }
+            ],
+            "selectedId": "dev-ai-inference-measured-b2:candidate:2",
+            "state": "needs_evidence"
+          }
+        ]
+      },
+      "calls": [
+        {
+          "elapsedMs": 4858,
+          "ok": true,
+          "inputTokens": 1286,
+          "outputTokens": 107
+        },
+        {
+          "elapsedMs": 11125,
+          "ok": true,
+          "inputTokens": 2212,
+          "outputTokens": 286
+        },
+        {
+          "elapsedMs": 11501,
+          "ok": true,
+          "inputTokens": 2268,
+          "outputTokens": 289
+        },
+        {
+          "elapsedMs": 1868,
+          "ok": true,
+          "inputTokens": 663,
+          "outputTokens": 14
+        },
+        {
+          "elapsedMs": 14544,
+          "ok": true,
+          "inputTokens": 2261,
+          "outputTokens": 402
+        }
+      ]
+    }
+  ]
+}

@@ -43,3 +43,11 @@ false acceptance, false rejection, and unavailable judgments separately. A high
 agreement rate on these deliberately targeted cases cannot establish general
 writing quality, and this reviewer calibration does not exercise generation,
 the full optimization runner, or human preference.
+
+Two separately saved live calibrations matched all eight authored labels:
+`dense-measurement-followup/calibration.json` before the later ATS acceptance
+integration, and `source-task-followup/calibration.json` with that integration.
+Neither had unavailable judgments, false acceptances or false rejections against
+these labels. Keep them separate from the full generation regression under
+`../uplift/runs/source-task-followup`; generation can still lose facts even when
+the reviewer performs well on these fixed pairs.

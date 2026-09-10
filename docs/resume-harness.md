@@ -184,3 +184,55 @@ not evidence of customer-perceived quality. Open: the keyword close rate (40%
 of the gap) is uncalibrated and needs real before/after pairs; rewrites that
 derive a number the source lacks still restore the whole bullet after retries;
 the Chinese verb list is closed and will miss verbs.
+
+## Dense measured task follow-up
+
+The prompt-only experiment in `eval/uplift/runs/dense-measurement-followup`
+still retained the weak AI-engineering source after three generation rounds.
+Numeric retries introduced a derived 25% saving; the later rewrite generalized
+input-token processing cost into inference cost. Merely preserving the figures
+did not preserve the measurement's meaning.
+
+The runner now offers a source edit on an existing retry after that bullet's
+numeric check fails or its quality review requests revision. For a small set of
+explicit past tasks, it changes only the responsibility prefix and leading verb,
+preserving the entire remaining source verbatim. Ambiguous tense, plans,
+assistance, negation and coordinated gerunds stay with ordinary generation.
+Locked and approved bullets are excluded. A proposal still runs through all
+normal validators and review; a sibling's validation failure cannot consume its
+review opportunity. There are still at most three generation attempts and one
+quality revision per bullet. Pipeline version 8 invalidates older saved results.
+
+The separate live regression in `eval/uplift/runs/source-task-followup` completed
+in 39.1 seconds with two generation rounds and five model calls. Its first model
+candidate again introduced 25%; the second round selected a `source_edit`:
+
+> Added prompt caching to an internal LLM assistant; measured input-token processing cost fell from $12 to $9 per 1,000 requests in a replay of the same request set, with the model and cache-hit mix held fixed.
+
+Every character after the leading task verb matches the source. The factual
+audit passed, but the writing reviewer chose retain; the existing ATS rule
+selected it for its clearer action opener. This is not independent reviewer
+endorsement or evidence of human preference. The other bullet preserves its
+separate approximate monthly input/output quantities. Human reviews remain zero;
+no latency improvement or general uplift rate is claimed from these two runs.
+
+New review records now preserve the raw `reviewerDecision` separately from
+`selectionBasis` (`quality_review`, `ats_rubric`, or `source`). Invalid reviews
+invent neither field. This metadata does not change selection behavior. The
+saved live run predates these fields; its reason records the ATS override and
+the original artifact has not been rewritten.
+
+The eight fictional dense-measurement calibration pairs agreed with all authored
+labels in `eval/content/source-task-followup/calibration.json`, including lost
+comparison conditions, dropped denominators, estimate qualification, token
+category swaps and preparatory work. These are development calibration, not
+reserved validation. The six reserved validation cases remain unused.
+
+Deterministic regression tests cover exact evidence-tail preservation, unsafe
+grammar skips, numeric retries, failed/unavailable factual review, locks,
+approved siblings, and proposals surviving an unrelated validation failure.
+Further content work should target richer framing from supported qualitative
+facts and sparse evidence questions; replacing this particular weak opener is a
+bounded clarity improvement, not new impact evidence.
+
+Validation for this follow-up: 332 automated tests and `tsc --noEmit` passed.

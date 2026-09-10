@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "nonce": "ce9db0135b0cd63950f8ea3369d9eed72096f8965d0f0d8e6056239d7e005dd5",
+  "runId": "974afc5b-8c2a-4450-b4ae-017d27ee4f8e",
+  "corpusHash": "42998454c83f15272cf6cda7bed1d3fc098d1821e9a2d59a14e12b10abbf34ed",
+  "attemptedCases": 1,
+  "failedCases": [],
+  "failedMetadata": [],
+  "items": {
+    "bef2aaef3e0fef745dc52711": {
+      "caseId": "dev-ai-inference-measured",
+      "roleFamily": "backend_ai_engineering",
+      "evidenceLevel": "measured",
+      "candidateSide": "B",
+      "sourceHash": "a94efc560abcfad37c7c4b3c788567fc9a0ef873fe50d05341b8137f1290ce0a",
+      "candidateHash": "409dc79cba37927d3c4a5bd4040fdf5f158178e5654e215958797ea620df59df",
+      "unchanged": false
+    }
+  },
+  "packetId": "3234be6acb5c9c4ee066153706983d1b1d559c956f91dd513903daee8f546723"
+}

@@ -1,0 +1,14 @@
+{
+  "attempted": 1,
+  "completed": 1,
+  "failed": [],
+  "unchanged": 0,
+  "fallbacks": [],
+  "medianElapsedMs": 39062,
+  "maxElapsedMs": 39062,
+  "modelCalls": 5,
+  "knownInputTokens": 8690,
+  "knownOutputTokens": 1098,
+  "callsWithoutUsage": 0,
+  "scope": "Experience/project content only. Technical completion and model review labels do not measure human preference or whole-document layout quality."
+}

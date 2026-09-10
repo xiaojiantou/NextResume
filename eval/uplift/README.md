@@ -123,3 +123,31 @@ run. Next content-quality work should address weak scaffolding in dense measured
 bullets without losing comparison conditions, and judge whether sparse-source
 rewrites add useful clarity while preserving participation. Use blind preferences
 and factual concerns to choose changes; a model's improved label is insufficient.
+
+## Dense measurement regression
+
+`runs/dense-measurement-followup` records the unsuccessful prompt-only follow-up:
+the first AI-engineering bullet remained unchanged after three generation
+rounds. Repeated derived percentages and loss of measurement scope prevented a
+faithful rewrite from being selected.
+
+`runs/source-task-followup` records the subsequent source-edit strategy. After a
+numeric failure, an existing retry may propose a direct past-task opener while
+leaving every subsequent source character intact. The real model run completed
+in 39.1 seconds, two generation rounds and five calls. The first bullet changed
+from "I was responsible for adding" to "Added", preserving input-token cost,
+both values, the denominator, the same request set and fixed model/cache-hit mix.
+The trace retains both rejected model candidates and the selected `source_edit`.
+
+The writing reviewer chose retain despite passing factual audits; the existing
+ATS acceptance rule selected that candidate. Its final `improved` status is
+therefore a rubric-based selection, not an independent writing preference.
+Future traces explicitly record `reviewerDecision` and `selectionBasis` to make
+this distinction inspectable. Saved earlier runs remain unchanged.
+
+Both runs have separate code hashes and review packets. Do not pool their
+results or attribute a measured speedup to the implementation. The new
+`review.html` is ready for blind human review; `human-summary.json` still has
+zero reviewers and null preference rates. The eight targeted fictional reviewer
+calibration pairs in `eval/content/source-task-followup` passed, but neither
+those labels nor this single generation case establish general content uplift.
