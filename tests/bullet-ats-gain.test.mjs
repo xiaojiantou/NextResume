@@ -62,21 +62,57 @@ test("a retained rewrite with the facts certified intact ships when it moves the
   const rows = { reviews: [{ id: "b1", decision: "retain", supported: true, detailsPreserved: true, causalityPreserved: true, reason: "Cosmetic verb change only.", dimensions: [], nextStep: "ask", question: "How many campaigns?" }] };
   const review = parseContentReviews(rows, pair, job).get("b1");
   assert.equal(review.status, "improved");
+  assert.equal(review.reviewerDecision, "retain");
+  assert.equal(review.selectionBasis, "ats_rubric");
   assert.equal(review.nextStep, "ask");
   assert.equal(review.revisionInstruction, undefined);
   assert.match(review.reason, /Kept the rewrite/);
   assert.match(review.question, /campaigns/);
   const candidate = { roles: [{ id: "r1", bullets: [{ id: "b1", text: pair[0].candidate, evidence: ["b1"], matchedKeywords: [], rationale: "" }] }], projects: [] };
-  assert.equal(selectReviewedContent(candidate, new Map([["b1", review]])).roles[0].bullets[0].text, pair[0].candidate);
+  const selected = selectReviewedContent(candidate, new Map([["b1", review]])).roles[0].bullets[0];
+  assert.equal(selected.text, pair[0].candidate);
+  assert.equal(selected.contentReview.reviewerDecision, "retain");
+  assert.equal(selected.contentReview.selectionBasis, "ats_rubric");
 });
 
 test("a failed audit flag or an unchanged bullet never unlocks the ATS path", () => {
   const pair = [{ id: "b1", source: "Helped prepare email campaigns.", candidate: "Prepared email campaigns." }];
   for (const flag of ["supported", "detailsPreserved", "causalityPreserved"]) {
     const rows = { reviews: [{ id: "b1", decision: "retain", supported: true, detailsPreserved: true, causalityPreserved: true, reason: "Lost a detail.", dimensions: [], [flag]: false }] };
-    assert.equal(parseContentReviews(rows, pair, job).get("b1").status, "retained");
+    const review = parseContentReviews(rows, pair, job).get("b1");
+    assert.equal(review.status, "retained");
+    assert.equal(review.reviewerDecision, "retain");
+    assert.equal(review.selectionBasis, "source");
   }
   const same = [{ id: "b1", source: pair[0].source, candidate: pair[0].source }];
   const rows = { reviews: [{ id: "b1", decision: "retain", supported: true, detailsPreserved: true, causalityPreserved: true, reason: "Unchanged.", dimensions: [] }] };
-  assert.equal(parseContentReviews(rows, same, job).get("b1").status, "retained");
+  const review = parseContentReviews(rows, same, job).get("b1");
+  assert.equal(review.status, "retained");
+  assert.equal(review.reviewerDecision, "retain");
+  assert.equal(review.selectionBasis, "source");
+});
+
+test("a model endorsement stays distinct from the final source selection when an audit fails", () => {
+  const pair = [{ id: "b1", source: "Was responsible for documenting the escalation process.", candidate: "Documented the escalation process." }];
+  const row = { id: "b1", decision: "improved", supported: true, detailsPreserved: true, causalityPreserved: true, reason: "The documented task is stated directly.", dimensions: ["clarity"] };
+  const endorsed = parseContentReviews({ reviews: [row] }, pair, job).get("b1");
+  assert.equal(endorsed.status, "improved");
+  assert.equal(endorsed.reviewerDecision, "improved");
+  assert.equal(endorsed.selectionBasis, "quality_review");
+
+  const rejected = parseContentReviews({ reviews: [{ ...row, supported: false }] }, pair, job).get("b1");
+  assert.equal(rejected.status, "retained");
+  assert.equal(rejected.reviewerDecision, "improved");
+  assert.equal(rejected.selectionBasis, "source");
+});
+
+test("missing, malformed and duplicate reviews do not invent a reviewer decision or selection basis", () => {
+  const pair = [{ id: "b1", source: "Helped prepare email campaigns.", candidate: "Prepared email campaigns." }];
+  const row = { id: "b1", decision: "retain", supported: true, detailsPreserved: true, causalityPreserved: true, reason: "Cosmetic only.", dimensions: [] };
+  for (const raw of [null, { reviews: [] }, { reviews: [{ id: "b1", decision: "retain" }] }, { reviews: [row, row] }, { reviews: [{ ...row, decision: "improved" }] }]) {
+    const review = parseContentReviews(raw, pair, job).get("b1");
+    assert.equal(review.status, "unreviewed");
+    assert.equal(Object.hasOwn(review, "reviewerDecision"), false);
+    assert.equal(Object.hasOwn(review, "selectionBasis"), false);
+  }
 });

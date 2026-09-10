@@ -53,6 +53,8 @@ export type ContentReview = {
   text: string;
   sourceText: string;
   status: "improved" | "retained" | "unreviewed";
+  reviewerDecision?: "improved" | "retain";
+  selectionBasis?: "quality_review" | "ats_rubric" | "source";
   reason: string;
   dimensions: string[];
   question?: string;
@@ -99,6 +101,7 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[], job?: Job
     // change is the deliverable, not a cosmetic edit.
     const atsGain = audited && row.decision === "retain" ? bulletAtsGain({ source: pair.source, candidate: pair.candidate, job }) : null;
     const improved = audited && (row.decision === "improved" || atsGain !== null);
+    const selectionBasis: ContentReview["selectionBasis"] = improved ? (atsGain ? "ats_rubric" : "quality_review") : "source";
     const missedRevision = valid && !improved && row.nextStep === "keep"
       ? explicitTaskRevision(pair.source) : undefined;
     const reason = missedRevision
@@ -109,6 +112,7 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[], job?: Job
     return [pair.id, {
       text: pair.candidate, sourceText: pair.source,
       status: valid ? (improved ? "improved" : "retained") : "unreviewed",
+      ...(valid ? { reviewerDecision: row.decision, selectionBasis } : {}),
       reason,
       dimensions: improved ? (atsGain && dimensions.length === 0 ? ["relevance"] : dimensions) : [],
       ...(valid ? { audit: { supported: row.supported, detailsPreserved: row.detailsPreserved, causalityPreserved: row.causalityPreserved }, impactMetrics: normalizeImpactMetrics(row.impactMetrics, pair.source) } : {}),
