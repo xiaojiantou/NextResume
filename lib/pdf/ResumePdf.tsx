@@ -201,10 +201,23 @@ function createStyles(
     },
     eduRow: {
       flexDirection: "row",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       marginTop: px(4),
       fontFamily: "Helvetica",
       fontSize: fs(9.5),
+    },
+    // A Text in a row takes its content width and, when it wraps, the year
+    // beside it is painted over the second line. Give the text the remaining
+    // width and keep the year from shrinking so the two never share space.
+    eduText: {
+      flex: 1,
+      paddingRight: px(10),
+    },
+    eduYear: {
+      flexShrink: 0,
+      textAlign: "right",
+      color: palette.muted,
     },
     eduSchool: {
       fontFamily: "Helvetica-Bold",
@@ -274,7 +287,7 @@ export function ResumePdf({
           <Text style={styles.teamTitleGroup}>
             <Text style={styles.teamTitle}>{team.heading}</Text>
             {team.subheading ? (
-              <Text style={styles.teamMeta}>{"  ·  "}{team.subheading}</Text>
+              <Text style={styles.teamMeta}>{" · "}{team.subheading}</Text>
             ) : null}
           </Text>
           {team.start || team.end ? (
@@ -305,7 +318,7 @@ export function ResumePdf({
             <Text style={styles.roleTitle}>{role.heading}</Text>
             {role.subheading ? (
               <Text style={styles.roleTitleMuted}>
-                {"  ·  "}
+                {" · "}
                 {role.subheading}
               </Text>
             ) : null}
@@ -365,7 +378,7 @@ export function ResumePdf({
               </Text>
             ))
           ) : (
-            <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+            <Text style={styles.skills}>{skills.join(" · ")}</Text>
           )}
         </View>
       ) : null;
@@ -396,7 +409,7 @@ export function ResumePdf({
                     <Text style={styles.roleTitle}>{project.heading}</Text>
                     {project.subheading ? (
                       <Text style={styles.roleTitleMuted}>
-                        {"  ·  "}
+                        {" · "}
                         {project.subheading}
                       </Text>
                     ) : null}
@@ -432,16 +445,18 @@ export function ResumePdf({
           <Text style={styles.sectionLabel} minPresenceAhead={48}>{labels.education}</Text>
           {education.map((entry, index) => (
             <View key={index} style={styles.eduRow}>
-              <Text>
+              <Text style={styles.eduText}>
                 <Text style={styles.eduSchool}>{entry.school}</Text>
                 {entry.degree ? (
                   <Text style={{ color: palette.muted }}>
-                    {"  ·  "}
+                    {" · "}
                     {entry.degree}
                   </Text>
                 ) : null}
               </Text>
-              <Text style={{ color: palette.muted }}>{entry.year}</Text>
+              {entry.year ? (
+                <Text style={styles.eduYear}>{entry.year}</Text>
+              ) : null}
             </View>
           ))}
         </View>
@@ -456,7 +471,7 @@ export function ResumePdf({
         </Text>
         {isCompactAdditionalSection(section) ? (
           <Text style={styles.compactAdditional}>
-            {section.items.map(compactAdditionalItemLabel).join("  ·  ")}
+            {section.items.map(compactAdditionalItemLabel).join(" · ")}
           </Text>
         ) : section.items.map((item) => (
           <View key={item.id}>
@@ -465,7 +480,7 @@ export function ResumePdf({
                 <Text style={styles.roleTitle}>{item.heading}</Text>
                 {item.subheading ? (
                   <Text style={styles.roleTitleMuted}>
-                    {"  ·  "}
+                    {" · "}
                     {item.subheading}
                   </Text>
                 ) : null}
@@ -515,7 +530,7 @@ export function ResumePdf({
                   [resume.email, resume.phone, resume.location],
                   resume.links,
                 )}
-                separator="  ·  "
+                separator=" · "
                 style={styles.contact}
                 linkStyle={styles.contactLink}
               />
@@ -530,7 +545,7 @@ export function ResumePdf({
                 [resume.email, resume.phone, resume.location],
                 resume.links,
               )}
-              separator="  ·  "
+              separator=" · "
               style={styles.contact}
               linkStyle={styles.contactLink}
             />

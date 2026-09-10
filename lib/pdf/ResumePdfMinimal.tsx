@@ -171,9 +171,14 @@ function createStyles(
     },
     eduRow: {
       flexDirection: "row",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       marginTop: px(6),
     },
+    // The school block takes the remaining width so a long name wraps
+    // instead of running under the year.
+    eduMain: { flex: 1, paddingRight: px(10) },
+    eduYear: { flexShrink: 0, textAlign: "right" },
     eduSchool: {
       fontSize: body(),
       fontFamily: "Helvetica-Bold",
@@ -370,13 +375,15 @@ export function ResumePdfMinimal({
           <Text style={styles.sectionTag} minPresenceAhead={48}>{labels.education}</Text>
           {education.map((entry, index) => (
             <View key={index} style={styles.eduRow}>
-              <View>
+              <View style={styles.eduMain}>
                 <Text style={styles.eduSchool}>{entry.school}</Text>
                 {entry.degree ? (
                   <Text style={styles.eduDetail}>{entry.degree}</Text>
                 ) : null}
               </View>
-              <Text style={styles.eduDetail}>{entry.year}</Text>
+              {entry.year ? (
+                <Text style={[styles.eduDetail, styles.eduYear]}>{entry.year}</Text>
+              ) : null}
             </View>
           ))}
         </View>
@@ -391,7 +398,7 @@ export function ResumePdfMinimal({
         </Text>
         {isCompactAdditionalSection(section) ? (
           <Text style={styles.compactAdditional}>
-            {section.items.map(compactAdditionalItemLabel).join("  ·  ")}
+            {section.items.map(compactAdditionalItemLabel).join(" · ")}
           </Text>
         ) : section.items.map((item) => (
           <View key={item.id} style={styles.roleBlock}>
@@ -446,7 +453,7 @@ export function ResumePdfMinimal({
                 [resume.email, resume.phone, resume.location],
                 resume.links,
               )}
-              separator="   ·   "
+              separator=" · "
               style={styles.contact}
               linkStyle={styles.contactLink}
             />

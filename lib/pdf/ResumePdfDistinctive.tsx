@@ -455,7 +455,7 @@ export function ResumePdfDistinctive({
                 </Text>
               ))
             ) : (
-              <Text style={styles.skills}>{skills.join("  ·  ")}</Text>
+              <Text style={styles.skills}>{skills.join(" · ")}</Text>
             )}
           </View>
         </View>
@@ -506,7 +506,7 @@ export function ResumePdfDistinctive({
         </Text>
         {isCompactAdditionalSection(section) ? (
           <Text style={styles.compactAdditional}>
-            {section.items.map(compactAdditionalItemLabel).join("  ·  ")}
+            {section.items.map(compactAdditionalItemLabel).join(" · ")}
           </Text>
         ) : section.items.map((entry) => (
           <View key={entry.id} style={styles.entry}>
@@ -573,7 +573,7 @@ export function ResumePdfDistinctive({
                   [resume.email, resume.phone, resume.location],
                   resume.links,
                 )}
-                separator="  ·  "
+                separator=" · "
                 style={styles.contact}
                 linkStyle={styles.contactLink}
               />

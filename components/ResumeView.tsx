@@ -500,15 +500,19 @@ export function ResumeView({
             {resume.education.map((e, i) => (
               <div
                 key={i}
-                className="flex items-baseline justify-between font-sans text-[11.5px]"
+                className="flex items-baseline justify-between gap-4 font-sans text-[11.5px]"
               >
-                <div>
+                <div className="min-w-0">
                   <span className="font-semibold text-ink-900">
                     {e.school}
                   </span>
                   <span className="text-ink-500"> · {e.degree}</span>
                 </div>
-                <div className="text-ink-500">{e.year}</div>
+                {e.year ? (
+                  <div className="shrink-0 whitespace-nowrap text-right text-ink-500">
+                    {e.year}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

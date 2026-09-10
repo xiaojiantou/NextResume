@@ -406,7 +406,7 @@ export function ResumePdfSidebar({
         </Text>
         {isCompactAdditionalSection(section) ? (
           <Text style={styles.compactAdditional}>
-            {section.items.map(compactAdditionalItemLabel).join("  ·  ")}
+            {section.items.map(compactAdditionalItemLabel).join(" · ")}
           </Text>
         ) : section.items.map((item) => (
           <View key={item.id} style={styles.roleBlock}>
