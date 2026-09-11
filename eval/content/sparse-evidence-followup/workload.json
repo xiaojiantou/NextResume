@@ -1,0 +1,151 @@
+{
+  "corpusPath": "eval/content/sparse-evidence-cases.json",
+  "corpusHash": "3aa0c80850c875cc9888a0781b3406b6bbef67d1f3f6e16ab6264c91b3bc8211",
+  "selectedCases": [
+    "sparse-warehouse-confirmed-workload"
+  ],
+  "codeRevision": "7799a1c07a6cf1571b7c094113aafd661136e36e",
+  "codeHashes": {
+    "lib/refinementHarness.ts": "c569be6f4c250b0285ff93859db411f9115bb0978ba7c934db36a2cdbe5aa155",
+    "lib/refinementReview.ts": "d8efc1baf408df46be4a36c2386d6f7d5f80e6a3ad5d34e1d9bb7ad17d98e4da",
+    "lib/refineBullet.ts": "84a58c4d181968fcea7aab9a7d68af5c166c03862bff9d37ac14766b42977043",
+    "lib/evidenceLedger.ts": "74980262ac7c226d25501cebd25b736a991c0269af9fe3dcdff4048e660af0f4",
+    "lib/resumeImpact.ts": "329ae7c6ecb6c282116374678687868a269bf2d8209d550b4b25fc0707b806e3",
+    "lib/contentQuality.ts": "c0d81293d222df03eefb0f9217aa55659c6f94ac49867c5cbc7b22ea397adba3",
+    "lib/resumeStructure.ts": "7eb6767d84315bd1944cff5224997fb092d7e26c015b7aa9b74ae0c837a88c78",
+    "lib/models.ts": "3b0c641cd92610ac41a91638b11a32346646f9021bb373b2de51ed26e32e0b93",
+    "scripts/eval-refinement.mjs": "d24c4689b026d89fbac23655ff1bcf9c134e8da2198ad33a056b5ea79c96ed2f"
+  },
+  "model": "deepseek/deepseek-v3.2",
+  "at": "2026-09-11T05:33:43.985Z",
+  "scope": "single authored case through production refinement runner; not a quality benchmark",
+  "calls": [
+    {
+      "ms": 5523,
+      "usage": {
+        "prompt_tokens": 2047,
+        "completion_tokens": 105,
+        "total_tokens": 2152,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "ms": 11669,
+      "usage": {
+        "prompt_tokens": 909,
+        "completion_tokens": 281,
+        "total_tokens": 1190,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      }
+    }
+  ],
+  "result": {
+    "ok": true,
+    "bullet": {
+      "id": "sparse-warehouse-confirmed-workload",
+      "text": "Updated status for approximately 500 shipment records monthly and flagged missing statuses to support warehouse tracking and coordinator follow-up.",
+      "evidence": [
+        "sparse-warehouse-confirmed-workload",
+        "voice-transcript"
+      ],
+      "matchedKeywords": [],
+      "rationale": "Replaced the invented leadership and outcome with the confirmed tasks of updating records and flagging issues, and incorporated the approximate monthly workload to clarify the scale of the supporting contribution.",
+      "evidenceLedger": [
+        {
+          "kind": "source",
+          "text": "Helped track warehouse shipments."
+        },
+        {
+          "kind": "user_confirmed",
+          "text": "I updated shipment status records for the warehouse and flagged records with missing statuses for the logistics coordinator to follow up. I supported tracking; I did not manage the warehouse or own delivery outcomes. The estimate counts the records I update, which can include repeat updates to the same shipment. I have no measured time savings or delivery improvement.",
+          "confirmedAt": "2026-09-02T12:00:00.000Z"
+        },
+        {
+          "kind": "confirmed_estimate",
+          "text": "Approximately 500 shipment records per month",
+          "confirmedAt": "2026-09-02T12:00:00.000Z",
+          "estimate": {
+            "metric": "monthly_workload",
+            "inputs": {
+              "unit": "shipment records",
+              "perRun": "25",
+              "runs": "20"
+            },
+            "value": 500,
+            "description": "Approximately 500 shipment records per month",
+            "basis": "average count each time × times per month; What you counted: shipment records; Average count each time: 25; Times per month: 20",
+            "confirmedAt": "2026-09-02T12:00:00.000Z"
+          }
+        },
+        {
+          "kind": "instruction",
+          "text": "Make this contribution clearer.",
+          "confirmedAt": "2026-09-09T12:00:00Z"
+        },
+        {
+          "kind": "instruction",
+          "text": "Use the actual tasks and monthly workload estimate I confirmed. Keep the workload approximate and keep my supporting role. The previous draft invented leadership and an on-time delivery result; neither is evidence.",
+          "confirmedAt": "2026-09-09T12:00:00Z"
+        }
+      ],
+      "refinementReview": {
+        "text": "Updated status for approximately 500 shipment records monthly and flagged missing statuses to support warehouse tracking and coordinator follow-up.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Updated status for approximately 500 shipment records monthly",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1",
+              "e2"
+            ],
+            "reason": "User confirmed updating shipment status records (e1). The confirmed estimate provides the approximate monthly count (e2)."
+          },
+          {
+            "text": "and flagged missing statuses",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "User explicitly stated they flagged records with missing statuses (e1)."
+          },
+          {
+            "text": "to support warehouse tracking and coordinator follow-up.",
+            "verdict": "inferred",
+            "evidenceIds": [
+              "e0",
+              "e1"
+            ],
+            "reason": "User's purpose was to support tracking (e0, e1) and flagged records for the logistics coordinator to follow up (e1). The qualitative purpose of 'support' is a reasonable inference from the confirmed tasks."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All factual claims are supported by user-confirmed evidence. The bullet correctly describes a supporting role and uses the confirmed approximate monthly workload without inventing leadership or outcomes."
+      },
+      "refinementTrace": {
+        "version": 1,
+        "model": "deepseek/deepseek-v3.2",
+        "elapsedMs": 17194,
+        "outcome": "approved",
+        "calls": [
+          {
+            "stage": "generate",
+            "elapsedMs": 5523,
+            "outcome": "completed"
+          },
+          {
+            "stage": "review",
+            "elapsedMs": 11670,
+            "outcome": "completed"
+          }
+        ]
+      }
+    }
+  }
+}

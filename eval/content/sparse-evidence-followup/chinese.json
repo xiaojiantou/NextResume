@@ -1,0 +1,151 @@
+{
+  "corpusPath": "eval/content/sparse-evidence-cases.json",
+  "corpusHash": "3aa0c80850c875cc9888a0781b3406b6bbef67d1f3f6e16ab6264c91b3bc8211",
+  "selectedCases": [
+    "sparse-chinese-unknown-numbers"
+  ],
+  "codeRevision": "7799a1c07a6cf1571b7c094113aafd661136e36e",
+  "codeHashes": {
+    "lib/refinementHarness.ts": "c569be6f4c250b0285ff93859db411f9115bb0978ba7c934db36a2cdbe5aa155",
+    "lib/refinementReview.ts": "d8efc1baf408df46be4a36c2386d6f7d5f80e6a3ad5d34e1d9bb7ad17d98e4da",
+    "lib/refineBullet.ts": "84a58c4d181968fcea7aab9a7d68af5c166c03862bff9d37ac14766b42977043",
+    "lib/evidenceLedger.ts": "74980262ac7c226d25501cebd25b736a991c0269af9fe3dcdff4048e660af0f4",
+    "lib/resumeImpact.ts": "329ae7c6ecb6c282116374678687868a269bf2d8209d550b4b25fc0707b806e3",
+    "lib/contentQuality.ts": "c0d81293d222df03eefb0f9217aa55659c6f94ac49867c5cbc7b22ea397adba3",
+    "lib/resumeStructure.ts": "7eb6767d84315bd1944cff5224997fb092d7e26c015b7aa9b74ae0c837a88c78",
+    "lib/models.ts": "3b0c641cd92610ac41a91638b11a32346646f9021bb373b2de51ed26e32e0b93",
+    "scripts/eval-refinement.mjs": "d24c4689b026d89fbac23655ff1bcf9c134e8da2198ad33a056b5ea79c96ed2f"
+  },
+  "model": "deepseek/deepseek-v3.2",
+  "at": "2026-09-11T05:35:22.305Z",
+  "scope": "single authored case through production refinement runner; not a quality benchmark",
+  "calls": [
+    {
+      "ms": 3222,
+      "usage": {
+        "prompt_tokens": 1962,
+        "completion_tokens": 104,
+        "total_tokens": 2066,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "ms": 8966,
+      "usage": {
+        "prompt_tokens": 753,
+        "completion_tokens": 215,
+        "total_tokens": 968,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 384,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    }
+  ],
+  "result": {
+    "ok": true,
+    "bullet": {
+      "id": "sparse-chinese-unknown-numbers",
+      "text": "分类账户常见问题并补充操作步骤，整理成资料供新同事查阅。",
+      "evidence": [
+        "sparse-chinese-unknown-numbers",
+        "voice-transcript"
+      ],
+      "matchedKeywords": [],
+      "rationale": "根据您补充的实际工作内容，将‘主导知识库建设’更正为‘分类并补充步骤’，删除了未统计的‘效率提升50%’，使贡献描述准确、定性。",
+      "evidenceLedger": [
+        {
+          "kind": "source",
+          "text": "协助整理客服常见问题资料。"
+        },
+        {
+          "kind": "user_confirmed",
+          "text": "我协助整理的是常见账户问题：把同事提供的问题分类，并补充对应的操作步骤，资料供新同事查阅。我没有负责整个知识库项目，也没有统计处理量、节省时间或效率变化。",
+          "confirmedAt": "2026-09-02T12:00:00.000Z"
+        },
+        {
+          "kind": "instruction",
+          "text": "写得更有贡献感一些。",
+          "confirmedAt": "2026-09-09T12:00:00Z"
+        },
+        {
+          "kind": "instruction",
+          "text": "根据我补充的实际工作写清贡献。处理量、节省时间和效率变化都没有统计，数字不知道，保持定性描述。上一版的主导和效率提升不是我提供的事实。",
+          "confirmedAt": "2026-09-09T12:00:00Z"
+        }
+      ],
+      "refinementReview": {
+        "text": "分类账户常见问题并补充操作步骤，整理成资料供新同事查阅。",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "分类账户常见问题",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "用户确认将同事提供的常见账户问题进行分类。"
+          },
+          {
+            "text": "并补充操作步骤",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "用户确认补充了对应的操作步骤。"
+          },
+          {
+            "text": "整理成资料供新同事查阅。",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e0",
+              "e1"
+            ],
+            "reason": "原始证据提及整理资料，用户确认资料供新同事查阅。"
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "所有陈述均有证据支持，尊重了用户对范围、所有权和量化结果的更正，且未引入估算。"
+      },
+      "refinementTrace": {
+        "version": 1,
+        "model": "deepseek/deepseek-v3.2",
+        "elapsedMs": 12190,
+        "outcome": "approved",
+        "calls": [
+          {
+            "stage": "generate",
+            "elapsedMs": 3223,
+            "outcome": "completed"
+          },
+          {
+            "stage": "review",
+            "elapsedMs": 8966,
+            "outcome": "completed"
+          }
+        ]
+      }
+    }
+  }
+}

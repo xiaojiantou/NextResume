@@ -236,3 +236,53 @@ facts and sparse evidence questions; replacing this particular weak opener is a
 bounded clarity improvement, not new impact evidence.
 
 Validation for this follow-up: 332 automated tests and `tsc --noEmit` passed.
+
+## Sparse evidence and spoken experience
+
+Sparse development examples exposed two collection gaps: a valid `ask` could
+omit its question, and the calculator menu lacked a neutral workload measure for
+nontechnical work. Valid unanswered asks now receive one question in the source
+language. Ambiguous participation asks for the person's actual contribution;
+explicit work asks about its use. Existing questions are preserved, and strong
+kept bullets and unavailable reviews do not receive invented review decisions.
+Revision instructions explicitly exclude hypothetical completed examples that
+the writer might otherwise copy as facts.
+
+`monthly_workload` computes average count per occurrence × occurrences per month,
+using the item type explicitly selected by the user. It is available as an optional calculator in each refinement panel,
+including when the original reviewer did not suggest it. All fields start empty.
+The user chooses the counted item, supplies comparable inputs and confirms them;
+the server recomputes the value, unit and formula. Changes require confirmation
+again. This describes work volume, not savings, unique reach or ownership of the
+team's output. Counts can include repeat work on the same item. Unknown outcomes
+can remain qualitative.
+
+Voice recognition was present but its icon was hidden inside the refinement
+input. Each bullet now advertises "Refine · voice or text", with a visible
+"Tell your story" control and a typing alternative when browser recognition is
+unavailable. The prompt accepts an ordinary spoken account and extracts the
+actual task, method and result without requiring a prewritten editing request.
+English/Chinese dictation selection remains. The original bullet anchors output
+language; the user's narrative and corrections remain evidence. The user reviews
+the proposed bullet before accepting it. Pipeline version 9 refreshes older
+optimization results.
+
+Four fictional examples under `eval/content/sparse-evidence-cases.json` ran
+through the production refinement harness, with separate outputs in
+`eval/content/sparse-evidence-followup`. All completed generation and independent
+factual review in 7.7–17.2 seconds, with two model calls each. The Chinese spoken
+account became an English bullet describing checks, missing delivery dates and
+coordinator handoff. The workload example retained approximately 500 shipment
+records monthly. The qualitative cases introduced no measured gains. These are
+authored development examples, not human writing preferences or reserved
+validation; no real recordings or customer records were used.
+
+Validation: 342 automated tests and TypeScript checks passed. The browser test
+simulates recognition events and mocks all APIs; it verifies speech appended to
+typed context, Chinese language selection, rejection preserving the current
+bullet, evidence persistence, unit selection/reconfirmation, estimate removal,
+acceptance and lock, typing fallback, and mobile width. It does not measure real
+microphone permissions, browser speech-service availability or transcription
+accuracy. A local dev-server host/proxy loop was resolved by restarting with the
+project's normal host settings; the UI test requests the public page signed out
+to keep external authentication handshakes outside this mocked flow.

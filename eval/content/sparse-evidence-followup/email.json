@@ -1,0 +1,134 @@
+{
+  "corpusPath": "eval/content/sparse-evidence-cases.json",
+  "corpusHash": "3aa0c80850c875cc9888a0781b3406b6bbef67d1f3f6e16ab6264c91b3bc8211",
+  "selectedCases": [
+    "sparse-email-confirmed-tasks"
+  ],
+  "codeRevision": "7799a1c07a6cf1571b7c094113aafd661136e36e",
+  "codeHashes": {
+    "lib/refinementHarness.ts": "c569be6f4c250b0285ff93859db411f9115bb0978ba7c934db36a2cdbe5aa155",
+    "lib/refinementReview.ts": "d8efc1baf408df46be4a36c2386d6f7d5f80e6a3ad5d34e1d9bb7ad17d98e4da",
+    "lib/refineBullet.ts": "84a58c4d181968fcea7aab9a7d68af5c166c03862bff9d37ac14766b42977043",
+    "lib/evidenceLedger.ts": "74980262ac7c226d25501cebd25b736a991c0269af9fe3dcdff4048e660af0f4",
+    "lib/resumeImpact.ts": "329ae7c6ecb6c282116374678687868a269bf2d8209d550b4b25fc0707b806e3",
+    "lib/contentQuality.ts": "c0d81293d222df03eefb0f9217aa55659c6f94ac49867c5cbc7b22ea397adba3",
+    "lib/resumeStructure.ts": "7eb6767d84315bd1944cff5224997fb092d7e26c015b7aa9b74ae0c837a88c78",
+    "lib/models.ts": "3b0c641cd92610ac41a91638b11a32346646f9021bb373b2de51ed26e32e0b93",
+    "scripts/eval-refinement.mjs": "d24c4689b026d89fbac23655ff1bcf9c134e8da2198ad33a056b5ea79c96ed2f"
+  },
+  "model": "deepseek/deepseek-v3.2",
+  "at": "2026-09-11T05:35:19.376Z",
+  "scope": "single authored case through production refinement runner; not a quality benchmark",
+  "calls": [
+    {
+      "ms": 4765,
+      "usage": {
+        "prompt_tokens": 1981,
+        "completion_tokens": 92,
+        "total_tokens": 2073,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1600,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    },
+    {
+      "ms": 2959,
+      "usage": {
+        "prompt_tokens": 729,
+        "completion_tokens": 117,
+        "total_tokens": 846,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "text_tokens": 0,
+          "image_tokens": 0,
+          "video_tokens": 0
+        },
+        "completion_tokens_details": null
+      }
+    }
+  ],
+  "result": {
+    "ok": true,
+    "bullet": {
+      "id": "sparse-email-confirmed-tasks",
+      "text": "Checked links and scheduled drafts for course-launch email campaigns after manager approval.",
+      "evidence": [
+        "sparse-email-confirmed-tasks",
+        "voice-transcript"
+      ],
+      "matchedKeywords": [],
+      "rationale": "根据您确认的事实，移除了未经证实的领导力和转化率声明，并具体说明了您检查链接和安排草稿的实际贡献。",
+      "evidenceLedger": [
+        {
+          "kind": "source",
+          "text": "Helped prepare email campaigns for course launches."
+        },
+        {
+          "kind": "user_confirmed",
+          "text": "I checked the links in course-launch emails and scheduled the drafts after the campaign manager approved them. I assisted with preparation; I did not own the campaign strategy. I have no measured conversion or revenue outcome for my work.",
+          "confirmedAt": "2026-09-02T12:00:00.000Z"
+        },
+        {
+          "kind": "instruction",
+          "text": "Make my contribution more specific.",
+          "confirmedAt": "2026-09-09T12:00:00Z"
+        },
+        {
+          "kind": "instruction",
+          "text": "Use my confirmed details to explain my actual contribution. I have no measured campaign outcome. The previous draft's leadership and conversion claims were generated without evidence; remove them.",
+          "confirmedAt": "2026-09-09T12:00:00Z"
+        }
+      ],
+      "refinementReview": {
+        "text": "Checked links and scheduled drafts for course-launch email campaigns after manager approval.",
+        "status": "approved",
+        "claims": [
+          {
+            "text": "Checked links and scheduled drafts for course-launch email campaigns after manager approval.",
+            "verdict": "supported",
+            "evidenceIds": [
+              "e1"
+            ],
+            "reason": "User confirmed checking links, scheduling drafts after manager approval, and the context of course-launch email campaigns."
+          }
+        ],
+        "audit": {
+          "supported": true,
+          "correctionsRespected": true,
+          "estimatesPreserved": true
+        },
+        "reason": "All claims are directly supported by user-confirmed evidence."
+      },
+      "refinementTrace": {
+        "version": 1,
+        "model": "deepseek/deepseek-v3.2",
+        "elapsedMs": 7726,
+        "outcome": "approved",
+        "calls": [
+          {
+            "stage": "generate",
+            "elapsedMs": 4766,
+            "outcome": "completed"
+          },
+          {
+            "stage": "review",
+            "elapsedMs": 2959,
+            "outcome": "completed"
+          }
+        ]
+      }
+    }
+  }
+}

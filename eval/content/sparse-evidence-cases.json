@@ -1,0 +1,114 @@
+[
+  {
+    "id": "sparse-email-confirmed-tasks",
+    "category": "qualitative-task-evidence",
+    "originalBullet": "Helped prepare email campaigns for course launches.",
+    "instruction": "Use my confirmed details to explain my actual contribution. I have no measured campaign outcome. The previous draft's leadership and conversion claims were generated without evidence; remove them.",
+    "current": "Led course-launch email campaigns that increased conversions by 30%.",
+    "candidate": "Supported course-launch email campaigns by checking links and scheduling approved drafts.",
+    "expected": "supported",
+    "reason": "Confirmed link checks and scheduling approved drafts make the assistance concrete. These tasks do not establish campaign ownership or a conversion improvement.",
+    "turns": [
+      {
+        "instruction": "Make my contribution more specific.",
+        "result": "Led course-launch email campaigns that increased conversions by 30%."
+      }
+    ],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Helped prepare email campaigns for course launches."
+      },
+      {
+        "kind": "user_confirmed",
+        "text": "I checked the links in course-launch emails and scheduled the drafts after the campaign manager approved them. I assisted with preparation; I did not own the campaign strategy. I have no measured conversion or revenue outcome for my work.",
+        "confirmedAt": "2026-09-02T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "sparse-chinese-unknown-numbers",
+    "category": "qualitative-task-evidence",
+    "originalBullet": "协助整理客服常见问题资料。",
+    "instruction": "根据我补充的实际工作写清贡献。处理量、节省时间和效率变化都没有统计，数字不知道，保持定性描述。上一版的主导和效率提升不是我提供的事实。",
+    "current": "主导客服知识库建设，提升问题处理效率 50%。",
+    "candidate": "协助整理客服常见账户问题资料，将同事提供的问题分类并补充操作步骤，供新同事查阅。",
+    "expected": "supported",
+    "reason": "用户确认了分类问题、补充步骤和供新同事查阅的用途，同时明确未知处理量和效率数据；改写应保留协助角色及定性贡献。",
+    "turns": [
+      {
+        "instruction": "写得更有贡献感一些。",
+        "result": "主导客服知识库建设，提升问题处理效率 50%。"
+      }
+    ],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "协助整理客服常见问题资料。"
+      },
+      {
+        "kind": "user_confirmed",
+        "text": "我协助整理的是常见账户问题：把同事提供的问题分类，并补充对应的操作步骤，资料供新同事查阅。我没有负责整个知识库项目，也没有统计处理量、节省时间或效率变化。",
+        "confirmedAt": "2026-09-02T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "sparse-warehouse-confirmed-workload",
+    "category": "confirmed-workload-estimate",
+    "originalBullet": "Helped track warehouse shipments.",
+    "instruction": "Use the actual tasks and monthly workload estimate I confirmed. Keep the workload approximate and keep my supporting role. The previous draft invented leadership and an on-time delivery result; neither is evidence.",
+    "current": "Led warehouse logistics and eliminated shipment delays.",
+    "candidate": "Supported warehouse shipment tracking by updating approximately 500 shipment records per month and flagging missing statuses for the coordinator to follow up.",
+    "expected": "supported",
+    "reason": "The confirmed average of 25 shipment records each time across 20 updates per month supports approximately 500 shipment-record updates per month. This is estimated work volume, not a count of unique shipments or an improvement in delivery speed.",
+    "turns": [
+      {
+        "instruction": "Make this contribution clearer.",
+        "result": "Led warehouse logistics and eliminated shipment delays."
+      }
+    ],
+    "evidenceLedger": [
+      {
+        "kind": "source",
+        "text": "Helped track warehouse shipments."
+      },
+      {
+        "kind": "user_confirmed",
+        "text": "I updated shipment status records for the warehouse and flagged records with missing statuses for the logistics coordinator to follow up. I supported tracking; I did not manage the warehouse or own delivery outcomes. The estimate counts the records I update, which can include repeat updates to the same shipment. I have no measured time savings or delivery improvement.",
+        "confirmedAt": "2026-09-02T12:00:00.000Z"
+      },
+      {
+        "kind": "confirmed_estimate",
+        "text": "Approximately 500 shipment records per month",
+        "estimate": {
+          "metric": "monthly_workload",
+          "inputs": {
+            "unit": "shipment records",
+            "perRun": "25",
+            "runs": "20"
+          },
+          "value": 500,
+          "description": "Approximately 500 shipment records per month",
+          "basis": "average count each time × times per month; What you counted: shipment records; Average count each time: 25; Times per month: 20",
+          "confirmedAt": "2026-09-02T12:00:00.000Z"
+        },
+        "confirmedAt": "2026-09-02T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "sparse-spoken-chinese-english-bullet",
+    "category": "spoken-experience-evidence",
+    "originalBullet": "Helped prepare weekly delivery reports.",
+    "instruction": "嗯，那个周报，我的工作其实是检查仓库同事发来的表格，把没有填预计送达日期的记录标出来，再把这些记录交给物流协调员跟进。对，我是协助整理，并不负责整个配送流程。我没有统计节省多少时间，也不知道订单有没有因此变快。",
+    "current": "Helped prepare weekly delivery reports.",
+    "candidate": "Supported weekly delivery reporting by checking warehouse spreadsheets and flagging records missing expected delivery dates for the logistics coordinator to follow up.",
+    "expected": "supported",
+    "reason": "A conversational Chinese account states specific checks and handoff, while keeping assistance and unknown outcomes explicit. The source bullet is English, so the rewrite must remain English.",
+    "turns": [],
+    "evidenceLedger": [
+      { "kind": "source", "text": "Helped prepare weekly delivery reports." }
+    ]
+  }
+]

@@ -68,6 +68,13 @@ calculators; reviewer metadata can suggest at most two metrics; the refinement
 panel collects and confirms inputs. These estimates never change resume text
 merely by opening or filling the form.
 
+The later `monthly_workload` calculator adds neutral scale for nontechnical work:
+average count each time × times per month, using an explicitly selected item type.
+It does not imply
+unique items, a performance gain, or ownership of all team output. The same
+user-confirmation, approximate wording and server-recomputation rules apply.
+Users can instead describe the actual task and qualitative use by voice or text.
+
 The earlier `v2` exploratory runs tested a stricter policy and uncovered both
 unsupported expansions and excessive retention. Preserve them as diagnostic
 history, not evidence that the updated policy has been validated by those runs.
