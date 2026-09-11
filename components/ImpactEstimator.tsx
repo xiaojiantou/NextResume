@@ -15,22 +15,33 @@ export function ImpactEstimator({ metric, onConfirm }: {
   const [confirmed, setConfirmed] = useState(false);
   const [saved, setSaved] = useState(false);
   const estimate = estimateImpact(metric, inputs);
+  const updateInput = (key: string, value: string) => {
+    setInputs(previous => ({ ...previous, [key]: value }));
+    setConfirmed(false);
+    setSaved(false);
+  };
   return (
     <details className="mt-3 rounded-md border border-ink-200 p-3 text-xs">
       <summary className="cursor-pointer font-medium text-ink-800">Estimate impact: {definition.label}</summary>
       <p className="mt-2 text-ink-600">{definition.question}</p>
+      {"guidance" in definition && <p className="mt-1 text-ink-600">{definition.guidance}</p>}
       <p className="mt-1 text-ink-500">Fill in known values or defensible approximations. Blank fields stay unknown. This calculation is a draft until you confirm it.</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {definition.inputs.map(input => (
           <label key={input.id} htmlFor={`${id}-${input.id}`} className="text-ink-700">
             {input.label}
-            <input id={`${id}-${input.id}`} type="number" min="0" step="any" value={inputs[input.id] ?? ""}
-              onChange={event => {
-                setInputs(previous => ({ ...previous, [input.id]: event.target.value }));
-                setConfirmed(false);
-                setSaved(false);
-              }}
-              className="mt-1 block w-full rounded-md border border-ink-200 bg-white p-2 focus:outline-none focus:ring-2 focus:ring-accent-100" />
+            {"options" in input ? (
+              <select id={`${id}-${input.id}`} value={inputs[input.id] ?? ""}
+                onChange={event => updateInput(input.id, event.target.value)}
+                className="mt-1 block w-full rounded-md border border-ink-200 bg-white p-2 focus:outline-none focus:ring-2 focus:ring-accent-100">
+                <option value="">Choose what you counted</option>
+                {input.options.map(option => <option key={option} value={option}>{option}</option>)}
+              </select>
+            ) : (
+              <input id={`${id}-${input.id}`} type="number" min="0" step="any" value={inputs[input.id] ?? ""}
+                onChange={event => updateInput(input.id, event.target.value)}
+                className="mt-1 block w-full rounded-md border border-ink-200 bg-white p-2 focus:outline-none focus:ring-2 focus:ring-accent-100" />
+            )}
           </label>
         ))}
       </div>

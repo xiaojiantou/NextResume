@@ -26,7 +26,7 @@ export type EvidenceRecord = {
 /** Never trust a submitted result or formula. Recompute from confirmed inputs. */
 export function normalizeConfirmedEstimates(raw: unknown): ConfirmedEstimate[] {
   if (raw === undefined) return [];
-  if (!Array.isArray(raw) || raw.length > 5) throw new Error("Invalid confirmed estimates.");
+  if (!Array.isArray(raw) || raw.length > Object.keys(IMPACT_METRICS).length) throw new Error("Invalid confirmed estimates.");
   const seen = new Set<string>();
   return raw.map(item => {
     if (!item || typeof item !== "object" || typeof item.metric !== "string" || !Object.hasOwn(IMPACT_METRICS, item.metric) || seen.has(item.metric)) throw new Error("Invalid estimate metric.");
@@ -77,7 +77,7 @@ export function normalizePriorEvidence(raw: unknown): EvidenceRecord[] {
 
 export function normalizeEstimateRetractions(raw: unknown): ImpactMetric[] {
   if (raw === undefined) return [];
-  if (!Array.isArray(raw) || raw.length > 5 || raw.some(metric => typeof metric !== "string" || !Object.hasOwn(IMPACT_METRICS, metric))) throw new Error("Invalid removed estimates.");
+  if (!Array.isArray(raw) || raw.length > Object.keys(IMPACT_METRICS).length || raw.some(metric => typeof metric !== "string" || !Object.hasOwn(IMPACT_METRICS, metric))) throw new Error("Invalid removed estimates.");
   return [...new Set(raw)] as ImpactMetric[];
 }
 

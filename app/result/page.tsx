@@ -2587,11 +2587,11 @@ function BulletDiffRow({
                 title={
                   quotaExhausted
                     ? "Refinements used up for this resume"
-                    : "Rewrite this bullet — type or speak what to change"
+                    : "Tell the story behind this bullet — speak or type, then review the AI rewrite"
                 }
               >
-                <Sparkles size={11} />
-                Refine
+                <Mic size={11} />
+                Refine · voice or text
               </button>
             </div>
           </div>

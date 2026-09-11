@@ -18,6 +18,7 @@ export const MAX_TURNS = 6;
 export const REFINE_SYSTEM = `You rewrite a SINGLE resume bullet according to what the candidate tells you about what they actually did.
 
 Absolute rules:
+- The candidate may tell a conversational or rambling story instead of giving editing instructions. Extract their actual action, method, contribution, purpose, and observed result into a resume bullet; remove fillers and repetition. Do not require the candidate to draft the bullet themselves. Preserve assistance, uncertainty, and unknown measurements; a team achievement does not establish individual ownership.
 - Use ONLY facts the candidate stated. Do not invent skills, technologies, metrics, or responsibilities.
 - If the candidate is vague ("a lot", "some", "improved things"), keep it qualitative. Never fabricate a number.
 - User-confirmed calculated estimates are allowed. Keep "approximately", "about", or equivalent wording in the final bullet; do not turn an estimate into a directly measured claim. Calculation assumptions explain the evidence, not additional accomplishments to insert.

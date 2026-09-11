@@ -106,7 +106,8 @@ export function BulletRefine({
   const savedAnswer = !storedAnswer?.sourceText || storedAnswer.sourceText === (sourceText || bullet.text) ? storedAnswer : undefined;
   const confirmedEstimates = savedAnswer?.estimates ?? [];
   const review = currentContentReview(bullet);
-  const impactMetrics = review?.impactMetrics ?? [];
+  const [addWorkVolume, setAddWorkVolume] = useState(false);
+  const impactMetrics = [...new Set([...(review?.impactMetrics ?? []), ...(addWorkVolume ? ["monthly_workload" as const] : [])])];
   const question = review?.question || savedAnswer?.question ||
     (impactMetrics[0] ? IMPACT_METRICS[impactMetrics[0]].question : undefined);
   const answer = savedAnswer?.answer || "";
@@ -371,6 +372,13 @@ export function BulletRefine({
         }} />
       ))}
 
+      {!atTurnLimit && !impactMetrics.includes("monthly_workload") && (
+        <button type="button" onClick={() => setAddWorkVolume(true)}
+          className="mt-3 text-xs font-medium text-accent-700 underline underline-offset-2">
+          Estimate monthly work volume
+        </button>
+      )}
+
       {confirmedEstimates.length > 0 && (
         <div className="mt-3 text-xs text-ink-600">
           {confirmedEstimates.map(estimate => <div key={estimate.metric} className="flex items-start justify-between gap-2">
@@ -403,8 +411,24 @@ export function BulletRefine({
 
       {!atTurnLimit && (
         <div className="mt-2.5">
+          <label htmlFor={`story-${bullet.id}`} className="block text-xs font-medium text-ink-800">
+            {suggested ? "Add details or tell us what to change" : "Tell the story behind this bullet"}
+          </label>
+          <p className="mt-1 text-xs text-ink-500">
+            Speak naturally or type what you did, how you did it, and what happened. AI will turn your details into a concise bullet for you to review.
+          </p>
+          <button type="button" onClick={recording ? stopRecording : startRecording}
+            disabled={!supported || processing}
+            aria-label={recording ? "Stop recording" : "Tell your story by voice"}
+            className={cn("mt-2 inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50",
+              recording ? "border-rose-200 bg-rose-50 text-rose-700" : "border-accent-200 bg-white text-accent-700 hover:bg-accent-50")}>
+            {recording ? <Square size={13} fill="currentColor" /> : <Mic size={13} />}
+            {recording ? "Stop recording" : "Tell your story"}
+          </button>
+          {!supported && <p className="mt-1 text-xs text-ink-500">Voice input is unavailable in this browser. You can type or paste your story below.</p>}
           <div className="relative">
             <textarea
+              id={`story-${bullet.id}`}
               ref={boxRef}
               value={instruction}
               onChange={(e) => setInstruction(e.target.value)}
@@ -414,33 +438,15 @@ export function BulletRefine({
                   void submit();
                 }
               }}
-              rows={2}
+              rows={3}
+              maxLength={4000}
               placeholder={
                 suggested
                   ? "What should change about this version?"
-                  : "Tell me what to change — type, paste, or dictate."
+                  : "I worked on… My part was… I used… The result or purpose was…"
               }
-              className="w-full resize-y rounded-md border border-ink-100 bg-white py-2 pl-2.5 pr-9 text-xs leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-accent-300 focus:outline-none focus:ring-2 focus:ring-accent-100"
+              className="mt-2 w-full resize-y rounded-md border border-ink-100 bg-white p-2.5 text-xs leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-accent-300 focus:outline-none focus:ring-2 focus:ring-accent-100"
             />
-            {supported && (
-              <button
-                onClick={recording ? stopRecording : startRecording}
-                className={cn(
-                  "absolute right-1.5 top-1.5 rounded-md p-1.5 transition",
-                  recording
-                    ? "bg-rose-600 text-white"
-                    : "text-ink-400 hover:bg-ink-50 hover:text-ink-700",
-                )}
-                aria-label={recording ? "Stop dictation" : "Dictate"}
-                title={recording ? "Stop" : `Dictate in ${lang === "zh-CN" ? "中文" : "English"}`}
-              >
-                {recording ? (
-                  <Square size={11} fill="currentColor" />
-                ) : (
-                  <Mic size={11} />
-                )}
-              </button>
-            )}
           </div>
 
           <div className="mt-2 flex items-center justify-between gap-2">

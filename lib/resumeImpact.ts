@@ -9,7 +9,7 @@ export const RESUME_IMPACT_GUIDANCE = `Assess achievement content using these cr
 6. Relevance/readability: foreground the evidence the target employer values, with concise active wording.
 For AI/LLM work, candidate metrics include monthly token volume (scale), token throughput (performance), latency/TTFT, cost per successful task, evaluation success, adoption, and reliability. Token consumption alone is not impact; fewer tokens at equal quality can be an improvement.
 Do not require a metric in every bullet. If data is missing, recommend a metric to fill or estimate separately, rather than silently inserting a number in the deliverable.
-Permitted impactMetrics identifiers (at most two relevant suggestions): hours_saved, monthly_tokens, cost_reduction, latency_reduction, quality_points. monthly_tokens is only appropriate when the SOURCE demonstrates LLM/token work, not merely because the job mentions AI. An already improved bullet can still have a useful metric suggestion.`;
+Permitted impactMetrics identifiers (at most two relevant suggestions): hours_saved, monthly_tokens, monthly_workload, cost_reduction, latency_reduction, quality_points. monthly_tokens is only appropriate when the SOURCE demonstrates LLM/token work, not merely because the job mentions AI. monthly_workload describes recurring work such as records, campaigns, interviews, reports, or shipments; suggest it when volume would clarify source scope without inventing a before/after improvement. First clarify the candidate's actual contribution if that is unknown. Volume is not savings, unique reach, or ownership of the whole team's output. An already improved bullet can still have a useful metric suggestion.`;
 
 export const IMPACT_METRICS = {
   hours_saved: {
@@ -33,6 +33,18 @@ export const IMPACT_METRICS = {
       { id: "input", label: "Average input tokens per request" },
       { id: "output", label: "Average output tokens per request" },
       { id: "days", label: "Active days per month (1–31)" },
+    ],
+  },
+  monthly_workload: {
+    label: "Monthly work volume",
+    question: "What did you handle, how many each time, and how often per month?",
+    guidance: "Count work you personally performed or supported. This describes volume, not unique reach, savings, or the whole team's output. Keep your role clear in the evidence below.",
+    formula: "average count each time × times per month",
+    unit: "items per month",
+    inputs: [
+      { id: "unit", label: "What you counted", options: ["items", "records", "shipment records", "documents", "reports", "requests", "interview notes", "interviews", "campaigns", "events", "orders", "tickets", "shipments"] },
+      { id: "perRun", label: "Average count each time" },
+      { id: "runs", label: "Times per month" },
     ],
   },
   cost_reduction: {
@@ -72,17 +84,26 @@ export function estimateImpact(metric: ImpactMetric, inputs: Record<string, stri
 } | null {
   const definition = IMPACT_METRICS[metric];
   const values: Record<string, number> = {};
+  const basisValues: Record<string, string> = {};
   for (const input of definition.inputs) {
     const raw = inputs[input.id]?.trim();
     if (!raw) return null;
+    if ("options" in input) {
+      if (!input.options.some(option => option === raw)) return null;
+      basisValues[input.id] = raw;
+      continue;
+    }
     const value = Number(raw);
     if (!Number.isFinite(value) || value < 0) return null;
     values[input.id] = value;
+    basisValues[input.id] = String(value);
   }
   let value: number;
   if (metric === "monthly_tokens") {
     if (values.days < 1 || values.days > 31 || !Number.isInteger(values.days)) return null;
     value = values.requests * (values.input + values.output) * values.days;
+  } else if (metric === "monthly_workload") {
+    value = values.perRun * values.runs;
   } else if (metric === "hours_saved") {
     value = (values.before - values.after) * values.runs / 60;
   } else if (metric === "quality_points") {
@@ -96,7 +117,7 @@ export function estimateImpact(metric: ImpactMetric, inputs: Record<string, stri
   const display = Number(value.toPrecision(3)).toLocaleString("en-US", { maximumSignificantDigits: 3 });
   return {
     value,
-    description: `Approximately ${display} ${definition.unit}`,
-    basis: `${definition.formula}; ${definition.inputs.map(input => `${input.label}: ${values[input.id]}`).join("; ")}`,
+    description: `Approximately ${display} ${metric === "monthly_workload" ? `${basisValues.unit} per month` : definition.unit}`,
+    basis: `${definition.formula}; ${definition.inputs.map(input => `${input.label}: ${basisValues[input.id]}`).join("; ")}`,
   };
 }
