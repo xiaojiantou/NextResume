@@ -45,6 +45,7 @@ Return exactly one review per supplied id.
 - The reason must cite the concrete difference, not generic praise. For retain, explain what the original preserves or what evidence is missing.
 - dimensions lists only actual improvements; use [] for retain.
 - Distinguish an already strong original from an unchanged weak original. An unchanged bullet is not automatically good. nextStep="revise" when the existing source supports a concrete wording improvement; give a specific revisionInstruction using only that source (what to lead with, clarify, or connect). Do not supply a generic instruction such as "make stronger". nextStep="ask" when missing facts prevent a meaningful improvement; ask one focused question. nextStep="keep" for already strong originals and accepted improvements. An improved bullet may still have an optional evidence question.
+- Keep revisionInstruction entirely within the source evidence. Unknown task details, methods, scope, and outcomes belong in an evidence question, never in a completed example bullet or a rewrite instruction, even with "if supported" attached. For example, "updated the backlog" does not establish that its items were feature requests and bug fixes; ask what was updated instead of instructing the writer to add those details.
 - Never require a number or quantified outcome; a clear qualitative contribution can be strong. revisionInstruction must be empty unless nextStep="revise".
 - question is empty unless missing source evidence limits the achievement. Then ask ONE focused optional question about the candidate's own action, method, scope, or observed result. Do not imply a result occurred or suggest a number. Strong complete originals need no question.
 - Do not judge by keyword count, ATS score, stronger-sounding verbs, or the candidate rewrite's rationale.`;
@@ -86,6 +87,15 @@ export function explicitTaskRevision(source: string): string | undefined {
   return `Replace the opening responsibility scaffolding with a direct description of the documented ${match[1].toLowerCase()} task. Rewrite from the original source, not the rejected candidate. Keep its object, method, scope, users, and stated results. Leave the measurement clause intact, including units, denominator, comparison conditions, time period, and approximate wording; do not calculate new figures, upgrade the responsibility, or add a result.`;
 }
 
+/** A valid request for evidence must leave the candidate something to answer.
+ * Select the focus from the source, without suggesting an unconfirmed task or result. */
+function fallbackEvidenceQuestion(source: string): string {
+  const chinese = /\p{Script=Han}/u.test(source);
+  const participation = /^(?:I\s+)?(?:helped|assisted|worked\s+on|participated\s+in|contributed\s+to)\b/i.test(source.trim()) || /参与|协助/.test(source);
+  if (participation) return chinese ? "这项工作中，你具体做了什么？" : "What did you personally do as part of this work?";
+  return chinese ? "如果这项工作被实际使用了，它是如何被使用的？" : "If this work was used, how was it used?";
+}
+
 export function parseContentReviews(raw: unknown, pairs: ReviewPair[], job?: JobAnalysis | null): Map<string, ContentReview> {
   const rows = raw && typeof raw === "object" && "reviews" in raw && Array.isArray(raw.reviews) ? raw.reviews : [];
   const allowed = new Set(["clarity", "specificity", "contribution", "impact", "relevance"]);
@@ -109,6 +119,10 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[], job?: Job
       : atsGain
         ? `${row.reason.trim().slice(0, 400)} Kept the rewrite: it preserves every stated fact and ${atsGain}.`
         : valid ? row.reason.trim().slice(0, 600) : "Content review was unavailable; the original wording was kept.";
+    const question = valid
+      ? (typeof row.question === "string" && row.question.trim() ? row.question.trim().slice(0, 400)
+        : row.nextStep === "ask" ? fallbackEvidenceQuestion(pair.source) : undefined)
+      : undefined;
     return [pair.id, {
       text: pair.candidate, sourceText: pair.source,
       status: valid ? (improved ? "improved" : "retained") : "unreviewed",
@@ -122,7 +136,7 @@ export function parseContentReviews(raw: unknown, pairs: ReviewPair[], job?: Job
       ...(!atsGain && valid && row.nextStep === "revise" && typeof row.revisionInstruction === "string" && row.revisionInstruction.trim()
         ? { revisionInstruction: row.revisionInstruction.trim().slice(0, 800) } : {}),
       ...(missedRevision ? { nextStep: "revise", revisionInstruction: missedRevision } : {}),
-      ...(valid && typeof row.question === "string" && row.question.trim() ? { question: row.question.trim().slice(0, 400) } : {}),
+      ...(question ? { question } : {}),
     }];
   }));
 }

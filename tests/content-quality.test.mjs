@@ -124,3 +124,66 @@ test('task repair never forces acceptance or overrides assistance, future work, 
   assert.equal(improved.status, 'improved');
   assert.equal(improved.nextStep, 'keep');
 });
+
+test('an ask without a question stays actionable and preserves the source instead of retrying without evidence', () => {
+  const sourceText = 'Helped prepare email campaigns for course launches.';
+  const pairs = [{ id: 'b1', source: sourceText, candidate: 'Owned course launch campaigns.' }];
+  for (const question of [undefined, null, '', '   ', 42]) {
+    const reviews = parseContentReviews({ reviews: [{ id: 'b1', decision: 'retain', supported: false, detailsPreserved: true, causalityPreserved: true, reason: 'The personal contribution is unclear.', dimensions: [], nextStep: 'ask', question }] }, pairs);
+    const review = reviews.get('b1');
+    assert.equal(review.nextStep, 'ask');
+    assert.equal(review.question, 'What did you personally do as part of this work?');
+    assert.equal(review.audit.supported, false);
+    assert.deepEqual(contentRevisionIssues(pairs, reviews, new Set()), []);
+    const output = selectReviewedContent({ roles: [{ id: 'r1', bullets: [{ id: 'b1', text: pairs[0].candidate }] }] }, reviews).roles[0].bullets[0];
+    assert.equal(output.text, sourceText);
+    assert.equal(currentContentReview(output).question, review.question);
+  }
+});
+
+test('fallback questions use the source language and distinguish participation from explicit work', () => {
+  const row = { id: 'b1', decision: 'retain', supported: false, detailsPreserved: true, causalityPreserved: true, reason: 'More evidence is needed.', dimensions: [], nextStep: 'ask' };
+  for (const sourceText of ['Assisted with inventory counts.', 'Worked on a delivery dashboard.', 'I helped prepare the weekly report.']) {
+    const review = parseContentReviews({ reviews: [row] }, [{ id: 'b1', source: sourceText, candidate: 'Built the whole reporting system.' }]).get('b1');
+    assert.equal(review.question, 'What did you personally do as part of this work?');
+  }
+  for (const sourceText of ['参与配送数据看板的开发。', '协助整理客户访谈记录。']) {
+    const review = parseContentReviews({ reviews: [row] }, [{ id: 'b1', source: sourceText, candidate: 'Built a reporting system.' }]).get('b1');
+    assert.equal(review.question, '这项工作中，你具体做了什么？');
+  }
+  for (const [sourceText, expected] of [
+    ['Updated the marketing team’s event calendar.', 'If this work was used, how was it used?'],
+    ['更新了市场团队的活动日历。', '如果这项工作被实际使用了，它是如何被使用的？'],
+  ]) {
+    const review = parseContentReviews({ reviews: [row] }, [{ id: 'b1', source: sourceText, candidate: 'Helped with events.' }]).get('b1');
+    assert.equal(review.question, expected);
+  }
+});
+
+test('provided evidence questions survive and strong or unavailable reviews do not gain fallback questions', () => {
+  const sourceText = 'Updated the scheduling product backlog.';
+  const pairs = [{ id: 'b1', source: sourceText, candidate: sourceText }];
+  const row = { id: 'b1', decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'The task is clear.', dimensions: [], nextStep: 'ask' };
+  const question = 'Which backlog items did you personally update?';
+  assert.equal(parseContentReviews({ reviews: [{ ...row, question: `  ${question}  ` }] }, pairs).get('b1').question, question);
+  assert.equal(parseContentReviews({ reviews: [{ ...row, nextStep: 'keep' }] }, pairs).get('b1').question, undefined);
+  assert.equal(parseContentReviews({ reviews: [{ ...row, nextStep: 'revise', revisionInstruction: 'Lead with the documented task.' }] }, pairs).get('b1').question, undefined);
+  const approved = parseContentReviews({ reviews: [{ ...row, decision: 'improved', dimensions: ['clarity'], nextStep: 'keep' }] }, [{ ...pairs[0], candidate: 'Kept the scheduling product backlog updated.' }]).get('b1');
+  assert.equal(approved.status, 'improved');
+  assert.equal(approved.question, undefined);
+  for (const raw of [null, { reviews: [{ ...row, supported: undefined }] }, { reviews: [row, row] }]) {
+    const review = parseContentReviews(raw, pairs).get('b1');
+    assert.equal(review.status, 'unreviewed');
+    assert.equal(review.question, undefined);
+  }
+});
+
+test('an ATS-selected rewrite still has an actionable optional ask when the reviewer omits its question', () => {
+  const sourceText = 'Implemented REST endpoints for the invoice service.';
+  const pairs = [{ id: 'b1', source: sourceText, candidate: 'Implemented API development for the invoice service’s REST endpoints.' }];
+  const review = parseContentReviews({ reviews: [{ id: 'b1', decision: 'retain', supported: true, detailsPreserved: true, causalityPreserved: true, reason: 'Only uses the job’s equivalent terminology.', dimensions: [], nextStep: 'ask', question: '' }] }, pairs, { requiredKeywords: ['API development'], niceToHaveKeywords: [] }).get('b1');
+  assert.equal(review.status, 'improved');
+  assert.equal(review.selectionBasis, 'ats_rubric');
+  assert.equal(review.nextStep, 'ask');
+  assert.equal(review.question, 'If this work was used, how was it used?');
+});
