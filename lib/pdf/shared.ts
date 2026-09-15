@@ -19,6 +19,57 @@ import type {
 import type { ResumeLink } from "../resumeLinks.ts";
 import { normalizeResumeLinks } from "../resumeLinks.ts";
 
+// Lowercased names the "fold unclaimed skills into an existing Languages
+// group" heuristic (below) treats as programming languages.
+const KNOWN_PROGRAMMING_LANGUAGES = new Set([
+  "typescript",
+  "javascript",
+  "python",
+  "java",
+  "c",
+  "c++",
+  "c/c++",
+  "c#",
+  "go",
+  "golang",
+  "rust",
+  "dart",
+  "swift",
+  "kotlin",
+  "php",
+  "ruby",
+  "scala",
+  "sql",
+  "r",
+  "perl",
+  "objective-c",
+  "matlab",
+  "bash",
+  "shell",
+  "haskell",
+  "elixir",
+  "lua",
+  "fortran",
+  "cobol",
+  "assembly",
+  "vba",
+  "groovy",
+  "clojure",
+  "erlang",
+  "f#",
+  "julia",
+  "dart/flutter",
+  "delphi",
+  "pascal",
+  "sas",
+  "ada",
+  "prolog",
+  "scheme",
+  "solidity",
+  "verilog",
+  "vhdl",
+]);
+
 export type ResolvedBlock = {
   id: string;
   heading: string;
@@ -650,11 +701,25 @@ export function resolveResumeContent(
   const unclaimedSkills = resolvedSkills.filter(
     (skill) => !claimed.has(skillKey(skill)),
   );
+  // A rewrite-added skill that is a recognizable programming language (e.g.
+  // "TypeScript", "Dart") still obviously belongs under the source's own
+  // "Languages"/"Programming Languages" group even when its exact text never
+  // appeared there verbatim — file it there instead of leaving it unlabeled.
+  const languagesGroup = sourceGroups.find((group) =>
+    /\bprogramming\s+languages?\b|\blanguages?\b/i.test(group.label),
+  );
+  const trulyUnclaimedSkills = languagesGroup
+    ? unclaimedSkills.filter((skill) => {
+        if (!KNOWN_PROGRAMMING_LANGUAGES.has(skillKey(skill))) return true;
+        languagesGroup.skills.push(skill);
+        return false;
+      })
+    : unclaimedSkills;
   const skillGroups =
     sourceGroups.length === 0
       ? []
-      : unclaimedSkills.length > 0
-        ? [...sourceGroups, { label: "", skills: unclaimedSkills }]
+      : trulyUnclaimedSkills.length > 0
+        ? [...sourceGroups, { label: "", skills: trulyUnclaimedSkills }]
         : sourceGroups;
   const sectionLabels = optimization?.sectionLabels ?? resume.sectionLabels ?? {};
   const experienceGroups = resolveExperienceGroups(
