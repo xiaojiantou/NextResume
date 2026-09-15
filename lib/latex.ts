@@ -115,8 +115,83 @@ export type LatexDocument = {
   links: ResumeLink[];
 };
 
+type MacroTable = Map<string, string>;
+
+// \newcommand{\name}{Sharon Li} in the preamble only *defines* \name — the
+// resume's actual content (the name, phone, email) lives in the replacement
+// text, which templates then reference as a bare \name later in the body.
+// Without recording these, every custom metadata macro a template defines
+// (a near-universal pattern for name/phone/email in LaTeX resume templates)
+// silently expands to nothing.
+function extractMacros(source: string): MacroTable {
+  const macros: MacroTable = new Map();
+  const defCommands = new Set(["newcommand", "renewcommand", "providecommand"]);
+  let index = 0;
+  while (index < source.length) {
+    const backslash = source.indexOf("\\", index);
+    if (backslash === -1) break;
+    const nameMatch = source.slice(backslash + 1).match(/^[a-zA-Z@]+\*?/);
+    if (!nameMatch) {
+      index = backslash + 1;
+      continue;
+    }
+    const command = nameMatch[0];
+    let cursor = backslash + 1 + command.length;
+
+    if (defCommands.has(command)) {
+      let macroName: string | null = null;
+      if (source[cursor] === "{") {
+        const nameGroup = readGroup(source, cursor);
+        if (nameGroup) {
+          macroName = nameGroup.content.trim().replace(/^\\/, "");
+          cursor = nameGroup.end;
+        }
+      } else if (source[cursor] === "\\") {
+        const inner = source.slice(cursor + 1).match(/^[a-zA-Z@]+\*?/);
+        if (inner) {
+          macroName = inner[0];
+          cursor += 1 + inner[0].length;
+        }
+      }
+      // \newcommand{\foo}[1]{...#1...} takes parameters this scanner cannot
+      // substitute — skip rather than expand a macro to its literal "#1".
+      cursor = skipOptional(source, cursor);
+      const bodyGroup = readGroup(source, cursor);
+      if (macroName && bodyGroup) {
+        if (!/#\d/.test(bodyGroup.content)) {
+          macros.set(macroName, bodyGroup.content);
+        }
+        cursor = bodyGroup.end;
+      }
+      index = cursor;
+      continue;
+    }
+
+    if (command === "def" && source[cursor] === "\\") {
+      const inner = source.slice(cursor + 1).match(/^[a-zA-Z@]+\*?/);
+      if (inner) {
+        const macroName = inner[0];
+        const bodyGroup = readGroup(source, cursor + 1 + inner[0].length);
+        if (bodyGroup) {
+          if (!/#\d/.test(bodyGroup.content)) {
+            macros.set(macroName, bodyGroup.content);
+          }
+          index = bodyGroup.end;
+          continue;
+        }
+      }
+    }
+
+    index = cursor;
+  }
+  return macros;
+}
+
 export function latexToText(source: string): LatexDocument {
   const withoutComments = stripLatexComments(source);
+  // Macro definitions live in the preamble but their expansions are read
+  // throughout the body, so scan the whole source for them before slicing.
+  const macros = extractMacros(withoutComments);
   // The preamble is setup, not content. Keep everything when the document has
   // no \begin{document} at all — a fragment is still worth parsing.
   const bodyStart = withoutComments.indexOf("\\begin{document}");
@@ -125,14 +200,14 @@ export function latexToText(source: string): LatexDocument {
       ? withoutComments
       : withoutComments.slice(bodyStart + "\\begin{document}".length);
   const links: ResumeLink[] = [];
-  const text = convert(body, links);
+  const text = convert(body, links, macros);
   return {
     text: tidy(text),
     links: dedupeResumeLinks(links),
   };
 }
 
-function convert(source: string, links: ResumeLink[]): string {
+function convert(source: string, links: ResumeLink[], macros: MacroTable = new Map()): string {
   let output = "";
   let index = 0;
 
@@ -171,6 +246,14 @@ function convert(source: string, links: ResumeLink[]): string {
           // \begin{itemize}[leftmargin=0.15in] — the options follow the
           // environment name and are formatting, never content.
           cursor = skipOptional(source, group.end);
+          // tabularx/tabular* take a width argument before the column spec
+          // (\begin{tabularx}{\linewidth}{L r}) — without skipping it first,
+          // the width group gets mistaken for the spec and the real spec
+          // (here "L r") leaks through as body text.
+          if (environment === "tabularx" || environment === "tabular*") {
+            const width = readGroup(source, cursor);
+            if (width) cursor = skipOptional(source, width.end);
+          }
           // A tabular column spec is layout, never content.
           if (ENVIRONMENTS_WITH_SPEC.has(environment)) {
             const spec = readGroup(source, cursor);
@@ -184,8 +267,8 @@ function convert(source: string, links: ResumeLink[]): string {
 
       if (name === "href") {
         const { groups, end } = readArguments(source, cursor, 2);
-        const url = normalizeLinkUrl(convert(groups[0] ?? "", links).trim());
-        const label = convert(groups[1] ?? "", links).trim();
+        const url = normalizeLinkUrl(convert(groups[0] ?? "", links, macros).trim());
+        const label = convert(groups[1] ?? "", links, macros).trim();
         if (url) links.push({ label: label || labelForUrl(url), url });
         output += label || (url ? labelForUrl(url) : "");
         index = end;
@@ -210,7 +293,7 @@ function convert(source: string, links: ResumeLink[]): string {
 
       if (/^(sub){0,2}section$|^(sub)?paragraph$|^chapter$/.test(name)) {
         const { groups, end } = readArguments(source, cursor, 1);
-        output += `\n\n${convert(groups[0] ?? "", links).trim()}\n`;
+        output += `\n\n${convert(groups[0] ?? "", links, macros).trim()}\n`;
         index = end;
         continue;
       }
@@ -219,9 +302,19 @@ function convert(source: string, links: ResumeLink[]): string {
         const limit = name === "newcommand" || name === "renewcommand" ? 2 : 3;
         const { groups, end } = readArguments(source, cursor, limit);
         if (KEEP_LAST_ARGUMENT.has(name) && groups.length > 0) {
-          output += convert(groups[groups.length - 1], links);
+          output += convert(groups[groups.length - 1], links, macros);
         }
         index = end;
+        continue;
+      }
+
+      // A bare use of a user-defined \newcommand macro (\name, \phone, ...)
+      // expands to its recorded replacement text rather than falling into
+      // the generic "eat following groups" handling below, which would
+      // otherwise silently swallow unrelated content that happens to follow.
+      if (macros.has(name)) {
+        output += convert(macros.get(name) ?? "", links, macros);
+        index = cursor;
         continue;
       }
 
@@ -234,7 +327,7 @@ function convert(source: string, links: ResumeLink[]): string {
       const { groups, end } = readArguments(source, cursor, 6);
       if (groups.length > 0) {
         output += groups
-          .map((group) => convert(group, links).trim())
+          .map((group) => convert(group, links, macros).trim())
           .filter(Boolean)
           .join(" ");
       }
