@@ -218,6 +218,16 @@ function supplementalSkillValues(
   );
 }
 
+// A rewrite occasionally drops the bullet's closing period while a bullet
+// kept verbatim from the source keeps its own — sitting side by side on the
+// page, that inconsistency reads as sloppy proofreading rather than as two
+// independent editing decisions. Every rendered bullet ends in one voice.
+function ensureBulletPunctuation(text: string): string {
+  const trimmed = text.trimEnd();
+  if (!trimmed) return trimmed;
+  return /[.!?:;]["')\]]?$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
 function dedupeTextValues(values: string[]): string[] {
   const seen = new Set<string>();
   return values.filter((value) => {
@@ -482,7 +492,7 @@ export function resolveResumeContent(
         .filter((bullet) => !teamBulletIds.has(bullet.sourceId))
         .map((bullet) => bullet.text),
       ...resolvedBullets.unmapped,
-    ];
+    ].map(ensureBulletPunctuation);
     const teams = (role.teams ?? [])
       .map((team) => ({
         id: team.id,
@@ -493,7 +503,8 @@ export function resolveResumeContent(
         end: team.end,
         bullets: team.bulletIds
           .map((id) => resolvedBullets.bySourceId.get(id))
-          .filter((text): text is string => Boolean(text)),
+          .filter((text): text is string => Boolean(text))
+          .map(ensureBulletPunctuation),
       }))
       .filter((team) => team.bullets.length > 0);
     // The source tech-stack line carries real keyword weight — keep it on the
@@ -516,9 +527,11 @@ export function resolveResumeContent(
   const projects: ResolvedBlock[] = (resume.projects ?? []).map(
     (project) => {
       const opt = optimization?.projects?.find((p) => p.id === project.id);
-      const bullets = opt
-        ? opt.bullets.map((b) => b.text)
-        : project.bullets.map((b) => b.text);
+      const bullets = (
+        opt
+          ? opt.bullets.map((b) => b.text)
+          : project.bullets.map((b) => b.text)
+      ).map(ensureBulletPunctuation);
       return {
         id: project.id,
         heading: project.name,
@@ -544,12 +557,12 @@ export function resolveResumeContent(
           );
           return {
             ...item,
-            bullets: optimizedItem
-              ? optimizedItem.bullets.map((bullet) => ({
-                  id: bullet.id,
-                  text: bullet.text,
-                }))
-              : item.bullets,
+            bullets: (
+              optimizedItem ? optimizedItem.bullets : item.bullets
+            ).map((bullet) => ({
+              id: bullet.id,
+              text: ensureBulletPunctuation(bullet.text),
+            })),
           };
         }),
       };
