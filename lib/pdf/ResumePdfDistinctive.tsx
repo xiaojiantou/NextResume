@@ -350,7 +350,7 @@ export function ResumePdfDistinctive({
   const bulletMarker = variant === "tech" ? "›" : variant === "elegant" ? "—" : "•";
 
   const renderBullet = (text: string, key: string) => (
-    <View key={key} style={styles.bulletRow}>
+    <View key={key} wrap={false} style={styles.bulletRow}>
       <Text style={styles.bulletMarker}>{bulletMarker}</Text>
       <Text style={styles.bulletText}>{text}</Text>
     </View>

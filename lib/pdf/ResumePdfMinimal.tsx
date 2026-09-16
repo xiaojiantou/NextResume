@@ -236,7 +236,7 @@ export function ResumePdfMinimal({
     resolveResumeContent(resume, optimization, { includeSummary });
   const labels = getResumeSectionLabels(language, sectionLabels);
   const renderBullet = (text: string, key: string) => (
-    <View key={key} style={styles.bulletRow}>
+    <View key={key} wrap={false} style={styles.bulletRow}>
       <Text style={styles.bulletDash}>–</Text>
       <Text style={styles.bulletText}>{text}</Text>
     </View>
@@ -417,7 +417,7 @@ export function ResumePdfMinimal({
               <Text style={styles.roleLocation}>{item.location}</Text>
             ) : null}
             {item.bullets.map((bullet) => (
-              <View key={bullet.id} style={styles.bulletRow}>
+              <View key={bullet.id} wrap={false} style={styles.bulletRow}>
                 <Text style={styles.bulletDash}>–</Text>
                 <Text style={styles.bulletText}>{bullet.text}</Text>
               </View>

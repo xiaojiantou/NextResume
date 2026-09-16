@@ -273,7 +273,7 @@ export function ResumePdf({
   );
   const labels = getResumeSectionLabels(language, sectionLabels);
   const renderBullet = (text: string, key: string) => (
-    <View key={key} style={styles.bulletRow}>
+    <View key={key} wrap={false} style={styles.bulletRow}>
       <Text style={styles.bulletDot}>•</Text>
       <Text style={styles.bulletText}>{text}</Text>
     </View>
@@ -422,14 +422,14 @@ export function ResumePdf({
                   <Text style={styles.roleLocation}>{project.location}</Text>
                 ) : null}
                 {project.bullets[0] ? (
-                  <View style={styles.bulletRow}>
+                  <View wrap={false} style={styles.bulletRow}>
                     <Text style={styles.bulletDot}>•</Text>
                     <Text style={styles.bulletText}>{project.bullets[0]}</Text>
                   </View>
                 ) : null}
               </View>
               {project.bullets.slice(1).map((text, index) => (
-                <View key={index} style={styles.bulletRow}>
+                <View key={index} wrap={false} style={styles.bulletRow}>
                   <Text style={styles.bulletDot}>•</Text>
                   <Text style={styles.bulletText}>{text}</Text>
                 </View>
@@ -493,7 +493,7 @@ export function ResumePdf({
               <Text style={styles.roleLocation}>{item.location}</Text>
             ) : null}
             {item.bullets.map((bullet, index) => (
-              <View key={bullet.id || index} style={styles.bulletRow}>
+              <View key={bullet.id || index} wrap={false} style={styles.bulletRow}>
                 <Text style={styles.bulletDot}>•</Text>
                 <Text style={styles.bulletText}>{bullet.text}</Text>
               </View>

@@ -248,7 +248,7 @@ export function ResumePdfSidebar({
     (ref) => ref !== "skills" && ref !== "education",
   );
   const renderBullet = (text: string, key: string) => (
-    <View key={key} style={styles.bulletRow}>
+    <View key={key} wrap={false} style={styles.bulletRow}>
       <Text style={styles.bulletDot}>•</Text>
       <Text style={styles.bulletText}>{text}</Text>
     </View>
@@ -424,7 +424,7 @@ export function ResumePdfSidebar({
               ) : null}
             </View>
             {item.bullets.map((bullet) => (
-              <View key={bullet.id} style={styles.bulletRow}>
+              <View key={bullet.id} wrap={false} style={styles.bulletRow}>
                 <Text style={styles.bulletDot}>•</Text>
                 <Text style={styles.bulletText}>{bullet.text}</Text>
               </View>
