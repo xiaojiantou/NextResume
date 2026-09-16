@@ -889,12 +889,23 @@ function ResultPageInner() {
       )
         .split(", ")
         .filter(Boolean);
+      // The compiled export keeps the document inside its original page
+      // count: any bullet or the summary that grew past its source length
+      // and pushed a page over was reverted to its exact original wording.
+      const revertedForPages = decodeURIComponent(
+        res.headers.get("X-Resume-Page-Guard-Reverted") || "",
+      )
+        .split(",")
+        .filter(Boolean);
       const notices = [
         kept > 0
           ? `${kept} ${kept === 1 ? "line" : "lines"} kept the original wording so your formatting and links stayed intact. Everything else was updated in place.`
           : "",
         omittedSkills.length > 0
           ? `Your skills are grouped by category, so ${omittedSkills.length === 1 ? "this added skill has" : "these added skills have"} no category to go in — add ${omittedSkills.length === 1 ? "it" : "them"} by hand where they fit: ${omittedSkills.join(", ")}.`
+          : "",
+        revertedForPages.length > 0
+          ? `${revertedForPages.length} ${revertedForPages.length === 1 ? "rewrite" : "rewrites"} ran longer than the original wording and would have pushed your document past its original page count, so ${revertedForPages.length === 1 ? "it was" : "they were"} kept as-is.`
           : "",
       ].filter(Boolean);
       if (notices.length > 0) setExportNotice(notices.join(" "));

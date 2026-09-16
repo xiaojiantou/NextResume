@@ -18,6 +18,9 @@ export type CompileFailure = {
 export type CompileSuccess = {
   ok: true;
   pdf: Buffer;
+  /** From the engine's own "Output written on ... (N pages" line; absent if
+   *  the service is an older deploy that doesn't send X-Page-Count yet. */
+  pages?: number;
 };
 
 export function isLatexCompilerConfigured(): boolean {
@@ -71,7 +74,13 @@ export async function compileLatex(
       };
     }
 
-    return { ok: true, pdf: Buffer.from(await res.arrayBuffer()) };
+    const pagesHeader = res.headers.get("X-Page-Count");
+    const pages = pagesHeader ? Number(pagesHeader) : undefined;
+    return {
+      ok: true,
+      pdf: Buffer.from(await res.arrayBuffer()),
+      ...(pages && Number.isFinite(pages) ? { pages } : {}),
+    };
   } catch (error) {
     const aborted = error instanceof Error && error.name === "AbortError";
     return {

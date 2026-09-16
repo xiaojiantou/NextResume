@@ -6,12 +6,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePaidOrder } from "@/lib/entitlement";
 import { rateLimitGuard } from "@/lib/ratelimit";
-import { buildEditedTex, NoTexEditsError } from "@/lib/tex/export";
+import { buildEditedTex, NoTexEditsError, type TexExport } from "@/lib/tex/export";
 import { compileLatex, isLatexCompilerConfigured } from "@/lib/latexCompiler";
+import {
+  SHRINK_BATCH_SIZES,
+  findShrinkCandidates,
+  revertShrinkCandidates,
+} from "@/lib/texPageGuard";
 import type { Optimization, Resume } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// A guarded export can compile the document up to ~6 times (the user's own
+// unedited template, the full rewrite, and a few shrink-and-recompile
+// attempts); each compile is a couple of seconds, but the budget allows for
+// a cold Cloud Run instance too.
+export const maxDuration = 90;
 
 // Compiling costs real CPU on a service we pay for, so it is metered harder
 // than handing back a text file.
@@ -83,12 +92,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let edited;
+    const sourceText = decoded.toString("utf8");
+    let edited: TexExport;
     try {
       edited = buildEditedTex({
         resume,
         optimization,
-        source: decoded.toString("utf8"),
+        source: sourceText,
         includeSummary: includeSummary !== false,
       });
     } catch (error) {
@@ -101,7 +111,7 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    const compiled = await compileLatex(edited.source);
+    let compiled = await compileLatex(edited.source);
     if (!compiled.ok) {
       return NextResponse.json(
         {
@@ -112,6 +122,50 @@ export async function POST(req: NextRequest) {
         },
         { status: compiled.status },
       );
+    }
+
+    // The user's own template already fits their original content in a known
+    // page count; a rewrite that runs longer overflows it even though nothing
+    // in the rewrite is factually wrong. Compiling the unedited source tells
+    // us that baseline. A failure here (or an older compiler build with no
+    // page-count header) just means the guard sits out — never block
+    // delivering the rewrite because this best-effort check couldn't run.
+    const baseline = await compileLatex(sourceText).catch(() => null);
+    const baselinePages = baseline?.ok ? baseline.pages : undefined;
+    const revertedIds: string[] = [];
+    if (baselinePages && compiled.pages && compiled.pages > baselinePages) {
+      const candidates = findShrinkCandidates(resume, optimization);
+      const batchSizes = [...new Set([...SHRINK_BATCH_SIZES, candidates.length])]
+        .filter((size) => size > 0)
+        .sort((a, b) => a - b);
+      for (const batchSize of batchSizes) {
+        const attemptIds = new Set(
+          candidates.slice(0, batchSize).map((candidate) => candidate.id),
+        );
+        const shrunkOptimization = revertShrinkCandidates(
+          resume,
+          optimization,
+          attemptIds,
+        );
+        let shrunkEdited: TexExport;
+        try {
+          shrunkEdited = buildEditedTex({
+            resume,
+            optimization: shrunkOptimization,
+            source: sourceText,
+            includeSummary: includeSummary !== false,
+          });
+        } catch {
+          continue;
+        }
+        const shrunkCompiled = await compileLatex(shrunkEdited.source);
+        if (!shrunkCompiled.ok) continue;
+        edited = shrunkEdited;
+        compiled = shrunkCompiled;
+        revertedIds.length = 0;
+        revertedIds.push(...attemptIds);
+        if (!shrunkCompiled.pages || shrunkCompiled.pages <= baselinePages) break;
+      }
     }
 
     const filename = safeFilename(resume.name, targetTitle || "");
@@ -130,6 +184,17 @@ export async function POST(req: NextRequest) {
         "X-Resume-Skills-Omitted": encodeURIComponent(
           edited.skillsOmitted.slice(0, 20).join(", "),
         ),
+        ...(compiled.pages ? { "X-Resume-Pages": String(compiled.pages) } : {}),
+        ...(baselinePages ? { "X-Resume-Pages-Original": String(baselinePages) } : {}),
+        ...(revertedIds.length
+          ? {
+              // Which bullets/summary lost their rewrite to protect the page
+              // count — shown to the user rather than silently discarded.
+              "X-Resume-Page-Guard-Reverted": encodeURIComponent(
+                revertedIds.join(","),
+              ),
+            }
+          : {}),
       },
     });
   } catch (e) {

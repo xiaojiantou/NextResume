@@ -102,6 +102,17 @@ function runEngine(engine, directory, jobName) {
 }
 
 /**
+ * pdflatex/xelatex/lualatex all print this on a successful run, e.g.
+ * "Output written on resume.pdf (2 pages, 41235 bytes)." The caller uses it
+ * to decide whether a rewrite made the document grow past its original page
+ * count — LaTeX itself has no other cheap way to ask "how many pages."
+ */
+function pageCount(output) {
+  const match = output.match(/Output written on .*\((\d+) pages?,/);
+  return match ? Number(match[1]) : null;
+}
+
+/**
  * The interesting part of a TeX log is the first real error, not the banner.
  * -file-line-error makes those lines greppable.
  */
@@ -144,7 +155,7 @@ async function compile(source, engine) {
     if (pdf.length === 0 || pdf.length > MAX_PDF_BYTES) {
       return { ok: false, status: 422, error: "Compiled PDF was unusable." };
     }
-    return { ok: true, pdf };
+    return { ok: true, pdf, pages: pageCount(result.output) };
   } finally {
     await fs.rm(directory, { recursive: true, force: true }).catch(() => {});
   }
@@ -193,6 +204,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, {
       "Content-Type": "application/pdf",
       "Content-Length": String(result.pdf.length),
+      ...(result.pages ? { "X-Page-Count": String(result.pages) } : {}),
     });
     res.end(result.pdf);
   } catch (error) {
