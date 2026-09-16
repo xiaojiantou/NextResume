@@ -167,7 +167,7 @@ test("optimizing for a role keeps the source's skill categories", () => {
   const content = resolveResumeContent(RESUME, OPTIMIZATION, {});
   assert.deepEqual(
     content.skillGroups.map((group) => group.label),
-    ["Languages", "Cloud", ""],
+    ["Languages", "Cloud", "Additional Skills"],
   );
 });
 
@@ -178,10 +178,10 @@ test("skills are reordered inside their own category, never across", () => {
   assert.deepEqual(content.skillGroups[1].skills, ["AWS", "Docker"]);
 });
 
-test("a skill the rewrite added follows unlabeled rather than being filed", () => {
+test("a skill the rewrite added follows under Additional Skills rather than being filed", () => {
   const content = resolveResumeContent(RESUME, OPTIMIZATION, {});
   const trailing = content.skillGroups[content.skillGroups.length - 1];
-  assert.equal(trailing.label, "");
+  assert.equal(trailing.label, "Additional Skills");
   assert.deepEqual(trailing.skills, ["gRPC"]);
 });
 

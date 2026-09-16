@@ -691,8 +691,9 @@ export function resolveResumeContent(
   // decoration: they are how a reader finds the one skill they came looking
   // for. Optimizing for a role used to drop them and emit an undifferentiated
   // run of forty terms. Keep the labels, reorder inside each one by the
-  // optimized ranking, and let anything the rewrite added follow unlabeled
-  // rather than be filed under a category that never claimed it.
+  // optimized ranking, and let anything the rewrite added follow under its
+  // own "Additional Skills" group rather than be filed under a category that
+  // never claimed it — or left dangling with no label at all.
   const skillRank = new Map(
     resolvedSkills.map((skill, index) => [skillKey(skill), index]),
   );
@@ -732,7 +733,10 @@ export function resolveResumeContent(
     sourceGroups.length === 0
       ? []
       : trulyUnclaimedSkills.length > 0
-        ? [...sourceGroups, { label: "", skills: trulyUnclaimedSkills }]
+        ? [
+            ...sourceGroups,
+            { label: "Additional Skills", skills: trulyUnclaimedSkills },
+          ]
         : sourceGroups;
   const sectionLabels = optimization?.sectionLabels ?? resume.sectionLabels ?? {};
   const experienceGroups = resolveExperienceGroups(
