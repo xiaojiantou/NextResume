@@ -168,8 +168,18 @@ export async function POST(req: NextRequest) {
       complete: args => jsonCompletion({ ...args, model }),
       reviewGrounding: reviewSemanticGrounding,
     });
-    if (result.ok) return NextResponse.json({ optimization: result.optimization });
-    return NextResponse.json({ error: result.error, issues: [...new Set(result.issues.map(publicOptimizationIssue))].slice(0, 12), harness: result.trace }, { status: result.status });
+    // The harness trace (every candidate the model tried, per-call timings,
+    // review verdicts) is debug/eval data — read by tests and eval scripts
+    // that call the harness directly, never by the client. Shipping it here
+    // ships it three times over: once over the wire, once into localStorage
+    // via setOptimization, and once more into Redis for the email-link flow.
+    // On a slow connection that alone can hold up res.json() for minutes
+    // after the server has already finished. Strip it before it leaves.
+    if (result.ok) {
+      const { harness: _harness, ...optimization } = result.optimization;
+      return NextResponse.json({ optimization });
+    }
+    return NextResponse.json({ error: result.error, issues: [...new Set(result.issues.map(publicOptimizationIssue))].slice(0, 12) }, { status: result.status });
 
   } catch (e) {
     console.error("optimize failed", e);
