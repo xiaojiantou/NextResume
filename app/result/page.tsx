@@ -745,10 +745,12 @@ function ResultPageInner() {
     targetPages,
   ]);
 
-  const downloadPdf = async () => {
-    if (!resume || !optimization) return;
+  const downloadPdf = async (opts?: {
+    silent?: boolean;
+  }): Promise<boolean> => {
+    if (!resume || !optimization) return false;
     setExporting(true);
-    setExportError(null);
+    if (!opts?.silent) setExportError(null);
     setExportNotice(null);
     try {
       if (structureStale) {
@@ -818,12 +820,16 @@ function ResultPageInner() {
         );
       }
       await saveResponseAsFile(res, `${resume.name || "resume"}.pdf`);
+      return true;
     } catch (downloadFailure) {
-      setExportError(
-        downloadFailure instanceof Error
-          ? downloadFailure.message
-          : "PDF export failed.",
-      );
+      if (!opts?.silent) {
+        setExportError(
+          downloadFailure instanceof Error
+            ? downloadFailure.message
+            : "PDF export failed.",
+        );
+      }
+      return false;
     } finally {
       setExporting(false);
     }
@@ -941,7 +947,26 @@ function ResultPageInner() {
       process.env.NEXT_PUBLIC_LATEX_COMPILER === "1"
     ) {
       const compiled = await downloadSource(true, { silent: true });
-      if (compiled) return;
+      if (compiled) {
+        setExportNotice((prev) =>
+          prev
+            ? `Compiled from your original LaTeX. ${prev}`
+            : "Compiled from your original LaTeX.",
+        );
+        return;
+      }
+      // The user's own template failed to build (or the compiler is
+      // unavailable) — fall back quietly on the request, but say so on the
+      // result, since the PDF they get is now our layout, not theirs.
+      const templated = await downloadPdf({ silent: true });
+      if (templated) {
+        setExportNotice(
+          "Your LaTeX couldn't be compiled, so this PDF uses our template layout instead.",
+        );
+      } else {
+        setExportError("Both your LaTeX and the template PDF failed to export.");
+      }
+      return;
     }
     await downloadPdf();
   };
