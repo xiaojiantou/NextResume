@@ -275,6 +275,10 @@ function ResultPageInner() {
   const [contentVersion, setContentVersion] =
     useState<ContentVersion>("full");
   const [evidenceMode, setEvidenceMode] = useState(true);
+  // When on (the default for a .tex source), "Download PDF" compiles the
+  // user's own LaTeX first and only falls back to our template on failure.
+  // When off, it goes straight to the template.
+  const [preferLatexCompile, setPreferLatexCompile] = useState(true);
   const [hoveredOptimizedId, setHoveredOptimizedId] = useState<string | null>(
     null,
   );
@@ -943,6 +947,7 @@ function ResultPageInner() {
   // template we cannot build, or the compiler being unavailable).
   const downloadPdfPreferSource = async () => {
     if (
+      preferLatexCompile &&
       sourceDocument?.kind === "tex" &&
       process.env.NEXT_PUBLIC_LATEX_COMPILER === "1"
     ) {
@@ -1794,6 +1799,16 @@ function ResultPageInner() {
                   icon={<FileText size={14} />}
                   label="AI summary"
                   title="Your original resume has no summary section. Include the AI-written one?"
+                />
+              ) : null}
+              {sourceDocument?.kind === "tex" &&
+              process.env.NEXT_PUBLIC_LATEX_COMPILER === "1" ? (
+                <ToolbarSwitch
+                  checked={preferLatexCompile}
+                  onChange={() => setPreferLatexCompile((v) => !v)}
+                  icon={<FileDown size={14} />}
+                  label="Use your LaTeX"
+                  title="Download PDF compiles your own LaTeX source first, falling back to our template only if that fails. Turn off to always use the template."
                 />
               ) : null}
             </div>

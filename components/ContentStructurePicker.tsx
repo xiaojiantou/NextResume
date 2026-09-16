@@ -21,13 +21,13 @@ const OPTIONS: Array<{
     id: "optimize",
     label: "Optimize for role",
     description:
-      "Tailor wording, section headings, and section order to emphasize the target role.",
+      "Reorders and renames sections to match the job, for example moving Projects above Education if that's more relevant.",
   },
   {
     id: "preserve",
     label: "Keep original sections",
     description:
-      "Keep detected headings and section order; shorten or omit lower-priority content to meet the page target.",
+      "Never touches your section names or order. Only rewrites bullet wording and trims lower-priority content to fit the page target.",
   },
 ];
 
