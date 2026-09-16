@@ -833,11 +833,14 @@ function ResultPageInner() {
   // user's own file, so nothing is re-laid-out and their original typography,
   // spacing, and hyperlinks survive untouched. Word and LaTeX differ only in
   // which endpoint reads the source.
-  const downloadSource = async (compiled = false) => {
-    if (!resume || !optimization || !sourceDocument) return;
+  const downloadSource = async (
+    compiled = false,
+    opts?: { silent?: boolean },
+  ): Promise<boolean> => {
+    if (!resume || !optimization || !sourceDocument) return false;
     const isTex = sourceDocument.kind === "tex";
     setExporting(true);
-    setExportError(null);
+    if (!opts?.silent) setExportError(null);
     setExportNotice(null);
     try {
       if (structureStale) {
@@ -913,15 +916,34 @@ function ResultPageInner() {
         res,
         `${resume.name || "resume"}.${compiled ? "pdf" : isTex ? "tex" : "docx"}`,
       );
+      return true;
     } catch (downloadFailure) {
-      setExportError(
-        downloadFailure instanceof Error
-          ? downloadFailure.message
-          : "Export failed.",
-      );
+      if (!opts?.silent) {
+        setExportError(
+          downloadFailure instanceof Error
+            ? downloadFailure.message
+            : "Export failed.",
+        );
+      }
+      return false;
     } finally {
       setExporting(false);
     }
+  };
+
+  // For a .tex source, the user's own LaTeX typesetting is the truer
+  // "download PDF" than our template rendering — try compiling their source
+  // first and only fall back to the generic template when that fails (a
+  // template we cannot build, or the compiler being unavailable).
+  const downloadPdfPreferSource = async () => {
+    if (
+      sourceDocument?.kind === "tex" &&
+      process.env.NEXT_PUBLIC_LATEX_COMPILER === "1"
+    ) {
+      const compiled = await downloadSource(true, { silent: true });
+      if (compiled) return;
+    }
+    await downloadPdf();
   };
 
   const generatePersonalized = useCallback(async () => {
@@ -1409,7 +1431,7 @@ function ResultPageInner() {
     ? () => regenerate(selectedModel, contentStructure)
     : needsFit
       ? runFit
-      : downloadPdf;
+      : downloadPdfPreferSource;
   const primaryDisabled =
     fitting ||
     exporting ||
