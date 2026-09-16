@@ -62,7 +62,8 @@ const FACTUAL_INTEGRITY = `Hard rules — factual integrity:
 const WRITING_STYLE = `Hard rules — writing style:
 - Weave matched keywords into the factual claim itself — the tool used, the method applied, the thing built. NEVER append meta-commentary clauses such as "showcasing proficiency in X", "demonstrating expertise in Y", "highlighting Z", "proving ability to W". A bullet ends with a concrete outcome or fact, never with a comment about the candidate's skills.
 - Start with an accurate action verb supported by the source. Vary sentence structure without inflating ownership.
-- State a job keyword once where it is load-bearing; do not repeat the same term across several bullets — ATS keyword-stuffing filters flag that density.`;
+- State a job keyword once where it is load-bearing; do not repeat the same term across several bullets — ATS keyword-stuffing filters flag that density.
+- Each bullet has a character budget below (its original length plus headroom). Meet it by cutting throat-clearing and redundant qualifiers, not by dropping evidence — "in Python" or "using Kubernetes" folds into the clause it modifies instead of trailing after a comma. A resume this dense grows a page for every few bullets that run long, so treat the budget as a hard constraint, not a suggestion.`;
 
 const KEYWORD_COVERAGE = `Hard rules — keyword coverage:
 - The ATS gaps list the job's missing keywords. Walk that list. For each one, ask whether this entry ALREADY demonstrates the same thing under different wording — "K8s" for Kubernetes, "REST endpoints" for API development, "on-call" for production support. Where it does, say it in the posting's wording instead of the candidate's. This is a naming change, not a new claim. It is secondary to communicating the candidate's concrete contribution and supported results.
@@ -111,7 +112,8 @@ Non-negotiable rules:
 - Every number in a rewrite must already appear in that same source bullet.
 ${CONTENT_WRITING_STANDARD}
 - Use concise, natural English. Keep each bullet non-empty and improve relevance only within its own evidence.
-- Weave job keywords into the factual claim itself; never append meta-commentary such as "showcasing proficiency in X".`;
+- Weave job keywords into the factual claim itself; never append meta-commentary such as "showcasing proficiency in X".
+- Each bullet has a character budget below (its original length plus headroom). Meet it by cutting redundant wording, not evidence — a resume this dense grows a page for every few bullets that run long.`;
 
 const ADDITIONAL_PRESERVE_SYSTEM = `You rewrite the bullets of ONE additional resume section (awards, certifications, publications, volunteering, or similar) for a target job while preserving all source facts and structure. Improve the wording substantially when the evidence supports it.
 
@@ -126,7 +128,8 @@ Non-negotiable rules:
 - Return every item and every bullet exactly once, in source order, with the same ids. Every output bullet's evidence MUST be exactly [its own id]. Never merge, split, add, delete, or move items or bullets.
 - Never alter or infer organizations, awards, certificates, publications, dates, metrics, or results.
 - Every number in a rewrite must already appear in that same source bullet.
-- Use concise, natural English. Keep each bullet non-empty.`;
+- Use concise, natural English. Keep each bullet non-empty.
+- Each bullet has a character budget below (its original length plus headroom). Meet it by cutting redundant wording, not evidence.`;
 
 const GLOBAL_OPTIMIZE_SYSTEM = `You tailor the headline, summary, skills list, and section organization of a resume to a specific job description. The achievement bullets are rewritten separately; you do not output them.
 
@@ -162,7 +165,7 @@ Hard rules — headline, skills, and summary:
 - "title" is the headline that sits under the candidate's name. It is the field recruiters filter an ATS on, so it must speak to THIS posting, not to the candidate's last job. Set it to the posting's exact job title when the candidate's experience supports that role. If the posting's seniority would overstate them, keep the posting's role words and drop only the level ("Senior Backend Platform Engineer" -> "Backend Platform Engineer"). Never claim a specialization the resume does not evidence, and never put a company name in it.
 - "skills" must contain EVERY skill from the input resume, reordered so the ones matching the JD come first. You may add a skill ONLY if the resume bullets clearly demonstrate it. Never drop a real skill, never invent one.
 - Return a skillEvidence entry ONLY for a skill you are ADDING — one whose words are not already in the input resume. An added skill must be a "capability", "domain" or "soft" skill, must cite 1-3 real source bullet ids in "evidence", and must explain the support in "rationale". A tool, framework, platform, credential or language can never be added — if the resume does not name it, it does not go in.
-- "summary": if the input resume has a summary, rewrite THAT summary in place with concise wording; do not prepend a second summary, do not echo the old summary plus a new one, and keep it to 1-2 sentences grounded only in real experience.
+- "summary": if the input resume has a summary, rewrite THAT summary in place with concise wording; do not prepend a second summary, do not echo the old summary plus a new one, and keep it to 1-2 sentences grounded only in real experience. Stay within the character budget given below for it — a longer summary can push the whole document onto another page.
 - If the input resume has no summary, return "" unless a short summary would materially improve role positioning for this specific job. When you create one, keep it to 1-2 concise sentences grounded only in real experience.
 - NEVER introduce a number the resume does not already contain. Never append meta-commentary such as "showcasing proficiency in X".
 
@@ -178,7 +181,7 @@ Output ONLY valid JSON matching this schema:
 
 Non-negotiable rules:
 - Keep every source skill. You may reorder skills and normalize capitalization only. Never add or remove one.
-- If the source summary is present, rewrite that summary in place with concise wording; do not add a second summary above it. If the source summary is empty, keep it empty.
+- If the source summary is present, rewrite that summary in place with concise wording; do not add a second summary above it. If the source summary is empty, keep it empty. Stay within the character budget given below for it — a longer summary can push the whole document onto another page.
 - "title" is the headline under the candidate's name, not a source fact: it is the field recruiters filter an ATS on, so it must speak to THIS posting even when the source has none. Set it to the posting's exact job title when the candidate's experience supports that role. If the posting's seniority would overstate them, keep the posting's role words and drop only the level ("Senior Backend Platform Engineer" -> "Backend Platform Engineer"). Never claim a specialization the resume does not evidence, and never put a company name in it. If the experience does not support the role at all, return the source title unchanged.
 - Never introduce a number the resume does not already contain. Never append meta-commentary such as "showcasing proficiency in X".`;
 
@@ -278,6 +281,23 @@ function keywordBudgetBlock({
   }`;
 }
 
+// A resume's layout is fixed page space; nothing in the prompts otherwise
+// bounds a rewrite's length, and a bullet that grows to cram in a matched
+// keyword or a fuller clause is exactly what pushes a tightly-set LaTeX
+// resume from two pages to three. +35% or +18 characters, whichever is more,
+// gives a short bullet room to name a keyword without licensing a paragraph.
+export function lengthBudget(sourceLength: number): number {
+  return Math.max(sourceLength + 18, Math.ceil(sourceLength * 1.35));
+}
+
+function bulletLengthBudgetBlock(bullets: ReadonlyArray<{ id: string; text: string }>): string {
+  if (bullets.length === 0) return "";
+  const budgets = Object.fromEntries(
+    bullets.map((bullet) => [bullet.id, lengthBudget(bullet.text.length)]),
+  );
+  return `\n\nCharacter budget per bullet (max output length for "text"; the source is already this many characters or fewer):\n${JSON.stringify(budgets)}`;
+}
+
 export function buildChunkPrompt({
   chunk,
   resume,
@@ -314,9 +334,12 @@ export function buildChunkPrompt({
           skills: baselineOptimization.skills,
         }
       : null;
+    const summaryBudget = resume.summary
+      ? `\n\nCharacter budget for "summary" (max output length; the source is ${resume.summary.length} characters): ${lengthBudget(resume.summary.length)}`
+      : "";
     return {
       system: preserve ? GLOBAL_PRESERVE_SYSTEM : GLOBAL_OPTIMIZE_SYSTEM,
-      user: `Original resume:\n${JSON.stringify(resume)}${jobBlock}\n\nATS report (gaps to close):\n${JSON.stringify(report)}${keywordBudgetBlock({ resume, job, chunk, structureMode })}\n\nUser-locked content ids (return their text verbatim):\n${JSON.stringify(locked)}\n\nLocked wording baseline:\n${JSON.stringify(baseline)}${feedbackBlock(feedback)}`,
+      user: `Original resume:\n${JSON.stringify(resume)}${jobBlock}\n\nATS report (gaps to close):\n${JSON.stringify(report)}${keywordBudgetBlock({ resume, job, chunk, structureMode })}${summaryBudget}\n\nUser-locked content ids (return their text verbatim):\n${JSON.stringify(locked)}\n\nLocked wording baseline:\n${JSON.stringify(baseline)}${feedbackBlock(feedback)}`,
       maxTokens: preserve ? 1200 : 2000,
     };
   }
@@ -336,10 +359,11 @@ export function buildChunkPrompt({
       baselineOptimization?.additionalSections?.find(
         (candidate) => candidate.id === chunk.id,
       ) ?? null;
-    const bulletCount = items.reduce((sum, item) => sum + item.bullets.length, 0);
+    const sectionBullets = items.flatMap((item) => item.bullets);
+    const bulletCount = sectionBullets.length;
     return {
       system: ADDITIONAL_PRESERVE_SYSTEM,
-      user: `Section to rewrite:\n${JSON.stringify(section)}${context}${jobBlock}${gapsBlock}${keywordBudgetBlock({ resume, job, chunk, structureMode })}\n\nUser-locked ids in this section (return their text verbatim from the baseline):\n${JSON.stringify(lockedContentIds.filter((id) => ids.has(id)))}\n\nLocked wording baseline for this section:\n${JSON.stringify(baseline)}${feedbackBlock(feedback)}`,
+      user: `Section to rewrite:\n${JSON.stringify(section)}${context}${jobBlock}${gapsBlock}${keywordBudgetBlock({ resume, job, chunk, structureMode })}${bulletLengthBudgetBlock(sectionBullets)}\n\nUser-locked ids in this section (return their text verbatim from the baseline):\n${JSON.stringify(lockedContentIds.filter((id) => ids.has(id)))}\n\nLocked wording baseline for this section:\n${JSON.stringify(baseline)}${feedbackBlock(feedback)}`,
       maxTokens: Math.min(4000, 200 + bulletCount * 180),
     };
   }
@@ -358,7 +382,7 @@ export function buildChunkPrompt({
   const label = chunk.kind === "role" ? "work role" : "project";
   return {
     system: preserve ? ENTRY_PRESERVE_SYSTEM : ENTRY_OPTIMIZE_SYSTEM,
-    user: `Entry to rewrite (${label}):\n${JSON.stringify(entry)}${context}${jobBlock}${gapsBlock}${keywordBudgetBlock({ resume, job, chunk, structureMode })}\n\nUser-locked ids in this entry (return their text verbatim from the baseline):\n${JSON.stringify(lockedContentIds.filter((id) => ids.has(id)))}\n\nLocked wording baseline for this entry:\n${JSON.stringify(baseline)}${feedbackBlock(feedback)}`,
+    user: `Entry to rewrite (${label}):\n${JSON.stringify(entry)}${context}${jobBlock}${gapsBlock}${keywordBudgetBlock({ resume, job, chunk, structureMode })}${bulletLengthBudgetBlock(bullets)}\n\nUser-locked ids in this entry (return their text verbatim from the baseline):\n${JSON.stringify(lockedContentIds.filter((id) => ids.has(id)))}\n\nLocked wording baseline for this entry:\n${JSON.stringify(baseline)}${feedbackBlock(feedback)}`,
     maxTokens: Math.min(
       4500,
       preserve ? 200 + bullets.length * 180 : 320 + bullets.length * 240,

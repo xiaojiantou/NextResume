@@ -5,6 +5,7 @@ import {
   buildChunkPrompt,
   chunkKey,
   chunksForIssues,
+  lengthBudget,
   mapWithConcurrency,
   planRewriteChunks,
 } from "../lib/optimizeChunks.ts";
@@ -136,6 +137,51 @@ test("entry prompts carry only their own entry and locked ids", () => {
   });
   assert.match(global.user, /\["summary"\]/);
   assert.match(global.system, /sectionOrder/);
+});
+
+test("entry and global prompts carry a per-bullet and summary character budget", () => {
+  const prompt = buildChunkPrompt({
+    chunk: { kind: "role", id: "r1" },
+    resume,
+    job,
+    report,
+    structureMode: "optimize",
+    lockedContentIds: [],
+    baselineOptimization: null,
+  });
+  const budgets = JSON.parse(prompt.user.match(/Character budget per bullet[^:]*:\n(\{.*?\})\n/s)[1]);
+  assert.deepEqual(budgets, {
+    b1: lengthBudget("Led company rollout.".length),
+    b2: lengthBudget("Built platform APIs.".length),
+  });
+  // Headroom, not a license to double length: short bullets get a floor, not a multiplier blowout.
+  assert.equal(lengthBudget(20), 38);
+  assert.equal(lengthBudget(100), 135);
+
+  const global = buildChunkPrompt({
+    chunk: { kind: "global" },
+    resume,
+    job,
+    report,
+    structureMode: "optimize",
+    lockedContentIds: [],
+    baselineOptimization: null,
+  });
+  assert.match(
+    global.user,
+    new RegExp(`Character budget for "summary"[^:]*: ${lengthBudget(resume.summary.length)}`),
+  );
+
+  const noSummary = buildChunkPrompt({
+    chunk: { kind: "global" },
+    resume: { ...resume, summary: "" },
+    job,
+    report,
+    structureMode: "optimize",
+    lockedContentIds: [],
+    baselineOptimization: null,
+  });
+  assert.doesNotMatch(noSummary.user, /Character budget for "summary"/);
 });
 
 test("entry prompts carry the keyword budget left by the rest of the document", () => {
