@@ -194,8 +194,25 @@ export function parseTexBlocks(source: string): TexBlock[] {
       }
 
       // Presentational or a template macro: the command itself contributes no
-      // text, and its braces are walked normally so the words inside count.
-      index = skipOptional(source, cursor);
+      // text, and its braces (if any) are walked normally so the words
+      // inside count — that is how `Built \textbf{cool} things.` stays one
+      // rewritable sentence instead of fragmenting at every inline command.
+      //
+      // A macro called with NO braced argument at all is different: it can
+      // only be a structural or spacing directive (a template's own
+      // `\resumeItemListStart`/`\resumeItemListEnd`, `\hfill`, and similar
+      // custom macros are always bare like this), never a piece of running
+      // prose. Without closing here, a bullet ending mid-sentence and the
+      // next section's heading — separated only by a bare macro and a
+      // newline, with no blank line between them — silently merge into one
+      // block. If the optimizer's rewrite for that bullet then lands on the
+      // merged block, the heading in between is deleted along with it: a
+      // whole nested team's name and dates vanishing from the export, and
+      // (if it straddled an itemize/justify pair from a macro like
+      // `\resumeItemListEnd`) the document failing to compile at all.
+      const afterName = skipOptional(source, cursor);
+      if (source[afterName] !== "{") close();
+      index = afterName;
       continue;
     }
 

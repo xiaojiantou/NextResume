@@ -190,3 +190,47 @@ test("nothing is marked when no wording changed", async () => {
   const { linesTouchedByEdits } = await import("../lib/tex/lines.ts");
   assert.equal(linesTouchedByEdits(SOURCE, blocks, []).size, 0);
 });
+
+// A bullet that ends mid-sentence and the next section's heading, separated
+// only by a bare custom macro (\resumeItemListEnd) and a single newline —
+// with no blank line between them — used to merge into one block. Rewriting
+// the bullet then deleted the heading in between along with it; when that
+// heading was a \begin{itemize}/\end{itemize} boundary macro, the exported
+// document also stopped compiling at all. Real-world case: a nested "team"
+// heading and its dates disappeared from a Meta Platforms entry.
+const NESTED_TEAM_SOURCE = String.raw`\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}}
+\begin{document}
+\resumeItemListStart
+    \item Mentored two interns by scoping projects and doing calibration; both received return offers
+      \resumeItemListEnd
+    \textit{Network Analytics} \hfill \textit{2019 - 2021}
+      \resumeItemListStart
+    \item Improved Fbflow efficiency by replacing three C-based LRU maps
+      \resumeItemListEnd
+\end{document}`;
+
+test("a bare custom macro between a bullet and the next heading ends the block", () => {
+  const nestedBlocks = parseTexBlocks(NESTED_TEAM_SOURCE);
+  const texts = nestedBlocks.map((block) => block.text);
+  assert.deepEqual(texts, [
+    "Mentored two interns by scoping projects and doing calibration; both received return offers",
+    "Network Analytics",
+    "2019 - 2021",
+    "Improved Fbflow efficiency by replacing three C-based LRU maps",
+  ]);
+});
+
+test("rewriting the bullet before a bare-macro boundary keeps the heading after it and every environment balanced", () => {
+  const nestedBlocks = parseTexBlocks(NESTED_TEAM_SOURCE);
+  const mentored = nestedBlocks.find((block) => block.text.startsWith("Mentored"));
+  const result = applyTexEdits(NESTED_TEAM_SOURCE, nestedBlocks, [
+    { blockIndex: mentored.index, text: "Mentored two interns end to end; both earned return offers." },
+  ]);
+  assert.equal(result.skipped.length, 0);
+  assert.match(result.source, /Network Analytics/);
+  assert.equal(
+    (result.source.match(/\\resumeItemListStart/g) ?? []).length,
+    (result.source.match(/\\resumeItemListEnd/g) ?? []).length,
+  );
+});
