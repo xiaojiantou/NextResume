@@ -3,6 +3,7 @@
 "use client";
 
 import type { Resume, ResumeRole, ResumeTeam } from "@/lib/types";
+import type { ResumeLink } from "@/lib/resumeLinks";
 import { cn } from "@/lib/cn";
 import {
   Plus,
@@ -199,6 +200,27 @@ export function EditableResumeCanvas({
       onResumeChange({ ...resume, summary: editValue });
     }
     setEditingField(null);
+  };
+
+  const updateLink = (index: number, patch: Partial<ResumeLink>) => {
+    const links = (resume.links ?? []).map((link, i) =>
+      i === index ? { ...link, ...patch } : link,
+    );
+    onResumeChange({ ...resume, links });
+  };
+
+  const removeLink = (index: number) => {
+    onResumeChange({
+      ...resume,
+      links: (resume.links ?? []).filter((_, i) => i !== index),
+    });
+  };
+
+  const addLink = () => {
+    onResumeChange({
+      ...resume,
+      links: [...(resume.links ?? []), { label: "", url: "" }],
+    });
   };
 
   const updateBullet = (roleId: string, bulletId: string, newText: string) => {
@@ -483,6 +505,48 @@ export function EditableResumeCanvas({
             value={resume.summary}
             multiline
           />
+          <div className="space-y-1">
+            <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
+              Links
+            </label>
+            <p className="text-xs text-ink-400 -mt-0.5 mb-1">
+              Every URL the parser found in your source shows in the contact
+              line below your name. Remove the ones you don&apos;t want there.
+            </p>
+            <div className="space-y-2">
+              {(resume.links ?? []).map((link, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={link.label}
+                    onChange={(e) => updateLink(index, { label: e.target.value })}
+                    placeholder="Label (e.g. LinkedIn)"
+                    className="w-40 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans"
+                  />
+                  <input
+                    type="text"
+                    value={link.url ?? ""}
+                    onChange={(e) => updateLink(index, { url: e.target.value })}
+                    placeholder="https://…"
+                    className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans"
+                  />
+                  <button
+                    onClick={() => removeLink(index)}
+                    className="p-2 hover:bg-red-50 rounded-md text-ink-400 hover:text-red-600 transition"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={addLink}
+                className="flex items-center gap-1.5 text-sm text-accent-600 hover:text-accent-700 font-medium"
+              >
+                <Plus size={14} />
+                Add link
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
