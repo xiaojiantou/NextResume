@@ -7,6 +7,7 @@
 // code execution that belongs behind a hard isolation boundary rather than
 // inside the app process.
 import "server-only";
+import type { TexEngine } from "./texEngine";
 
 export type CompileFailure = {
   ok: false;
@@ -29,7 +30,7 @@ export function isLatexCompilerConfigured(): boolean {
 
 export async function compileLatex(
   source: string,
-  { timeoutMs = 30_000 }: { timeoutMs?: number } = {},
+  { timeoutMs = 30_000, engine }: { timeoutMs?: number; engine?: TexEngine } = {},
 ): Promise<CompileSuccess | CompileFailure> {
   const base = process.env.LATEX_COMPILER_URL;
   if (!base) {
@@ -54,7 +55,7 @@ export async function compileLatex(
           ? { "X-Compile-Token": process.env.LATEX_COMPILER_TOKEN }
           : {}),
       },
-      body: JSON.stringify({ source }),
+      body: JSON.stringify({ source, ...(engine ? { engine } : {}) }),
       signal: controller.signal,
       cache: "no-store",
     });

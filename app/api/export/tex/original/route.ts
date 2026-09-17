@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePaidOrder } from "@/lib/entitlement";
 import { rateLimitGuard } from "@/lib/ratelimit";
 import { compileLatex, isLatexCompilerConfigured } from "@/lib/latexCompiler";
+import { detectTexEngine } from "@/lib/texEngine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -50,7 +51,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const compiled = await compileLatex(decoded.toString("utf8"));
+    const sourceText = decoded.toString("utf8");
+    // Every request used to compile under plain pdflatex regardless of what
+    // the template actually needs, so a resume built around a system font
+    // (fontspec + xelatex, the common case) still "compiled" — just with a
+    // silently substituted fallback font, wrong metrics, and wrong spacing.
+    const compiled = await compileLatex(sourceText, {
+      engine: detectTexEngine(sourceText),
+    });
     if (!compiled.ok) {
       return NextResponse.json(
         { error: compiled.error, log: compiled.log },

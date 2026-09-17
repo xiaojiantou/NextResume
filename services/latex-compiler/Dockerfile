@@ -9,7 +9,10 @@ FROM debian:bookworm-slim
 
 # texlive-latex-extra carries titlesec, enumitem, and the other packages
 # resume templates lean on; fonts-extra carries fontawesome, which is common
-# in contact headers. xetex is here because some templates select it.
+# in contact headers. xetex/luatex are here because a template built around a
+# system font (fontspec + \setmainfont) needs one of them — pdflatex cannot
+# run fontspec at all — and the server picks whichever the template declares
+# or requires (lib/texEngine.ts), so both must actually be installed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       nodejs \
       texlive-latex-base \
@@ -18,6 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       texlive-fonts-recommended \
       texlive-fonts-extra \
       texlive-xetex \
+      texlive-luatex \
       lmodern \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /usr/share/doc /usr/share/man

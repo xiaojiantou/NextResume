@@ -8,6 +8,7 @@ import { requirePaidOrder } from "@/lib/entitlement";
 import { rateLimitGuard } from "@/lib/ratelimit";
 import { buildEditedTex, NoTexEditsError, type TexExport } from "@/lib/tex/export";
 import { compileLatex, isLatexCompilerConfigured } from "@/lib/latexCompiler";
+import { detectTexEngine } from "@/lib/texEngine";
 import {
   SHRINK_BATCH_SIZES,
   findShrinkCandidates,
@@ -93,6 +94,11 @@ export async function POST(req: NextRequest) {
     }
 
     const sourceText = decoded.toString("utf8");
+    // Every compile of this document uses the engine the template itself
+    // declares (or clearly needs, e.g. fontspec) — the edits only ever touch
+    // achievement text, never the preamble, so one detection covers the
+    // rewrite, the baseline, and every shrink-and-recompile attempt below.
+    const engine = detectTexEngine(sourceText);
     let edited: TexExport;
     try {
       edited = buildEditedTex({
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    let compiled = await compileLatex(edited.source);
+    let compiled = await compileLatex(edited.source, { engine });
     if (!compiled.ok) {
       return NextResponse.json(
         {
@@ -130,7 +136,7 @@ export async function POST(req: NextRequest) {
     // us that baseline. A failure here (or an older compiler build with no
     // page-count header) just means the guard sits out — never block
     // delivering the rewrite because this best-effort check couldn't run.
-    const baseline = await compileLatex(sourceText).catch(() => null);
+    const baseline = await compileLatex(sourceText, { engine }).catch(() => null);
     const baselinePages = baseline?.ok ? baseline.pages : undefined;
     const revertedIds: string[] = [];
     if (baselinePages && compiled.pages && compiled.pages > baselinePages) {
@@ -158,7 +164,7 @@ export async function POST(req: NextRequest) {
         } catch {
           continue;
         }
-        const shrunkCompiled = await compileLatex(shrunkEdited.source);
+        const shrunkCompiled = await compileLatex(shrunkEdited.source, { engine });
         if (!shrunkCompiled.ok) continue;
         edited = shrunkEdited;
         compiled = shrunkCompiled;
