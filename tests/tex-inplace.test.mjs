@@ -5,6 +5,7 @@ import test from "node:test";
 import { parseTexBlocks } from "../lib/tex/blocks.ts";
 import { applyTexEdits, escapeLatex } from "../lib/tex/rewrite.ts";
 import { planTexEdits } from "../lib/tex/plan.ts";
+import { buildEditedSourceWithTouchedLines, linesTouchedByEdits } from "../lib/tex/lines.ts";
 
 const SOURCE = String.raw`\documentclass[letterpaper,11pt]{article}
 \usepackage{hyperref}
@@ -219,6 +220,59 @@ test("a bare custom macro between a bullet and the next heading ends the block",
     "2019 - 2021",
     "Improved Fbflow efficiency by replacing three C-based LRU maps",
   ]);
+});
+
+test("the optimized pane's edited view shows the new wording, not the original text again", () => {
+  // The un-rewritten bullet is identical either way — the whole point of
+  // this test is that the CHANGED bullet reads differently in each view.
+  const target = byText("gRPC gateway");
+  const rewritten = "Built a gRPC gateway serving 60M requests/day";
+  const plan = { edits: [{ blockIndex: target.index, text: rewritten }] };
+
+  const originalTouched = linesTouchedByEdits(SOURCE, blocks, plan.edits);
+  const originalLines = SOURCE.split("\n");
+  assert.ok(
+    [...originalTouched].every((line) => originalLines[line].includes("40M")),
+    "the original view must still show the ORIGINAL number, only flagged as changing",
+  );
+
+  const { source: edited, touchedLines } = buildEditedSourceWithTouchedLines(
+    SOURCE,
+    blocks,
+    plan.edits,
+  );
+  const editedLines = edited.split("\n");
+  assert.ok(
+    [...touchedLines].some((line) => editedLines[line].includes("60M")),
+    "the edited view must show the NEW wording on the touched line",
+  );
+  assert.ok(
+    [...touchedLines].every((line) => !editedLines[line].includes("40M")),
+    "the edited view must not still show the original wording on a touched line",
+  );
+  // Every line the original pane doesn't flag must be byte-identical in both
+  // views — an edit must never leak onto an untouched line.
+  for (let i = 0; i < originalLines.length; i += 1) {
+    if (!originalTouched.has(i)) assert.equal(editedLines[i], originalLines[i]);
+  }
+});
+
+test("a link-carrying block and a no-op rewrite are skipped in the edited view exactly like a real export", () => {
+  const link = byText("Pricing Engine");
+  const unchanged = byText("gRPC gateway");
+  const plan = {
+    edits: [
+      { blockIndex: link.index, text: "Renamed Pricing Engine" }, // has a link: must stay untouched
+      { blockIndex: unchanged.index, text: unchanged.text }, // identical text: not a real change
+    ],
+  };
+  const { source: edited, touchedLines } = buildEditedSourceWithTouchedLines(
+    SOURCE,
+    blocks,
+    plan.edits,
+  );
+  assert.equal(edited, SOURCE);
+  assert.equal(touchedLines.size, 0);
 });
 
 test("rewriting the bullet before a bare-macro boundary keeps the heading after it and every environment balanced", () => {

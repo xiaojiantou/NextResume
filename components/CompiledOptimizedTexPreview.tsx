@@ -134,6 +134,7 @@ export function CompiledOptimizedTexPreview({
       optimization={optimization}
       includeSummary={includeSummary}
       pageSize={pageSize}
+      mode="edited"
     />
   );
 

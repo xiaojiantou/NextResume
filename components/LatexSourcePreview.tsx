@@ -13,7 +13,10 @@
 import { useMemo } from "react";
 import { parseTexBlocks } from "@/lib/tex/blocks";
 import { planTexEdits } from "@/lib/tex/plan";
-import { linesTouchedByEdits } from "@/lib/tex/lines";
+import {
+  buildEditedSourceWithTouchedLines,
+  linesTouchedByEdits,
+} from "@/lib/tex/lines";
 import type { Optimization, Resume } from "@/lib/types";
 
 type Line = {
@@ -27,10 +30,8 @@ function buildLines(
   resume: Resume,
   optimization: Optimization | null,
   includeSummary: boolean,
-): { lines: Line[]; changingCount: number } {
-  const raw = source.split("\n");
-  let changing = new Set<number>();
-
+  mode: "original" | "edited",
+): { lines: Line[]; changingCount: number; sourceText: string } {
   if (optimization) {
     try {
       const blocks = parseTexBlocks(source);
@@ -40,19 +41,46 @@ function buildLines(
         blocks,
         includeSummary,
       });
-      changing = linesTouchedByEdits(source, blocks, plan.edits);
+      // "edited" is the optimized pane's own source view: showing the
+      // original text again with a highlight reads as no change at all when
+      // a bullet's rewrite happens to share long stretches of wording with
+      // the source, which is exactly what made this look broken next to the
+      // original pane showing the same unedited lines.
+      if (mode === "edited") {
+        const { source: edited, touchedLines } =
+          buildEditedSourceWithTouchedLines(source, blocks, plan.edits);
+        const rawEdited = edited.split("\n");
+        return {
+          lines: rawEdited.map((text, index) => ({
+            number: index + 1,
+            text,
+            changing: touchedLines.has(index),
+          })),
+          changingCount: touchedLines.size,
+          sourceText: edited,
+        };
+      }
+      const changing = linesTouchedByEdits(source, blocks, plan.edits);
+      const raw = source.split("\n");
+      return {
+        lines: raw.map((text, index) => ({
+          number: index + 1,
+          text,
+          changing: changing.has(index),
+        })),
+        changingCount: changing.size,
+        sourceText: source,
+      };
     } catch {
       // A source we cannot scan still deserves to be shown verbatim.
     }
   }
 
+  const raw = source.split("\n");
   return {
-    lines: raw.map((text, index) => ({
-      number: index + 1,
-      text,
-      changing: changing.has(index),
-    })),
-    changingCount: changing.size,
+    lines: raw.map((text, index) => ({ number: index + 1, text, changing: false })),
+    changingCount: 0,
+    sourceText: source,
   };
 }
 
@@ -62,6 +90,7 @@ export function LatexSourcePreview({
   optimization,
   includeSummary = true,
   pageSize,
+  mode = "original",
 }: {
   source: string;
   resume: Resume;
@@ -70,11 +99,18 @@ export function LatexSourcePreview({
   /** Output paper size; when given, the pane takes the page's shape so it
    *  lines up with the PDF pane beside it instead of ending mid-column. */
   pageSize?: { widthPt: number; heightPt: number };
+  /** "original" (default) shows the unmodified source with the lines an
+   *  export would touch highlighted. "edited" shows the source AFTER those
+   *  edits are applied — the optimized pane's own view, so it actually
+   *  displays the new wording instead of showing the same unchanged text a
+   *  second time. */
+  mode?: "original" | "edited";
 }) {
   const { lines, changingCount } = useMemo(
-    () => buildLines(source, resume, optimization, includeSummary),
-    [source, resume, optimization, includeSummary],
+    () => buildLines(source, resume, optimization, includeSummary, mode),
+    [source, resume, optimization, includeSummary, mode],
   );
+  const edited = mode === "edited";
 
   return (
     <div
@@ -85,19 +121,20 @@ export function LatexSourcePreview({
           : undefined
       }
       role="region"
-      aria-label="Original LaTeX source"
+      aria-label={edited ? "Rewritten LaTeX source" : "Original LaTeX source"}
     >
       <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-3 py-2">
         <span className="text-[11px] text-ink-500">
-          Your source, unmodified · {lines.length.toLocaleString()} lines
+          {edited ? "Your source, rewritten" : "Your source, unmodified"} ·{" "}
+          {lines.length.toLocaleString()} lines
         </span>
         {optimization ? (
           <span className="text-[11px] text-ink-500">
             {changingCount > 0 ? (
               <>
                 <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-amber-300 align-middle" />
-                {changingCount} {changingCount === 1 ? "line" : "lines"} will be
-                rewritten
+                {changingCount} {changingCount === 1 ? "line" : "lines"}{" "}
+                {edited ? "were rewritten" : "will be rewritten"}
               </>
             ) : (
               "No lines change"
