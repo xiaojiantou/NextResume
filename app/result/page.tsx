@@ -10,6 +10,7 @@ import { TargetPagesPicker } from "@/components/TargetPagesPicker";
 import { ContentStructurePicker } from "@/components/ContentStructurePicker";
 import { OriginalDocumentPreview } from "@/components/OriginalDocumentPreview";
 import { OriginalLatexPreview } from "@/components/OriginalLatexPreview";
+import { CompiledOptimizedTexPreview } from "@/components/CompiledOptimizedTexPreview";
 import { LivePdfPreview } from "@/components/LivePdfPreview";
 import {
   FIT_PROGRESS_STAGES,
@@ -1478,32 +1479,61 @@ function ResultPageInner() {
   // definite height; taking it from the output paper makes the pane
   // page-shaped, which is what puts it on the same footing as the page
   // images opposite in the Side-by-side view.
+  //
+  // For a .tex upload with the compiler available, "the deliverable" means
+  // the actual compiled PDF ("PDF from your LaTeX" is not a separate,
+  // optional artifact — a fitted/personalized variant is our own layout
+  // decision that has no meaning against the user's fixed template, so this
+  // branch only applies to the plain, unfitted rewrite). Falling back to one
+  // of our own templates here made every .tex user's live preview disagree
+  // with the file they actually downloaded — different font, different
+  // spacing, sometimes a different page count — discovered only after
+  // paying and opening it.
+  const canPreviewCompiledTex =
+    sourceDocument?.kind === "tex" &&
+    latexSource !== null &&
+    process.env.NEXT_PUBLIC_LATEX_COMPILER === "1" &&
+    Boolean(displayedOptimization) &&
+    !fittedViewActive &&
+    pdfStyle !== "personalized";
   const optimizedPreviewPane = resume ? (
-    <div
-      className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
-      style={{
-        aspectRatio: `${outputPage.widthPt} / ${outputPage.heightPt}`,
-      }}
-    >
-      <LivePdfPreview
+    canPreviewCompiledTex && displayedOptimization ? (
+      <CompiledOptimizedTexPreview
+        sourceTex={sourceDocument.base64}
+        source={latexSource}
         resume={displayedResume ?? resume}
         optimization={displayedOptimization}
-        style={pdfStyle}
-        palette={pdfPalette}
-        targetPages={fittedViewActive ? targetPages : "auto"}
-        pageSize={outputPage}
-        fitVariant={fittedViewActive ? activeFitVariant : null}
-        sourceRevision={sourceRevision}
-        personalizedStyleProfile={personalizedStyleProfile}
-        personalizedStatus={personalizedStatus}
-        personalizedError={personalizedError}
         includeSummary={summaryEnabled}
-        onRetryPersonalized={() => {
-          personalizeRan.current = true;
-          void generatePersonalized();
-        }}
+        targetTitle={job?.title || ""}
+        pageSize={outputPage}
       />
-    </div>
+    ) : (
+      <div
+        className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+        style={{
+          aspectRatio: `${outputPage.widthPt} / ${outputPage.heightPt}`,
+        }}
+      >
+        <LivePdfPreview
+          resume={displayedResume ?? resume}
+          optimization={displayedOptimization}
+          style={pdfStyle}
+          palette={pdfPalette}
+          targetPages={fittedViewActive ? targetPages : "auto"}
+          pageSize={outputPage}
+          fitVariant={fittedViewActive ? activeFitVariant : null}
+          sourceRevision={sourceRevision}
+          personalizedStyleProfile={personalizedStyleProfile}
+          personalizedStatus={personalizedStatus}
+          personalizedError={personalizedError}
+          includeSummary={summaryEnabled}
+          onRetryPersonalized={() => {
+            personalizeRan.current = true;
+            void generatePersonalized();
+          }}
+        />
+      </div>
+    )
   ) : null;
 
   return (

@@ -24,10 +24,19 @@ export const runtime = "nodejs";
 export const maxDuration = 90;
 
 // Compiling costs real CPU on a service we pay for, so it is metered harder
-// than handing back a text file.
+// than handing back a text file. The live preview (X-Resume-Preview) shares
+// this route but debounces on its own and can fire many times while the
+// user keeps editing; it gets a separate, more generous bucket so a burst of
+// preview compiles can never leave the actual "download the PDF" click
+// rate-limited.
 const COMPILE_LIMIT = {
   key: "export-tex-pdf",
   limit: 5,
+  windowMs: 60_000,
+};
+const PREVIEW_COMPILE_LIMIT = {
+  key: "export-tex-pdf-preview",
+  limit: 20,
   windowMs: 60_000,
 };
 
@@ -40,7 +49,8 @@ function safeFilename(name: string, target: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const rl = rateLimitGuard(req, COMPILE_LIMIT);
+  const isPreview = req.headers.get("X-Resume-Preview") === "1";
+  const rl = rateLimitGuard(req, isPreview ? PREVIEW_COMPILE_LIMIT : COMPILE_LIMIT);
   if (rl) return rl;
 
   if (!isLatexCompilerConfigured()) {

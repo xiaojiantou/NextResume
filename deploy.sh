@@ -42,9 +42,13 @@ npx tsc --noEmit || { echo "❌ TypeScript errors"; exit 1; }
 # The deploy ships the working directory, so anything uncommitted would go
 # live without being in history. Refuse rather than sweep it into an
 # auto-generated "Deploy:" commit — commit it deliberately, then deploy.
-if [ -n "$(git status --porcelain)" ]; then
+# .claude/ is excluded: Claude Code rewrites .claude/settings.json with its
+# own session tool-approvals on every run, which isn't app content and isn't
+# part of the deploy — without this the guard trips on every single deploy
+# regardless of whether anything real changed.
+if [ -n "$(git status --porcelain -- . ':!.claude')" ]; then
   echo "❌ Uncommitted changes — commit (or stash) them first so the deploy matches git history:"
-  git status --short
+  git status --short -- . ':!.claude'
   exit 1
 fi
 
