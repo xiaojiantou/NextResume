@@ -249,7 +249,7 @@ export function ResumeView({
         <section className="mt-5" style={{ order: sectionRank("skills", 20) }}>
           <SectionLabel>{labels.skills}</SectionLabel>
           {resume.skillGroups?.length ? (
-            <div className="mt-1.5 font-sans text-[11.5px] text-ink-700 space-y-0.5">
+            <div className="mt-1.5 text-[11.5px] text-ink-700 space-y-0.5">
               {resume.skillGroups.map((group) => (
                 <p key={group.label}>
                   <span className="font-semibold text-ink-900">
@@ -260,7 +260,7 @@ export function ResumeView({
               ))}
             </div>
           ) : (
-            <p className="mt-1.5 font-sans text-[11.5px] text-ink-700">
+            <p className="mt-1.5 text-[11.5px] text-ink-700">
               {skills.join(" · ")}
             </p>
           )}
