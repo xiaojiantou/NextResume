@@ -3,12 +3,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
 import { jsonCompletion } from "@/lib/ai";
+import { judgeFit, type FitMeasurement } from "@/lib/fitAcceptance";
+import { createProportionalCompressionPlan } from "@/lib/fitCompression";
+import {
+  dateRank,
+  newestRoleId,
+  planTextLength,
+  sourceBulletsAsOptimization,
+  type AiFitPlan,
+} from "@/lib/fitPlan";
 import {
   getResumePalette,
   isPdfStyle,
   type FixedPdfStyle,
   type PdfStyle,
 } from "@/lib/pdf/config";
+import { estimatePageOverflow } from "@/lib/pdf/overflow";
 import {
   renderFixedBalanced,
   renderFixedCandidates,
@@ -57,7 +67,7 @@ const FIT_LIMIT = {
   windowMs: 60_000,
 };
 
-const SYSTEM = `You are a resume page-fit editor. You receive a complete original resume, its evidence-backed job-tailored optimization, a target job, and measured PDF page counts.
+const SYSTEM = `You are a resume page-fit editor. You receive a complete original resume, its evidence-backed job-tailored optimization (the "master"), a target job, and a measurement of how far the master is from the page target.
 
 Return ONLY JSON matching:
 {
@@ -67,48 +77,39 @@ Return ONLY JSON matching:
     "id": string,
     "hidden": boolean,
     "collapsed": boolean,
-    "bullets": [{
-      "id": string,
-      "text": string,
-      "evidence": string[],
-      "matchedKeywords": string[],
-      "rationale": string
-    }]
+    "bullets": [{ "id": string, "text"?: string }]
   }],
   "projects": [{
     "id": string,
     "hidden": boolean,
-    "bullets": [{
-      "id": string,
-      "text": string,
-      "evidence": string[],
-      "matchedKeywords": string[],
-      "rationale": string
-    }]
+    "bullets": [{ "id": string, "text"?: string }]
   }],
   "additionalSections": [{
     "id": string,
     "items": [{
       "id": string,
-      "bullets": [{
-        "id": string,
-        "text": string,
-        "evidence": string[],
-        "matchedKeywords": string[],
-        "rationale": string
-      }]
+      "bullets": [{ "id": string, "text"?: string }]
     }]
   }],
   "hiddenAdditionalItemIds": string[]
 }
 
+Transport rules:
+- A bullet is referenced by its master id. Omit "text" to keep the master wording unchanged; include "text" only when you shorten or expand that bullet. Evidence, keywords, and rationale are attached from the master by id, so never return them.
+- List a bullet under its master role, project, or item only. Omitting a bullet removes it.
+
 Evidence and truth rules:
 - Never invent a metric, tool, skill, responsibility, employer, project, customer, team size, or result.
-- Every output bullet must keep an existing optimized bullet id. A user-added original bullet id may also be used when it cites itself as evidence.
-- Keep each bullet and every evidence id inside its original work role or project. Never move evidence between employers or projects.
-- Some work roles include nested "teams". Treat team names as source context only. Do not output "teams"; keep each team achievement in its parent role's flat "bullets" transport using the original bullet id/evidence.
-- Reword, combine, shorten, or expand only facts traceable to those evidence ids. Every number in rewritten text must appear in that bullet's evidence.
+- Every output bullet must keep an existing optimized bullet id. A user-added original bullet id may also be used.
+- Keep each bullet inside its original work role or project. Never move achievements between employers or projects.
+- Some work roles include nested "teams". Treat team names as source context only. Do not output "teams"; keep each team achievement in its parent role's flat "bullets" transport using the original bullet id.
+- Reword, combine, shorten, or expand only facts traceable to that bullet's evidence. Every number in rewritten text must appear in that bullet's evidence.
 - Skills must be selected verbatim from the original or optimized skill lists.
+
+Sizing rules:
+- The measurement tells you how much the master overflows the target at the densest readable typography. Remove only about that much. A resume that is a few lines over needs a few bullets shortened, not sections removed.
+- Prefer shortening wording over removing bullets, removing bullets over hiding entries, and hiding the oldest, least relevant entries over recent ones.
+- If a previous plan is marked as over-cut, it removed more than the target needed: restore hidden entries, bullets, and full wording from the master until the target is filled at standard typography.
 - If the source resume already had a summary, edit that summary in place and keep it concise. Do not create a second summary above it or concatenate old and new summary wording.
 - If the source resume had no summary, keep summary "" unless adding one is clearly worth the space for this target job.
 - Return every work role id as a transport record. Set hidden=true to omit a lower-priority role from a compressed result. In OPTIMIZE FOR ROLE, the newest visible role needs at least 2 bullets when the source has 2; other visible, non-collapsed roles need at least 1.
@@ -117,36 +118,12 @@ Evidence and truth rules:
 - KEEP ORIGINAL locks section headings and section order, not every content entry. It may hide lower-priority roles, projects, additional items, bullets, or skills, but must leave at least one visible value or entry under every source section heading.
 - Do not hide user-kept ids.
 - Required job keywords are relevance signals, not locks. Keep the strongest evidence-backed terms when space allows, but page targets may remove any keyword the user did not explicitly keep.
-- For a 1-page compression keep roughly 6-10 concrete skills; for 2 pages keep 10-16; for 3+ pages keep at most 20. Drop vague category labels and duplicates first.
+- Keep the skills list intact unless the overflow is large. When skills must go, drop vague category labels and duplicates first; a heavily over-length resume keeps roughly 6-10 skills on 1 page, 10-20 on 2 pages, and at most 30 on 3+ pages.
 - Remove coursework, entrance-exam scores, community extras, and low-relevance supplemental items before hiding a relevant project or collapsing work experience.
 - Keep education metadata unchanged; it is not part of this response.
 - For expansion, do not hide content. Add useful detail only by combining or clarifying existing evidence.
 - Prefer relevance to the target job, measurable impact, unique evidence, then recency.
 - Produce concise English resume prose, not commentary.`;
-
-type AiFitPlan = {
-  summary: string;
-  skills: string[];
-  roles: Array<{
-    id: string;
-    hidden: boolean;
-    collapsed: boolean;
-    bullets: OptimizedBullet[];
-  }>;
-  projects: Array<{
-    id: string;
-    hidden: boolean;
-    bullets: OptimizedBullet[];
-  }>;
-  additionalSections: Array<{
-    id: string;
-    items: Array<{
-      id: string;
-      bullets: OptimizedBullet[];
-    }>;
-  }>;
-  hiddenAdditionalItemIds: string[];
-};
 
 type FitRequest = {
   resume: Resume;
@@ -166,11 +143,20 @@ type FitRequest = {
   structureMode?: ContentStructureMode;
 };
 
-type Measured = {
-  pageCount: number;
-  density: FitDensity;
-  observedPages: number[];
-};
+type Measured = FitMeasurement;
+
+// The client aborts at 85 seconds; stop starting new work before that so a
+// slow provider degrades to the deterministic fallback instead of a dead
+// request.
+const REQUEST_BUDGET_MS = 78_000;
+const MIN_MODEL_ATTEMPT_MS = 30_000;
+const MIN_MEASURE_MS = 6_000;
+
+function fitLog(message: string, detail?: Record<string, unknown>) {
+  console.info(
+    `[fit-resume] ${message}${detail ? ` ${JSON.stringify(detail)}` : ""}`,
+  );
+}
 
 async function fitJsonCompletion({
   system,
@@ -216,11 +202,50 @@ function normalizeAiFitPlan(
     return value;
   }
   const record = value as Record<string, unknown>;
+  const master = optimizedBulletMap(optimization);
+  const sourceText = originalBulletMap(resume);
+  // The model returns ids plus optional rewritten text. Evidence, keywords,
+  // and rationale come from the master by id: the model is never trusted to
+  // restate evidence, and a plan that names a bullet the master lacks is left
+  // as-is for validation to reject.
   const normalizeBullet = (bullet: unknown) => {
     if (!bullet || typeof bullet !== "object" || Array.isArray(bullet)) {
       return bullet;
     }
     const item = bullet as Record<string, unknown>;
+    const id = typeof item.id === "string" ? item.id : null;
+    const proposedText =
+      typeof item.text === "string" && item.text.trim()
+        ? item.text.trim()
+        : null;
+    const baseline = id ? master.get(id) : undefined;
+    if (baseline) {
+      const text = proposedText ?? baseline.text;
+      return {
+        id,
+        text,
+        evidence: [...baseline.evidence],
+        matchedKeywords: [...baseline.matchedKeywords],
+        rationale:
+          typeof item.rationale === "string" && item.rationale.trim()
+            ? item.rationale
+            : text === baseline.text
+              ? baseline.rationale
+              : "Reworded to fit the selected page target.",
+        ...(baseline.relevance !== undefined
+          ? { relevance: baseline.relevance }
+          : {}),
+      };
+    }
+    if (id && sourceText.has(id)) {
+      return {
+        id,
+        text: proposedText ?? sourceText.get(id),
+        evidence: [id],
+        matchedKeywords: [],
+        rationale: "Retained from the verified source resume.",
+      };
+    }
     return {
       ...item,
       matchedKeywords: Array.isArray(item.matchedKeywords)
@@ -626,18 +651,6 @@ function enforcePreservedFitSkeleton(
   };
 }
 
-function sourceBulletsAsOptimization(
-  bullets: Resume["experience"][number]["bullets"],
-): OptimizedBullet[] {
-  return bullets.map((bullet) => ({
-    id: bullet.id,
-    text: bullet.text,
-    evidence: [bullet.id],
-    matchedKeywords: [],
-    rationale: "Retained from the verified source resume.",
-  }));
-}
-
 /**
  * In role-optimized mode, source-only sections are folded into the system
  * schema at render time (for example AGENT / AI -> Skills and coursework ->
@@ -687,7 +700,9 @@ function enforceRoleOptimizedFitTransport({
       skill,
     ]),
   );
-  const skillBudget = targetPages === 1 ? 10 : targetPages === 2 ? 16 : 20;
+  // A ceiling against a runaway list, not a quota: how many skills to drop is
+  // the model's call from the measured overflow.
+  const skillBudget = targetPages === 1 ? 12 : targetPages === 2 ? 40 : 60;
   const skills = [
     ...new Set(
       (Array.isArray(plan.skills) ? plan.skills : []).flatMap((skill) => {
@@ -924,29 +939,6 @@ function containsContentId(
 
 function hasOnlyGroundedNumbers(value: string, evidence: string): boolean {
   return numbersAreGrounded(value, evidence);
-}
-
-function dateRank(value: string): number {
-  if (/(present|current|now|ongoing)/i.test(value)) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-  const years = value.match(/\b(?:19|20)\d{2}\b/g)?.map(Number) ?? [];
-  return years.length > 0 ? Math.max(...years) : 0;
-}
-
-function newestRoleId(resume: Resume): string | null {
-  let newest: { id: string; rank: number; index: number } | null = null;
-  for (const [index, role] of resume.experience.entries()) {
-    const rank = Math.max(dateRank(role.end), dateRank(role.start));
-    if (
-      !newest ||
-      rank > newest.rank ||
-      (rank === newest.rank && index < newest.index)
-    ) {
-      newest = { id: role.id, rank, index };
-    }
-  }
-  return newest?.id ?? null;
 }
 
 function validatePlan({
@@ -2006,6 +1998,13 @@ async function measure({
         pageCount,
         density: "source",
         observedPages: [pageCount],
+        presets: [{ density: "source", pageCount }],
+        standardPages: pageCount,
+        densestPages: pageCount,
+        overflow:
+          pageCount > targetPages
+            ? await estimatePageOverflow(buffer, targetPages)
+            : null,
       };
     } catch (error) {
       console.warn(
@@ -2057,6 +2056,7 @@ async function measure({
   const standard =
     candidates.find((candidate) => candidate.density === "standard") ??
     candidates[0];
+  const densest = candidates[candidates.length - 1];
   return {
     pageCount: exact?.pageCount ?? balanced?.pageCount ?? standard.pageCount,
     density: exact?.density ?? balanced?.density ?? standard.density,
@@ -2064,7 +2064,113 @@ async function measure({
       ...candidates.map((candidate) => candidate.pageCount),
       ...(balanced ? [balanced.pageCount] : []),
     ],
+    presets: candidates.map((candidate) => ({
+      density: candidate.density,
+      pageCount: candidate.pageCount,
+    })),
+    standardPages: standard.pageCount,
+    densestPages: densest.pageCount,
+    overflow:
+      densest.pageCount > targetPages
+        ? await estimatePageOverflow(densest.buffer, targetPages)
+        : null,
   };
+}
+
+function compactResumeForPrompt(resume: Resume) {
+  // Parse metadata and the photo's data URI are irrelevant to a page-fit
+  // decision and, for the photo, enormous.
+  const {
+    photo: _photo,
+    sourceLayout: _sourceLayout,
+    structureManifest: _structureManifest,
+    structureConfidence: _structureConfidence,
+    ...rest
+  } = resume;
+  return rest;
+}
+
+function compactOptimizationForPrompt(optimization: Optimization) {
+  const bullet = (item: OptimizedBullet) => ({
+    id: item.id,
+    text: item.text,
+    evidence: item.evidence,
+    matchedKeywords: item.matchedKeywords,
+    ...(item.relevance !== undefined ? { relevance: item.relevance } : {}),
+  });
+  return {
+    summary: optimization.summary,
+    title: optimization.title,
+    skills: optimization.skills,
+    roles: optimization.roles.map((role) => ({
+      id: role.id,
+      bullets: role.bullets.map(bullet),
+    })),
+    projects: (optimization.projects ?? []).map((project) => ({
+      id: project.id,
+      bullets: project.bullets.map(bullet),
+    })),
+    additionalSections: (optimization.additionalSections ?? []).map(
+      (section) => ({
+        id: section.id,
+        items: section.items.map((item) => ({
+          id: item.id,
+          bullets: item.bullets.map(bullet),
+        })),
+      }),
+    ),
+  };
+}
+
+function compactPlanForPrompt(plan: AiFitPlan) {
+  const bullets = (items: OptimizedBullet[]) =>
+    items.map((item) => ({ id: item.id, text: item.text }));
+  return {
+    summary: plan.summary,
+    skills: plan.skills,
+    roles: plan.roles.map((role) => ({
+      id: role.id,
+      hidden: role.hidden,
+      collapsed: role.collapsed,
+      bullets: bullets(role.bullets),
+    })),
+    projects: plan.projects.map((project) => ({
+      id: project.id,
+      hidden: project.hidden,
+      bullets: bullets(project.bullets),
+    })),
+    additionalSections: plan.additionalSections.map((section) => ({
+      id: section.id,
+      items: section.items.map((item) => ({
+        id: item.id,
+        bullets: bullets(item.bullets),
+      })),
+    })),
+    hiddenAdditionalItemIds: plan.hiddenAdditionalItemIds,
+  };
+}
+
+function describeMeasurement(
+  measurement: Measured,
+  targetPages: number,
+): string {
+  const presets = measurement.presets
+    .map((preset) => `${preset.density}=${preset.pageCount}`)
+    .join(", ");
+  const lines = [`Pages by typography preset: ${presets}.`];
+  if (measurement.densestPages > targetPages) {
+    const overflow = measurement.overflow;
+    lines.push(
+      overflow
+        ? `At the densest readable preset the content still runs ${overflow.overflowLines} line(s) past ${targetPages} page(s), about ${Math.round(overflow.overflowFraction * 100)}% of a page (${overflow.overflowChars} characters, ${overflow.charsPerLine} characters per line). Remove roughly that much and no more.`
+        : `At the densest readable preset the content needs ${measurement.densestPages} page(s) for a ${targetPages}-page target.`,
+    );
+  } else if (measurement.standardPages < targetPages) {
+    lines.push(
+      `At standard typography the content fills only ${measurement.standardPages} page(s) of ${targetPages}.`,
+    );
+  }
+  return lines.join(" ");
 }
 
 function fitUserPrompt({
@@ -2075,7 +2181,8 @@ function fitUserPrompt({
   targetPages,
   direction,
   attempt,
-  measuredPages,
+  measurement,
+  previousOverCut,
   keptContentIds,
   priorityContentIds,
   lockedContentIds,
@@ -2089,7 +2196,9 @@ function fitUserPrompt({
   targetPages: number;
   direction: "compress" | "expand";
   attempt: number;
-  measuredPages: number;
+  /** Measurement of the document the model is revising. */
+  measurement: Measured;
+  previousOverCut: boolean;
   keptContentIds: string[];
   priorityContentIds: string[];
   lockedContentIds: string[];
@@ -2099,11 +2208,15 @@ function fitUserPrompt({
   const intensity =
     attempt === 1 ? "conservative" : attempt === 2 ? "moderate" : "decisive";
   return `Target: exactly ${targetPages} page(s).
-Current measured result: ${measuredPages} page(s).
+Current measured result: ${measurement.pageCount} page(s). ${describeMeasurement(measurement, targetPages)}
 Direction: ${direction}.
 Adjustment intensity: ${intensity}.
 Content structure mode: ${structureMode === "preserve" ? "KEEP ORIGINAL" : "OPTIMIZE FOR ROLE"}.
-
+${
+  previousOverCut
+    ? `\nThe previous plan is OVER-CUT: it reaches ${targetPages} page(s) only with enlarged type and spacing. Restore hidden entries, removed bullets, and full wording from the master until the target is filled at standard typography, then stop.\n`
+    : ""
+}
 If compressing, shorten language before hiding content. Remove duplicate or generic evidence before unique, quantified, job-relevant evidence. If expanding, restore full evidence and write more complete but still concise bullets without adding facts.
 
 ${
@@ -2125,17 +2238,17 @@ ATS context: ${JSON.stringify({
   })}
 
 Original resume:
-${JSON.stringify(resume)}
+${JSON.stringify(compactResumeForPrompt(resume))}
 
 Complete optimized master:
-${JSON.stringify(optimization)}
+${JSON.stringify(compactOptimizationForPrompt(optimization))}
 
 Target job:
 ${JSON.stringify(job)}
 
 ${
   previousPlan
-    ? `Previous page-fit plan to revise based on the measured result:\n${JSON.stringify(previousPlan)}`
+    ? `Previous page-fit plan to revise based on the measured result${previousOverCut ? " (OVER-CUT)" : ""}:\n${JSON.stringify(compactPlanForPrompt(previousPlan))}`
     : ""
 }`;
 }
@@ -2267,6 +2380,8 @@ export async function POST(req: NextRequest) {
       job,
     );
 
+    const startedAt = Date.now();
+    const remainingMs = () => REQUEST_BUDGET_MS - (Date.now() - startedAt);
     const initial = await measure({
       style,
       palette,
@@ -2277,7 +2392,15 @@ export async function POST(req: NextRequest) {
       personalizedStyleProfile,
     });
     const observed = [...initial.observedPages];
-    if (initial.observedPages.includes(targetPages)) {
+    const initialVerdict = judgeFit(initial, targetPages, { allowRoomy: true });
+    fitLog("initial measurement", {
+      style,
+      targetPages,
+      presets: initial.presets,
+      overflow: initial.overflow,
+      verdict: initialVerdict.kind,
+    });
+    if (initialVerdict.kind === "fits") {
       const now = new Date().toISOString();
       const variant: ResumeFitVariant = {
         id: crypto.randomUUID(),
@@ -2288,7 +2411,7 @@ export async function POST(req: NextRequest) {
         style,
         page,
         modelId: model,
-        density: initial.density,
+        density: initialVerdict.density,
         fittedResume: resume,
         fittedOptimization: optimization,
         changes: [],
@@ -2306,12 +2429,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ variant });
     }
 
-    let measuredPages = initial.pageCount;
+    let lastMeasurement: Measured = initial;
     let direction: "compress" | "expand" =
-      Math.min(...initial.observedPages) > targetPages ? "compress" : "expand";
+      initial.densestPages > targetPages ? "compress" : "expand";
     const initiallyCompressing = direction === "compress";
     let previousPlan: AiFitPlan | null = null;
+    let previousOverCut = false;
     let lastIssues: string[] = [];
+    // Two things the deterministic fallback can reuse: what the model
+    // measured, and a candidate that reached the target only with enlarged
+    // typography, kept as a last resort ahead of a hard conflict.
+    let roomyFallback: {
+      documents: ReturnType<typeof createFittedDocuments>;
+      plan: AiFitPlan;
+      density: FitDensity;
+    } | null = null;
 
     if (
       structureMode === "preserve" &&
@@ -2349,7 +2481,15 @@ export async function POST(req: NextRequest) {
     const attempts =
       style === "personalized" || structureMode === "preserve" ? 2 : 3;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      if (remainingMs() < MIN_MODEL_ATTEMPT_MS) {
+        fitLog("skipping model attempt, request budget nearly spent", {
+          attempt,
+          remainingMs: remainingMs(),
+        });
+        break;
+      }
       let rawPlan: unknown;
+      const attemptStartedAt = Date.now();
       try {
         rawPlan = await fitJsonCompletion({
           system: SYSTEM,
@@ -2361,7 +2501,8 @@ export async function POST(req: NextRequest) {
             targetPages,
             direction,
             attempt,
-            measuredPages,
+            measurement: lastMeasurement,
+            previousOverCut,
             keptContentIds,
             priorityContentIds,
             lockedContentIds,
@@ -2375,13 +2516,21 @@ export async function POST(req: NextRequest) {
               : style === "personalized"
                 ? 5200
                 : 7000,
-          timeoutMs: style === "personalized" ? 18_000 : 24_000,
+          timeoutMs: Math.min(
+            style === "personalized" ? 18_000 : 24_000,
+            Math.max(5_000, remainingMs() - MIN_MEASURE_MS),
+          ),
         });
       } catch (completionError) {
         if (!isAbortLike(completionError)) throw completionError;
         lastIssues = [
           "The selected model did not return the page-fit rewrite within the per-attempt time limit.",
         ];
+        fitLog("model attempt timed out", {
+          attempt,
+          direction,
+          elapsedMs: Date.now() - attemptStartedAt,
+        });
         break;
       }
       const normalizedPlan = normalizeAiFitPlan(
@@ -2420,6 +2569,13 @@ export async function POST(req: NextRequest) {
       if (issues.length > 0) {
         lastIssues = issues;
         previousPlan = plan;
+        previousOverCut = false;
+        fitLog("model plan rejected by validation", {
+          attempt,
+          direction,
+          elapsedMs: Date.now() - attemptStartedAt,
+          issues: issues.slice(0, 6),
+        });
         continue;
       }
 
@@ -2438,16 +2594,42 @@ export async function POST(req: NextRequest) {
         personalizedStyleProfile,
       });
       observed.push(...result.observedPages);
-      measuredPages = result.pageCount;
+      lastMeasurement = result;
       previousPlan = plan;
+      const verdict = judgeFit(result, targetPages, {
+        allowRoomy: direction === "expand",
+      });
+      fitLog("model plan measured", {
+        attempt,
+        direction,
+        elapsedMs: Date.now() - attemptStartedAt,
+        presets: result.presets,
+        overflow: result.overflow,
+        verdict: verdict.kind,
+        planChars: planTextLength(plan),
+      });
 
-      if (!result.observedPages.includes(targetPages)) {
+      if (verdict.kind !== "fits") {
+        // While compressing, a plan that falls short of the target removed
+        // too much, whether or not an enlarged preset happens to reach it.
+        // Asking the model to "expand" would forbid every hide and bounce it
+        // back to the overflowing master.
+        previousOverCut =
+          verdict.kind === "over-cut" ||
+          (verdict.kind === "under" && initiallyCompressing);
+        if (previousOverCut && !roomyFallback) {
+          const roomyHit = result.presets.find(
+            (preset) => preset.pageCount === targetPages,
+          );
+          if (roomyHit) {
+            roomyFallback = { documents, plan, density: roomyHit.density };
+          }
+        }
         direction =
-          Math.min(...result.observedPages) > targetPages
-            ? "compress"
-            : "expand";
+          verdict.kind === "overflow" || previousOverCut ? "compress" : "expand";
         continue;
       }
+      previousOverCut = false;
 
       // Semantic review is necessary only for a candidate that already meets
       // the physical page target. Reviewing over/under-filled intermediate
@@ -2479,6 +2661,10 @@ export async function POST(req: NextRequest) {
         if (!repaired || repairedIssues.length > 0) {
           lastIssues = repairedIssues;
           previousPlan = plan;
+          fitLog("model plan rejected by semantic review", {
+            attempt,
+            issues: repairedIssues.slice(0, 6),
+          });
           continue;
         }
         plan = repaired;
@@ -2497,17 +2683,36 @@ export async function POST(req: NextRequest) {
           personalizedStyleProfile,
         });
         observed.push(...result.observedPages);
-        measuredPages = result.pageCount;
+        lastMeasurement = result;
         previousPlan = plan;
-        if (!result.observedPages.includes(targetPages)) {
+        const repairedVerdict = judgeFit(result, targetPages, {
+          allowRoomy: direction === "expand",
+        });
+        if (repairedVerdict.kind !== "fits") {
+          previousOverCut =
+            repairedVerdict.kind === "over-cut" ||
+            (repairedVerdict.kind === "under" && initiallyCompressing);
           direction =
-            Math.min(...result.observedPages) > targetPages
+            repairedVerdict.kind === "overflow" || previousOverCut
               ? "compress"
               : "expand";
+          fitLog("semantically repaired plan no longer fits", {
+            attempt,
+            verdict: repairedVerdict.kind,
+          });
           continue;
         }
       }
 
+      const acceptedDensity = judgeFit(result, targetPages, {
+        allowRoomy: direction === "expand",
+      });
+      fitLog("model plan accepted", {
+        attempt,
+        density:
+          acceptedDensity.kind === "fits" ? acceptedDensity.density : result.density,
+        totalMs: Date.now() - startedAt,
+      });
       const changes = createChanges({ plan, resume, optimization });
       const now = new Date().toISOString();
       const variant: ResumeFitVariant = {
@@ -2519,7 +2724,8 @@ export async function POST(req: NextRequest) {
         style,
         page,
         modelId: model,
-        density: result.density,
+        density:
+          acceptedDensity.kind === "fits" ? acceptedDensity.density : result.density,
         fittedResume: documents.fittedResume,
         fittedOptimization: documents.fittedOptimization,
         changes,
@@ -2543,7 +2749,173 @@ export async function POST(req: NextRequest) {
         ...priorityContentIds,
         ...lockedContentIds,
       ];
+      const finishVariant = (
+        documents: ReturnType<typeof createFittedDocuments>,
+        plan: AiFitPlan,
+        density: FitDensity,
+      ): ResumeFitVariant => {
+        const now = new Date().toISOString();
+        return {
+          id: crypto.randomUUID(),
+          cacheKey,
+          sourceRevision,
+          targetPages,
+          actualPages: targetPages,
+          style,
+          page,
+          modelId: model,
+          density,
+          fittedResume: documents.fittedResume,
+          fittedOptimization: documents.fittedOptimization,
+          changes: createChanges({ plan, resume, optimization }),
+          keptContentIds,
+          atsScore: fitAtsScore({
+            resume: documents.fittedResume,
+            optimization: documents.fittedOptimization,
+            job,
+            requiredKeywords: protectedKeywords,
+          }),
+          sourceAtsScore: optimization.atsScore ?? report.overallAfter,
+          createdAt: now,
+          lastUsedAt: now,
+        };
+      };
+
+      // Proportional fallback: free only the lines the measured overflow asks
+      // for, then bisect on the amount until a dense preset lands on the
+      // target. Bounds: the largest cut that still overflowed and the
+      // smallest that over-cut.
+      const charsPerLine = initial.overflow?.charsPerLine ?? 90;
+      const fullLines = Math.max(
+        1,
+        planTextLength(
+          createProportionalCompressionPlan({
+            resume,
+            optimization,
+            structureMode,
+            protectedContentIds,
+            removalLines: 0,
+            charsPerLine,
+          }),
+        ) / charsPerLine,
+      );
+      const linesToFree = (overflow: Measured["overflow"], fallbackPages: number) =>
+        overflow
+          ? overflow.overflowLines
+          : Math.round(fullLines * (fallbackPages / Math.max(1, initial.densestPages)));
+      let removalLines = Math.max(
+        2,
+        Math.ceil(
+          linesToFree(initial.overflow, initial.densestPages - targetPages) * 1.2,
+        ) + 1,
+      );
+      let stillOverflowingAt = 0;
+      let overCutAt: number | null = null;
+      for (let step = 1; step <= 5; step += 1) {
+        if (remainingMs() < MIN_MEASURE_MS) {
+          fitLog("stopping proportional fallback, request budget spent", {
+            step,
+          });
+          break;
+        }
+        let plan = createProportionalCompressionPlan({
+          resume,
+          optimization,
+          structureMode,
+          protectedContentIds,
+          removalLines,
+          charsPerLine,
+        });
+        if (structureMode === "preserve") {
+          plan = enforcePreservedFitSkeleton(
+            plan,
+            resume,
+            optimization,
+            protectedContentIds,
+          ) as AiFitPlan;
+        }
+        const planIssues = validatePlan({
+          plan,
+          resume,
+          optimization,
+          job,
+          keptContentIds,
+          lockedContentIds,
+          structureMode,
+          direction: "compress",
+        });
+        if (planIssues.length > 0) {
+          lastIssues = planIssues;
+          fitLog("proportional plan rejected by validation", {
+            step,
+            removalLines,
+            issues: planIssues.slice(0, 6),
+          });
+          break;
+        }
+        const documents = createFittedDocuments({ plan, resume, optimization });
+        const result = await measure({
+          style,
+          palette,
+          resume: documents.fittedResume,
+          optimization: documents.fittedOptimization,
+          page,
+          targetPages,
+          personalizedStyleProfile,
+        });
+        observed.push(...result.observedPages);
+        const verdict = judgeFit(result, targetPages);
+        fitLog("proportional plan measured", {
+          step,
+          removalLines,
+          planChars: planTextLength(plan),
+          presets: result.presets,
+          overflow: result.overflow,
+          verdict: verdict.kind,
+        });
+        if (verdict.kind === "fits") {
+          fitLog("proportional plan accepted", {
+            step,
+            density: verdict.density,
+            totalMs: Date.now() - startedAt,
+          });
+          return NextResponse.json({
+            variant: finishVariant(documents, plan, verdict.density),
+          });
+        }
+        if (verdict.kind === "overflow") {
+          stillOverflowingAt = removalLines;
+          const extra = linesToFree(
+            result.overflow,
+            result.densestPages - targetPages,
+          );
+          removalLines =
+            overCutAt === null
+              ? removalLines + Math.max(2, Math.ceil(extra * 1.2))
+              : Math.round((removalLines + overCutAt) / 2);
+        } else {
+          if (!roomyFallback) {
+            const roomyHit = result.presets.find(
+              (preset) => preset.pageCount === targetPages,
+            );
+            if (roomyHit) {
+              roomyFallback = { documents, plan, density: roomyHit.density };
+            }
+          }
+          overCutAt = removalLines;
+          removalLines = Math.round((stillOverflowingAt + removalLines) / 2);
+        }
+        if (overCutAt !== null && overCutAt - stillOverflowingAt <= 1) {
+          fitLog("proportional fallback converged without a dense fit", {
+            stillOverflowingAt,
+            overCutAt,
+          });
+          break;
+        }
+      }
+
       for (const intensity of ["moderate", "decisive"] as const) {
+        if (remainingMs() < MIN_MEASURE_MS) break;
         let plan = createDeterministicCompressionPlan({
           resume,
           optimization,
@@ -2589,42 +2961,59 @@ export async function POST(req: NextRequest) {
           personalizedStyleProfile,
         });
         observed.push(...result.observedPages);
-        if (!result.observedPages.includes(targetPages)) {
+        const verdict = judgeFit(result, targetPages);
+        fitLog("legacy fallback measured", {
+          intensity,
+          presets: result.presets,
+          verdict: verdict.kind,
+        });
+        if (verdict.kind !== "fits") {
+          if (verdict.kind === "over-cut" && !roomyFallback) {
+            const roomyHit = result.presets.find(
+              (preset) => preset.pageCount === targetPages,
+            );
+            if (roomyHit) {
+              roomyFallback = { documents, plan, density: roomyHit.density };
+            }
+          }
           lastIssues = [
             `The ${intensity} evidence-safe fallback measured ${result.pageCount} page(s), not ${targetPages}.`,
           ];
           continue;
         }
+        fitLog("legacy fallback accepted", {
+          intensity,
+          density: verdict.density,
+          totalMs: Date.now() - startedAt,
+        });
+        return NextResponse.json({
+          variant: finishVariant(documents, plan, verdict.density),
+        });
+      }
 
-        const now = new Date().toISOString();
-        const variant: ResumeFitVariant = {
-          id: crypto.randomUUID(),
-          cacheKey,
-          sourceRevision,
-          targetPages,
-          actualPages: targetPages,
-          style,
-          page,
-          modelId: model,
-          density: result.density,
-          fittedResume: documents.fittedResume,
-          fittedOptimization: documents.fittedOptimization,
-          changes: createChanges({ plan, resume, optimization }),
-          keptContentIds,
-          atsScore: fitAtsScore({
-            resume: documents.fittedResume,
-            optimization: documents.fittedOptimization,
-            job,
-            requiredKeywords: protectedKeywords,
-          }),
-          sourceAtsScore: optimization.atsScore ?? report.overallAfter,
-          createdAt: now,
-          lastUsedAt: now,
-        };
-        return NextResponse.json({ variant });
+      // Nothing reached the target at standard-or-denser typography. A
+      // candidate that reaches it only with enlarged type is still a real
+      // page count the user asked for, and better than a hard conflict.
+      if (roomyFallback) {
+        fitLog("accepting roomy fallback", {
+          density: roomyFallback.density,
+          totalMs: Date.now() - startedAt,
+        });
+        return NextResponse.json({
+          variant: finishVariant(
+            roomyFallback.documents,
+            roomyFallback.plan,
+            roomyFallback.density,
+          ),
+        });
       }
     }
 
+    fitLog("no fit found", {
+      observed: [...new Set(observed)],
+      issues: lastIssues.slice(0, 6),
+      totalMs: Date.now() - startedAt,
+    });
     return conflictResponse({
       targetPages,
       observed,
