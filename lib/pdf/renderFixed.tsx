@@ -7,6 +7,7 @@ import { ResumePdfDistinctive } from "./ResumePdfDistinctive";
 import { ResumePdfMinimal } from "./ResumePdfMinimal";
 import { ResumePdfSidebar } from "./ResumePdfSidebar";
 import { partitionResumeForPages } from "./balancedPages";
+import { resolveAutoPageTarget, sourcePageCount } from "./fitTarget";
 import type {
   FixedPdfStyle,
   ResumePalette,
@@ -283,8 +284,13 @@ export async function renderFixedFitted({
   const standard =
     candidates.find((candidate) => candidate.density === "standard") ??
     candidates[0];
+  // "auto" keeps a resume on the page count its author chose whenever a
+  // denser preset can still get it there; only then does it fall back to
+  // whatever the standard preset needs.
   const desiredPages =
-    targetPages === "auto" ? standard.pageCount : targetPages;
+    targetPages === "auto"
+      ? resolveAutoPageTarget(candidates, sourcePageCount(resume))
+      : targetPages;
   const exact = candidates.find(
     (candidate) => candidate.pageCount === desiredPages,
   );
