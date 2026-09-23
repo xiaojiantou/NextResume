@@ -3,6 +3,7 @@
 "use client";
 
 import { AppShell } from "@/components/AppShell";
+import { SignInToUnlockNote, UnlockLink } from "@/components/UnlockLink";
 import { useFlow } from "@/lib/store";
 import type { FitBrief, FitVerdict, PreviewBullet } from "@/lib/types";
 import {
@@ -386,11 +387,12 @@ function Report({
               One-time $9.99. Tailored rewrite, Evidence Mode, side-by-side
               comparison, and browser PDF export.
             </p>
+            <SignInToUnlockNote />
           </div>
-          <Link href="/checkout" className="btn btn-primary">
+          <UnlockLink className="btn btn-primary">
             Unlock for $9.99
             <ArrowRight size={14} />
-          </Link>
+          </UnlockLink>
         </div>
       </div>
 
@@ -398,10 +400,10 @@ function Report({
         <Link href="/upload" className="btn btn-ghost">
           <ArrowLeft size={14} /> Edit job description
         </Link>
-        <Link href="/checkout" className="btn btn-accent !px-5">
+        <UnlockLink className="btn btn-accent !px-5">
           Unlock optimized resume
           <ArrowRight size={14} />
-        </Link>
+        </UnlockLink>
       </div>
     </div>
   );
@@ -647,10 +649,10 @@ function PreviewBulletBlock({
             Includes Evidence Mode, side-by-side, and exports.
           </span>
         </div>
-        <Link href="/checkout" className="btn btn-primary">
+        <UnlockLink className="btn btn-primary">
           Unlock the rest for $9.99
           <ArrowRight size={14} />
-        </Link>
+        </UnlockLink>
       </div>
     </div>
   );

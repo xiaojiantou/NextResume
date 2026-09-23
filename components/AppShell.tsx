@@ -1,5 +1,6 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import { AuthStatus } from "./AuthStatus";
 import { Logo } from "./Logo";
 import Link from "next/link";
 import { Stepper } from "./Stepper";
@@ -18,6 +19,7 @@ export function AppShell({
           <Logo />
           <div className="flex items-center gap-3 text-sm text-ink-500">
             <span className="hidden sm:inline">Need help?</span>
+            <AuthStatus />
             <Link
               href="/"
               className="btn btn-ghost !py-1.5 !px-2 text-ink-500"
