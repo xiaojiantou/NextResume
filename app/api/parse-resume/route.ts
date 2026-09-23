@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeResumeVisualLayout, jsonCompletion } from "@/lib/ai";
 import { extractText } from "@/lib/extract";
+import { measureLatexSourceLayout } from "@/lib/latexLayout";
 import { screenshotResume } from "@/lib/resumeScreenshot";
 import { extractPdfLayout, needsVisualColumnCheck } from "@/lib/pdfLayout";
 import {
@@ -190,6 +191,17 @@ export async function POST(req: NextRequest) {
     // Recovered from the file's own link layer, not from the visible text.
     const recoveredLinks = initialExtraction.links ?? [];
 
+    // A .tex upload has no page geometry of its own; compiling it is the
+    // only way to learn how many pages the author's resume is. That count
+    // later decides how densely an export is set, so it is worth a compile,
+    // but not worth delaying the parse: it runs alongside the model calls
+    // and is picked up when the structure metadata is attached.
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    const latexLayoutPromise =
+      !layout && (extension === "tex" || extension === "latex")
+        ? measureLatexSourceLayout(buf.toString("utf8"))
+        : Promise.resolve(null);
+
     // Coordinates are only a candidate signal: right-aligned dates, scores,
     // and contact rows can look like a second column, so the page screenshots
     // arbitrate single-column vs sidebar/mixed structure.
@@ -260,6 +272,7 @@ export async function POST(req: NextRequest) {
       );
       parsed.push(...results);
     }
+    layout = layout ?? (await latexLayoutPromise) ?? undefined;
     const resume = attachResumeStructureMetadata({
       resume: recoverExperienceGroupsFromText(mergeParsedResumes(parsed), text),
       sourceText: text,

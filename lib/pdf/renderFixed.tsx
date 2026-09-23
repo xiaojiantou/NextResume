@@ -8,6 +8,7 @@ import { ResumePdfMinimal } from "./ResumePdfMinimal";
 import { ResumePdfSidebar } from "./ResumePdfSidebar";
 import { partitionResumeForPages } from "./balancedPages";
 import { resolveAutoPageTarget, sourcePageCount } from "./fitTarget";
+import { estimatePageOverflow } from "./overflow";
 import type {
   FixedPdfStyle,
   ResumePalette,
@@ -285,11 +286,20 @@ export async function renderFixedFitted({
     candidates.find((candidate) => candidate.density === "standard") ??
     candidates[0];
   // "auto" keeps a resume on the page count its author chose whenever a
-  // denser preset can still get it there; only then does it fall back to
-  // whatever the standard preset needs.
+  // denser preset can still get it there. When the upload had no measurable
+  // page count (.tex, .docx), a last page the standard preset barely uses is
+  // squeezed away instead; otherwise it falls back to what standard needs.
+  const sourcePages = sourcePageCount(resume);
+  const standardSpill =
+    targetPages === "auto" &&
+    sourcePages === null &&
+    standard.pageCount > 1 &&
+    candidates.some((candidate) => candidate.pageCount < standard.pageCount)
+      ? await estimatePageOverflow(standard.buffer, standard.pageCount - 1)
+      : null;
   const desiredPages =
     targetPages === "auto"
-      ? resolveAutoPageTarget(candidates, sourcePageCount(resume))
+      ? resolveAutoPageTarget(candidates, sourcePages, standardSpill)
       : targetPages;
   const exact = candidates.find(
     (candidate) => candidate.pageCount === desiredPages,
