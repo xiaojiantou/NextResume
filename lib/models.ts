@@ -22,13 +22,10 @@ export const PROVIDER_LABEL: Record<ModelProvider, string> = {
 };
 
 export const MODELS: ModelInfo[] = [
-  // --- Novita (default / cheapest tier) --------------------------------
+  // --- Novita ---------------------------------------------------------
   {
-    // deepseek-v3-0324 still appears in Novita's GET /models but completions
-    // return MODEL_NOT_AVAILABLE (verified 2026-08-31) — the catalog lists
-    // models it no longer serves, so a listing is not proof of servability.
-    id: "deepseek/deepseek-v3.2",
-    name: "DeepSeek V3.2",
+    id: "deepseek/deepseek-v4.1-flash",
+    name: "DeepSeek V4.1 Flash",
     tagline: "Balanced quality + speed",
     provider: "novita",
     badge: "Default",
@@ -121,7 +118,25 @@ export const MODELS: ModelInfo[] = [
 ];
 
 export const DEFAULT_MODEL_ID = MODELS[0].id;
+// Explicitly vetted alternative; never select replacements from the catalog.
+export const FALLBACK_MODEL_ID = "meta-llama/llama-3.3-70b-instruct";
+
+// Novita returns MODEL_NOT_FOUND for V3.2 (verified 2026-09-28).
+// Migrate stale environment overrides as well as saved browser selections,
+// while preserving intentional custom model IDs configured by operators.
+export function resolveConfiguredModel(id?: string): string {
+  return !id || id === "deepseek/deepseek-v3.2"
+    ? DEFAULT_MODEL_ID
+    : id;
+}
 
 export function findModel(id?: string | null): ModelInfo {
   return MODELS.find((m) => m.id === id) ?? MODELS[0];
+}
+
+export function resolveModelSelection(requested?: string, configured?: string): string {
+  if (requested === "deepseek/deepseek-v3.2") return DEFAULT_MODEL_ID;
+  return requested && MODELS.some((m) => m.id === requested)
+    ? requested
+    : resolveConfiguredModel(configured);
 }

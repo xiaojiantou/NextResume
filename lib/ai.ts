@@ -6,12 +6,13 @@ import type {
   ResumeVisualLayoutGuide,
 } from "./types";
 import {
-  DEFAULT_MODEL_ID,
+  resolveConfiguredModel,
   findModel,
-  MODELS,
+  resolveModelSelection,
   type ModelProvider,
 } from "./models";
 import { downscaleDataUri } from "./imageDownscale";
+import { normalizeNovitaError, withModelFallback } from "./modelAvailability";
 
 // Lazy-init: SDK constructors throw without a key, which breaks Next.js
 // "collecting page data" at build time on Vercel. Construct on first use.
@@ -54,12 +55,19 @@ function openaiCompatClient(provider: Exclude<ModelProvider, "anthropic">): Open
       break;
   }
 
-  const client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
+  const client = new OpenAI({
+    apiKey,
+    ...(baseURL ? { baseURL } : {}),
+    ...(provider === "novita" ? {
+      fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+        normalizeNovitaError(await fetch(input, init)),
+    } : {}),
+  });
   clients[provider] = client;
   return client;
 }
 
-export const ENV_MODEL = process.env.NOVITA_MODEL || DEFAULT_MODEL_ID;
+export const ENV_MODEL = resolveConfiguredModel(process.env.NOVITA_MODEL);
 
 function tryParse<T>(raw: string): T {
   try {
@@ -480,19 +488,13 @@ export async function jsonCompletion<T>({
   maxTokens?: number;
   signal?: AbortSignal;
 }): Promise<T> {
-  // The client's model choice persists in localStorage, so it can outlive the
-  // registry — a delisted id would ride along until the provider 500s. Unknown
-  // ids fall back to the env default; ENV_MODEL itself stays unvalidated so an
-  // operator can still point at any Novita id via NOVITA_MODEL.
-  const requested =
-    model && MODELS.some((m) => m.id === model) ? model : undefined;
-  const chosen = requested || ENV_MODEL;
-  const info = findModel(chosen);
-
-  const raw =
+  const chosen = resolveModelSelection(model, ENV_MODEL);
+  return withModelFallback(chosen, async (id) => {
+    const info = findModel(id);
+    const raw =
     info.provider === "anthropic"
       ? await anthropicJson({
-          model: chosen,
+          model: id,
           system,
           user,
           maxTokens,
@@ -500,13 +502,14 @@ export async function jsonCompletion<T>({
         })
       : await openaiCompatJson({
           provider: info.provider,
-          model: chosen,
+          model: id,
           system,
           user,
           maxTokens,
           signal,
         });
 
-  if (!raw) throw new Error("Empty completion from model");
-  return tryParse<T>(raw);
+    if (!raw) throw new Error("Empty completion from model");
+    return tryParse<T>(raw);
+  }, signal);
 }

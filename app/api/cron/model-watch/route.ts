@@ -5,7 +5,7 @@
 // completions returned MODEL_NOT_AVAILABLE, so every parse and rewrite 500ed
 // until someone noticed. This cron does two things:
 //
-//   1. Probes every registry model (plus NOVITA_MODEL) with a real one-token
+//   1. Probes every registry model (plus NOVITA_MODEL) with a real JSON
 //      completion — the catalog listing is NOT proof of servability.
 //   2. Diffs the catalog against the last run (stored in Redis) and probes
 //      newly listed models from vendors we already use, so upgrade candidates
@@ -18,11 +18,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ENV_MODEL } from "@/lib/ai";
 import { sendAlertEmail } from "@/lib/email";
-import { MODELS } from "@/lib/models";
+import { FALLBACK_MODEL_ID, MODELS, findModel } from "@/lib/models";
+import { probeModel as checkModel, type ModelProbe as Probe } from "@/lib/modelHealth";
 import { getRedis, hasRedis } from "@/lib/orders";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const CATALOG_KEY = "nextresume:model-watch:catalog";
 const PROBE_TIMEOUT_MS = 15_000;
@@ -30,8 +31,6 @@ const MAX_NEW_PROBES = 8;
 
 const NOVITA_BASE =
   process.env.NOVITA_BASE_URL || "https://api.novita.ai/v3/openai";
-
-type Probe = { id: string; alive: boolean; note: string };
 
 async function fetchCatalog(apiKey: string): Promise<string[]> {
   const res = await fetch(`${NOVITA_BASE}/models`, {
@@ -45,42 +44,13 @@ async function fetchCatalog(apiKey: string): Promise<string[]> {
     .filter((id): id is string => typeof id === "string");
 }
 
-async function probeModel(apiKey: string, id: string): Promise<Probe> {
-  try {
-    const res = await fetch(`${NOVITA_BASE}/chat/completions`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: id,
-        messages: [{ role: "user", content: "Say OK" }],
-        max_tokens: 2,
-      }),
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    });
-    if (res.ok) return { id, alive: true, note: "" };
-    const body = await res.text().catch(() => "");
-    const reason =
-      (body.match(/"reason"\s*:\s*"([^"]+)"/)?.[1] ?? `HTTP ${res.status}`);
-    return { id, alive: false, note: reason };
-  } catch (e) {
-    return {
-      id,
-      alive: false,
-      note: e instanceof Error ? e.name : "fetch failed",
-    };
-  }
-}
-
-/** Sequential-ish with small batches — a dozen one-token calls, well under maxDuration. */
+/** Bounded batches, including time for discovery probes and email. */
 async function probeAll(apiKey: string, ids: string[]): Promise<Probe[]> {
   const out: Probe[] = [];
   for (let i = 0; i < ids.length; i += 3) {
     out.push(
       ...(await Promise.all(
-        ids.slice(i, i + 3).map((id) => probeModel(apiKey, id)),
+        ids.slice(i, i + 3).map((id) => checkModel(apiKey, NOVITA_BASE, id)),
       )),
     );
   }
@@ -102,21 +72,27 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const catalog = await fetchCatalog(apiKey);
-    const catalogSet = new Set(catalog);
-
     // 1. Health: every Novita model the app can actually route to.
     const registryIds = MODELS.filter((m) => m.provider === "novita").map(
       (m) => m.id,
     );
-    const watched = [...new Set([...registryIds, ENV_MODEL])];
+    const watched = [...new Set([...registryIds, FALLBACK_MODEL_ID, ...(findModel(ENV_MODEL).provider === "novita" ? [ENV_MODEL] : [])])];
     const health = await probeAll(apiKey, watched);
     const dead = health.filter((p) => !p.alive);
+    if (dead.length) console.error("model_health_failed", { models: dead });
+    // Discovery must never prevent the health probes or outage alert.
+    let catalogError = false;
+    const catalog = await fetchCatalog(apiKey).catch(() => {
+      catalogError = true;
+      console.error("model_catalog_failed");
+      return [] as string[];
+    });
+    const catalogSet = new Set(catalog);
 
     // 2. Discovery: newly listed models from vendors already in the registry,
     //    verified with a real completion before they're worth an email.
     const baselineRaw = hasRedis()
-      ? await getRedis().get<string[]>(CATALOG_KEY)
+      ? await getRedis().get<string[]>(CATALOG_KEY).catch(() => null)
       : null;
     const baseline = Array.isArray(baselineRaw) ? new Set(baselineRaw) : null;
     const vendors = new Set(registryIds.map((id) => id.split("/")[0]));
@@ -133,13 +109,13 @@ export async function GET(req: NextRequest) {
 
     // Ghosts: still routed-to but vanished from the very catalog that lies in
     // the other direction — worth flagging even while completions still work.
-    const delisted = watched.filter((id) => !catalogSet.has(id));
+    const delisted = catalogError ? [] : watched.filter((id) => !catalogSet.has(id) && !dead.some((p) => p.id === id));
 
-    if (hasRedis()) await getRedis().set(CATALOG_KEY, catalog);
+    if (hasRedis() && !catalogError) await getRedis().set(CATALOG_KEY, catalog).catch(() => { console.error("model_catalog_save_failed"); });
 
     const to = process.env.MODEL_ALERT_EMAIL || process.env.EMAIL_FROM_EMAIL;
     let emailed = false;
-    if (to && (dead.length > 0 || upgrades.length > 0)) {
+    if (to && (dead.length > 0 || upgrades.length > 0 || delisted.length > 0)) {
       const lines: string[] = [];
       if (dead.length > 0) {
         lines.push("MODELS DOWN — the app routes to these and they no longer serve:");
@@ -166,21 +142,27 @@ export async function GET(req: NextRequest) {
         subject:
           dead.length > 0
             ? `⚠ NextResume: ${dead.length} model(s) down`
-            : `NextResume: ${upgrades.length} new model(s) available`,
+            : `NextResume: ${upgrades.length} new, ${delisted.length} delisted model(s)`,
         text: lines.join("\n"),
       });
       emailed = result.ok;
     }
 
+    const alertConfigured = !!(to && process.env.MAILERSEND_API_KEY && process.env.EMAIL_FROM_EMAIL);
+    const alertFailed = (dead.length > 0 || upgrades.length > 0 || delisted.length > 0) && !emailed;
+    if (!alertConfigured || alertFailed) console.error("model_alert_unavailable", { alertConfigured });
+    const ok = dead.length === 0 && !catalogError && alertConfigured && !alertFailed;
     return NextResponse.json({
-      ok: true,
+      ok,
+      alertConfigured,
+      catalogError,
       watched: health,
       dead: dead.map((p) => p.id),
       newModels: newProbes,
       delisted,
       baseline: baseline ? baseline.size : null,
       emailed,
-    });
+    }, { status: ok ? 200 : 503 });
   } catch (e) {
     console.error("model-watch failed", e);
     return NextResponse.json(

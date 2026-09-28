@@ -1,4 +1,5 @@
 {
+  "buildCommand": "npm run check:models && npm run build",
   "crons": [
     {
       "path": "/api/cron/model-watch",

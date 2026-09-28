@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "check:models": "node --experimental-strip-types scripts/check-model-health.mjs",
     "start": "next start",
     "test": "node --experimental-strip-types --test \"tests/*.test.mjs\"",
     "test:content": "node --experimental-strip-types --test tests/resume-content.test.mjs",
