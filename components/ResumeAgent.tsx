@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFlow, orderAuthHeaders } from '@/lib/store';
 import { agentTargets, type AgentChange } from '@/lib/resumeAgent';
+import { AgentDictation } from './AgentDictation';
 
 export function ResumeAgent() {
   const { resume, optimization, job, selectedModel, lockedContentIds, replaceOptimizedBullet } = useFlow();
   const [instruction, setInstruction] = useState('');
   const [busy, setBusy] = useState(false);
+  const [dictating, setDictating] = useState(false);
   const [error, setError] = useState('');
   const [reply, setReply] = useState<{ message: string; changes: AgentChange[] } | null>(null);
   const [handled, setHandled] = useState<Record<string, string>>({});
@@ -15,7 +17,7 @@ export function ResumeAgent() {
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   async function ask() {
-    if (!resume || !optimization || busy) return;
+    if (!resume || !optimization || busy || dictating) return;
     const requestController = new AbortController();
     controller.current = requestController;
     snapshot.current = { resume, optimization, job, selectedModel, lockedContentIds };
@@ -50,13 +52,14 @@ export function ResumeAgent() {
     </div>
     <p className="mt-1 text-sm text-ink-500">Describe what to change in any language. Each suggestion is checked against your evidence. Locked achievements stay protected.</p>
     <form className="mt-4" onSubmit={e => { e.preventDefault(); void ask(); }}>
+      <AgentDictation value={instruction} disabled={busy} onChange={setInstruction} onActiveChange={setDictating} />
       <label htmlFor="resume-agent-request" className="sr-only">What would you like to change?</label>
-      <textarea id="resume-agent-request" value={instruction} onChange={e => setInstruction(e.target.value)} maxLength={4000} rows={3} disabled={busy}
+      <textarea id="resume-agent-request" value={instruction} onChange={e => setInstruction(e.target.value)} maxLength={4000} rows={3} disabled={busy} readOnly={dictating}
         placeholder="Make my AI project achievements more concise, and keep the original tone."
         className="w-full resize-y rounded-lg border border-ink-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 disabled:opacity-60" />
       <div className="mt-2 flex items-center justify-between gap-3">
         <p className="text-xs text-ink-400">Edits achievement wording; page layout, summary and skills use the existing controls.</p>
-        {busy ? <button type="button" className="btn btn-secondary" onClick={() => controller.current?.abort()}>Cancel</button> : <button className="btn btn-primary shrink-0" disabled={instruction.trim().length < 4}>Suggest changes</button>}
+        {busy ? <button type="button" className="btn btn-secondary" onClick={() => controller.current?.abort()}>Cancel</button> : <button className="btn btn-primary shrink-0" disabled={dictating || instruction.trim().length < 4}>Suggest changes</button>}
       </div>
     </form>
     {busy && <p role="status" className="mt-3 text-sm text-ink-500">Choosing achievements, rewriting and checking evidence…</p>}
