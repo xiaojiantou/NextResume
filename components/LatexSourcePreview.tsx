@@ -10,7 +10,7 @@
 // point of this path is that we do not restyle anything. The source itself is
 // the honest answer, and marking the lines that will be rewritten says
 // exactly what the export is going to do.
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { parseTexBlocks } from "@/lib/tex/blocks";
 import { planTexEdits } from "@/lib/tex/plan";
 import {
@@ -111,6 +111,24 @@ export function LatexSourcePreview({
     [source, resume, optimization, includeSummary, mode],
   );
   const edited = mode === "edited";
+  const viewport = useRef<HTMLDivElement>(null);
+  const [selection, setSelection] = useState<{ lines: Line[]; number: number } | null>(null);
+  const selectedNumber = selection?.lines === lines ? selection.number : null;
+  const changingLines = lines.filter((line) => line.changing);
+
+  function jumpToNextChange() {
+    const container = viewport.current;
+    if (!container || !changingLines.length) return;
+    const current = changingLines.findIndex((line) => line.number === selectedNumber);
+    const next = changingLines[(current + 1) % changingLines.length];
+    const target = container.querySelector<HTMLElement>(`[data-line-number="${next.number}"]`);
+    if (!target) return;
+    setSelection({ lines, number: next.number });
+    container.scrollTo({
+      top: container.scrollTop + target.getBoundingClientRect().top - container.getBoundingClientRect().top - container.clientHeight / 2 + target.clientHeight / 2,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+    });
+  }
 
   return (
     <div
@@ -131,18 +149,29 @@ export function LatexSourcePreview({
         {optimization ? (
           <span className="text-[11px] text-ink-500">
             {changingCount > 0 ? (
-              <>
+              <button
+                type="button"
+                onClick={jumpToNextChange}
+                title="Jump to the next changed line"
+                className="rounded text-left underline decoration-dotted underline-offset-4 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500"
+              >
                 <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-amber-300 align-middle" />
                 {changingCount} {changingCount === 1 ? "line" : "lines"}{" "}
                 {edited ? "were rewritten" : "will be rewritten"}
-              </>
+                <span className="ml-1" aria-hidden>↓</span>
+                <span className="sr-only">. Jump to the next changed line</span>
+              </button>
             ) : (
               "No lines change"
             )}
           </span>
         ) : null}
       </div>
+      <span role="status" className="sr-only">
+        {selectedNumber !== null ? `Changed line ${selectedNumber}, ${changingLines.findIndex((line) => line.number === selectedNumber) + 1} of ${changingCount}` : ""}
+      </span>
       <div
+        ref={viewport}
         className={`overflow-auto rounded-b-lg bg-white ${
           pageSize ? "min-h-0 flex-1" : "max-h-[46rem]"
         }`}
@@ -151,7 +180,8 @@ export function LatexSourcePreview({
           {lines.map((line) => (
             <div
               key={line.number}
-              className={`flex ${line.changing ? "bg-amber-50" : ""}`}
+              data-line-number={line.number}
+              className={`flex ${line.number === selectedNumber ? "bg-amber-200 ring-1 ring-inset ring-amber-400" : line.changing ? "bg-amber-50" : ""}`}
             >
               <span
                 aria-hidden
