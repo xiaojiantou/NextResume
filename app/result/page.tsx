@@ -19,6 +19,7 @@ import {
 } from "@/components/ResumeFitPanel";
 import { ResumeView } from "@/components/ResumeView";
 import { EditorWithPreview } from "@/components/EditorWithPreview";
+import { ResumeAgent } from "@/components/ResumeAgent";
 import { BulletRefine } from "@/components/BulletRefine";
 import { findModel } from "@/lib/models";
 import { applyOptimizationToResume } from "@/lib/applyOptimization";
@@ -2077,6 +2078,7 @@ function ResultPageInner() {
         )}
 
         {/* Main split view */}
+        {paid && resume && optimization && <ResumeAgent />}
         {view === "edit" ? (
           <div className="mt-5">
             {!resume ? (
