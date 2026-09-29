@@ -1,3 +1,5 @@
+import { structuredOutputOptions } from "./models.ts";
+
 export type ModelProbe = { id: string; alive: boolean; note: string };
 
 // Synthetic data only. Match the app's JSON mode, temperature and parsing
@@ -15,6 +17,7 @@ export async function probeModel(
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({
         model: id,
+        ...structuredOutputOptions("novita", id),
         messages: [
           { role: "system", content: 'Return only JSON: {"ok":true}.' },
           { role: "user", content: "Run a service health check." },

@@ -92,3 +92,14 @@ test('health reports missing model and never retries 404', async () => {
   assert.equal(result.alive, false);
   assert.equal(result.note, 'MODEL_NOT_FOUND');
 });
+
+test('DeepSeek health requests disable thinking so reasoning cannot consume the JSON budget', async () => {
+  const { structuredOutputOptions } = await import('../lib/models.ts');
+  assert.deepEqual(structuredOutputOptions('openai', DEFAULT_MODEL_ID), {});
+  assert.deepEqual(structuredOutputOptions('novita', FALLBACK_MODEL_ID), {});
+  const result = await probeModel('test', 'https://example.invalid', DEFAULT_MODEL_ID, async (_url, init) => {
+    assert.deepEqual(JSON.parse(init.body).thinking, { type: 'disabled' });
+    return reply();
+  });
+  assert.equal(result.alive, true);
+});

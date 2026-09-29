@@ -9,6 +9,7 @@ import {
   resolveConfiguredModel,
   findModel,
   resolveModelSelection,
+  structuredOutputOptions,
   type ModelProvider,
 } from "./models";
 import { downscaleDataUri } from "./imageDownscale";
@@ -115,6 +116,7 @@ async function openaiCompatJson({
       {
         model,
         messages,
+        ...structuredOutputOptions(provider, model),
         ...(useJsonMode
           ? { response_format: { type: "json_object" as const } }
           : {}),

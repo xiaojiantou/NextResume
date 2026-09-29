@@ -118,6 +118,14 @@ export const MODELS: ModelInfo[] = [
 ];
 
 export const DEFAULT_MODEL_ID = MODELS[0].id;
+
+// Verified on Novita: V4.1 otherwise spends small JSON-output budgets entirely
+// on reasoning, leaving message.content empty even after a larger retry.
+export function structuredOutputOptions(provider: ModelProvider, model: string) {
+  return provider === "novita" && model === "deepseek/deepseek-v4.1-flash"
+    ? { thinking: { type: "disabled" as const } }
+    : {};
+}
 // Explicitly vetted alternative; never select replacements from the catalog.
 export const FALLBACK_MODEL_ID = "meta-llama/llama-3.3-70b-instruct";
 
