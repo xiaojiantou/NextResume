@@ -13,6 +13,7 @@ import {
 } from "./models";
 import { downscaleDataUri } from "./imageDownscale";
 import { normalizeNovitaError, withModelFallback } from "./modelAvailability";
+import { IncompleteCompletionError, withCompletionRetry } from "./completionRetry";
 
 // Lazy-init: SDK constructors throw without a key, which breaks Next.js
 // "collecting page data" at build time on Vercel. Construct on first use.
@@ -122,7 +123,12 @@ async function openaiCompatJson({
       },
       signal ? { signal } : undefined,
     );
-    return res.choices[0]?.message?.content?.trim() || "";
+    const choice = res.choices[0];
+    const content = choice?.message?.content?.trim() || "";
+    if (choice?.finish_reason === "length" || (!content && choice?.finish_reason !== "content_filter")) {
+      throw new IncompleteCompletionError();
+    }
+    return content;
   };
 
   try {
@@ -489,7 +495,7 @@ export async function jsonCompletion<T>({
   signal?: AbortSignal;
 }): Promise<T> {
   const chosen = resolveModelSelection(model, ENV_MODEL);
-  return withModelFallback(chosen, async (id) => {
+  return withModelFallback(chosen, async (id) => withCompletionRetry(maxTokens, async (budget) => {
     const info = findModel(id);
     const raw =
     info.provider === "anthropic"
@@ -497,7 +503,7 @@ export async function jsonCompletion<T>({
           model: id,
           system,
           user,
-          maxTokens,
+          maxTokens: budget,
           signal,
         })
       : await openaiCompatJson({
@@ -505,11 +511,11 @@ export async function jsonCompletion<T>({
           model: id,
           system,
           user,
-          maxTokens,
+          maxTokens: budget,
           signal,
         });
 
     if (!raw) throw new Error("Empty completion from model");
     return tryParse<T>(raw);
-  }, signal);
+  }, signal), signal);
 }

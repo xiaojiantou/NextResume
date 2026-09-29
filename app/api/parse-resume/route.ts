@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeResumeVisualLayout, jsonCompletion } from "@/lib/ai";
 import { ModelUnavailableError } from "@/lib/modelAvailability";
+import { IncompleteCompletionError } from "@/lib/completionRetry";
 import { extractText } from "@/lib/extract";
 import { measureLatexSourceLayout } from "@/lib/latexLayout";
 import { screenshotResume } from "@/lib/resumeScreenshot";
@@ -305,7 +306,7 @@ export async function POST(req: NextRequest) {
     console.error("parse-resume failed", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Parse failed" },
-      { status: e instanceof ModelUnavailableError ? 503 : 500 },
+      { status: e instanceof ModelUnavailableError || e instanceof IncompleteCompletionError ? 503 : 500 },
     );
   }
 }

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonCompletion } from "@/lib/ai";
 import { ModelUnavailableError } from "@/lib/modelAvailability";
+import { IncompleteCompletionError } from "@/lib/completionRetry";
 import { sanitizeJobKeywords } from "@/lib/jobKeywords";
 import { LIMITS, rateLimitGuard } from "@/lib/ratelimit";
 import type { JobAnalysis } from "@/lib/types";
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
     console.error("parse-job failed", e);
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Parse failed" },
-      { status: e instanceof ModelUnavailableError ? 503 : 500 },
+      { status: e instanceof ModelUnavailableError || e instanceof IncompleteCompletionError ? 503 : 500 },
     );
   }
 }
