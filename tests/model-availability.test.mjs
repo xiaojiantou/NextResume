@@ -103,3 +103,18 @@ test('DeepSeek health requests disable thinking so reasoning cannot consume the 
   });
   assert.equal(result.alive, true);
 });
+
+test('deployment tolerates only standby 429, never primary or permanent failures', async () => {
+  const { deploymentProbeLevel } = await import('../lib/modelHealth.ts');
+  const probe = { id: FALLBACK_MODEL_ID, alive: false, note: 'RATE_LIMIT', status: 429 };
+  assert.equal(deploymentProbeLevel(probe, DEFAULT_MODEL_ID), 'WARN');
+  assert.equal(deploymentProbeLevel(probe, FALLBACK_MODEL_ID), 'FAIL');
+  for (const status of [401, 403, 404, 500, undefined]) {
+    assert.equal(deploymentProbeLevel({ ...probe, status }, DEFAULT_MODEL_ID), 'FAIL');
+  }
+  assert.equal(deploymentProbeLevel({ ...probe, alive: true }, DEFAULT_MODEL_ID), 'PASS');
+  const result = await probeModel('test', 'https://example.invalid', FALLBACK_MODEL_ID, async () => Response.json({ reason: 'RATE_LIMIT' }, { status: 429 }));
+  assert.equal(result.status, 429);
+  assert.equal(result.alive, false);
+  assert.equal(deploymentProbeLevel(result, DEFAULT_MODEL_ID), 'WARN');
+});

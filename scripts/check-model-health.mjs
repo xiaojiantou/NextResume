@@ -1,6 +1,6 @@
 import nextEnv from '@next/env';
 import { FALLBACK_MODEL_ID, findModel, resolveConfiguredModel } from '../lib/models.ts';
-import { probeModel } from '../lib/modelHealth.ts';
+import { deploymentProbeLevel, probeModel } from '../lib/modelHealth.ts';
 
 nextEnv.loadEnvConfig(process.cwd());
 if (process.env.VERCEL_ENV === 'production') {
@@ -16,5 +16,8 @@ const base = process.env.NOVITA_BASE_URL || 'https://api.novita.ai/v3/openai';
 const results = await Promise.all([...new Set([primary, FALLBACK_MODEL_ID])].map(
   id => probeModel(process.env.NOVITA_API_KEY, base, id),
 ));
-for (const result of results) console.log(`${result.alive ? 'PASS' : 'FAIL'} ${result.id}${result.note ? `: ${result.note}` : ''}`);
-if (results.some(result => !result.alive)) process.exitCode = 1;
+for (const result of results) {
+  const level = deploymentProbeLevel(result, primary);
+  console.log(`${level} ${result.id}${result.note ? `: ${result.note}` : ''}${level === 'WARN' ? ' — standby rate-limited; primary must pass to deploy' : ''}`);
+}
+if (results.some(result => deploymentProbeLevel(result, primary) === 'FAIL')) process.exitCode = 1;

@@ -1,6 +1,15 @@
 import { structuredOutputOptions } from "./models.ts";
 
-export type ModelProbe = { id: string; alive: boolean; note: string };
+export type ModelProbe = { id: string; alive: boolean; note: string; status?: number };
+
+// A rate-limited standby does not block shipping a healthy primary. Keep
+// permanent failures and any primary failure blocking, including when the
+// configured primary is itself the usual fallback model.
+export function deploymentProbeLevel(probe: ModelProbe, primary: string): "PASS" | "WARN" | "FAIL" {
+  if (probe.alive) return "PASS";
+  if (probe.id !== primary && probe.status === 429) return "WARN";
+  return "FAIL";
+}
 
 // Synthetic data only. Match the app's JSON mode, temperature and parsing
 // requirements; reasoning models need room to produce their final answer.
@@ -32,7 +41,7 @@ export async function probeModel(
     if (response.status === 400 || response.status === 422) response = await call(false);
     const data = await response.json().catch(() => null);
     if (!response.ok) {
-      return { id, alive: false, note: String(data?.reason || data?.error?.code || `HTTP ${response.status}`) };
+      return { id, alive: false, status: response.status, note: String(data?.reason || data?.error?.code || `HTTP ${response.status}`) };
     }
     const choice = data?.choices?.[0];
     if (choice?.finish_reason !== "stop") return { id, alive: false, note: "Incomplete completion" };
