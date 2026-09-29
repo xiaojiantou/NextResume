@@ -75,8 +75,8 @@ export function CompiledOptimizedTexPreview({
   );
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const [updating, setUpdating] = useState(false);
-  const [showSource, setShowSource] = useState(false);
   const urlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export function CompiledOptimizedTexPreview({
       if (timer) window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resume, optimization, sourceTex, includeSummary]);
+  }, [resume, optimization, sourceTex, includeSummary, retry]);
 
   useEffect(
     () => () => {
@@ -138,22 +138,13 @@ export function CompiledOptimizedTexPreview({
     />
   );
 
-  if (status === "failed") {
-    return (
-      <>
-        <p role="status" className="mb-2 text-xs leading-5 text-ink-500">
-          Showing your source instead of a compiled page: {error}
-        </p>
-        {listing}
-      </>
-    );
-  }
 
   return (
     <>
-      {showSource ? (
-        listing
-      ) : (
+      <div className="h-[320px] sm:h-[400px] [&>div]:h-full">
+        {listing}
+      </div>
+      <h3 className="mb-2 mt-5 text-xs font-medium text-ink-500">Compiled PDF</h3>
         <div
           className="relative overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
           style={{ aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}` }}
@@ -170,8 +161,9 @@ export function CompiledOptimizedTexPreview({
               className="grid h-full w-full place-items-center p-6 text-center text-sm text-ink-500"
             >
               <span className="inline-flex items-center gap-2">
-                <RefreshCw size={14} className="animate-spin" />
-                Compiling your LaTeX…
+                {status === "failed" && !updating ? (
+                  <span>PDF unavailable: {error}<button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 block w-full text-sm underline underline-offset-2">Retry compilation</button></span>
+                ) : <><RefreshCw size={14} className="animate-spin" />Compiling your LaTeX…</>}
               </span>
             </div>
           )}
@@ -194,16 +186,7 @@ export function CompiledOptimizedTexPreview({
             </div>
           ) : null}
         </div>
-      )}
-      <button
-        type="button"
-        onClick={() => setShowSource((value) => !value)}
-        className="mt-2 text-xs font-medium text-ink-500 underline-offset-2 hover:text-ink-900 hover:underline"
-      >
-        {showSource
-          ? "Show the compiled page"
-          : "Show LaTeX source and the lines that change"}
-      </button>
+
     </>
   );
 }

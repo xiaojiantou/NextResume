@@ -8,9 +8,8 @@
 // that is what this shows: the unchanged .tex built by the compile service,
 // page-shaped to line up with the optimized PDF beside it. Re-typesetting the
 // parsed content in one of our styles would read as a before/after of a
-// restyle that never happens on this path. When the service is not available
-// (or the template does not build), the source listing with its changed-line
-// highlights is the fallback, and it stays one click away otherwise.
+// restyle that never happens on this path. Source and compiled PDF are
+// stacked so changed-line highlights stay visible during compilation.
 import { orderAuthHeaders } from "@/lib/store";
 import type { Optimization, Resume } from "@/lib/types";
 import { RefreshCw } from "lucide-react";
@@ -74,7 +73,7 @@ export function OriginalLatexPreview({
   );
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showSource, setShowSource] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -97,7 +96,7 @@ export function OriginalLatexPreview({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setUrl(null);
     };
-  }, [sourceTex]);
+  }, [sourceTex, retry]);
 
   const listing = (
     <LatexSourcePreview
@@ -109,22 +108,13 @@ export function OriginalLatexPreview({
     />
   );
 
-  if (status === "failed") {
-    return (
-      <>
-        <p role="status" className="mb-2 text-xs leading-5 text-ink-500">
-          Showing your source instead of a compiled page: {error}
-        </p>
-        {listing}
-      </>
-    );
-  }
 
   return (
     <>
-      {showSource ? (
-        listing
-      ) : (
+      <div className="h-[320px] sm:h-[400px] [&>div]:h-full">
+        {listing}
+      </div>
+      <h3 className="mb-2 mt-5 text-xs font-medium text-ink-500">Compiled PDF</h3>
         <div
           className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
           style={{ aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}` }}
@@ -141,22 +131,14 @@ export function OriginalLatexPreview({
               className="grid h-full w-full place-items-center p-6 text-center text-sm text-ink-500"
             >
               <span className="inline-flex items-center gap-2">
-                <RefreshCw size={14} className="animate-spin" />
-                Compiling your LaTeX…
+                {status === "failed" ? (
+                  <span>PDF unavailable: {error}<button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 block w-full text-sm underline underline-offset-2">Retry compilation</button></span>
+                ) : <><RefreshCw size={14} className="animate-spin" />Compiling your LaTeX…</>}
               </span>
             </div>
           )}
         </div>
-      )}
-      <button
-        type="button"
-        onClick={() => setShowSource((value) => !value)}
-        className="mt-2 text-xs font-medium text-ink-500 underline-offset-2 hover:text-ink-900 hover:underline"
-      >
-        {showSource
-          ? "Show the compiled page"
-          : "Show LaTeX source and the lines that change"}
-      </button>
+
     </>
   );
 }
