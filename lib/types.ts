@@ -416,6 +416,13 @@ export type FitVerdict = "strong" | "good" | "stretch" | "weak";
  * for it. Written by a model; anchored to real resume lines by prompt contract.
  */
 export type FitBrief = {
+  quickZh?: {
+    headline: string;
+    employerNeeds: string;
+    strengths: string[];
+    gaps: string[];
+    actions: string[];
+  };
   verdict: FitVerdict;
   /** One-sentence conclusion, stated first — never a hedge. */
   headline: string;

@@ -19,6 +19,7 @@ const SYSTEM = `You are a blunt, senior career strategist reading a job posting 
 Output ONLY valid JSON matching this schema:
 
 {
+  "quickZh": { "headline": string, "employerNeeds": string, "strengths": string[], "gaps": string[], "actions": string[] },
   "verdict": "strong" | "good" | "stretch" | "weak",
   "headline": string,      // ONE sentence. The conclusion, stated flat out. e.g. "They are not hiring someone who trains models — they are hiring someone who ships AI products end to end, and that is the story this resume already supports."
   "whatTheyWant": string,  // 2-3 sentences: what the employer really needs, read between the lines of the JD. Name what the title obscures.
@@ -29,6 +30,8 @@ Output ONLY valid JSON matching this schema:
 }
 
 Rules:
+- quickZh is a concise Simplified Chinese quick read of the SAME analysis and verdict, not a separate assessment. headline and employerNeeds: one sentence each. strengths: up to 3 evidence-backed advantages. gaps: up to 3 items distinguishing "简历未体现" from an established lack of experience; absence from a resume is NOT proof of no experience. actions: up to 3 concrete edits ordered by priority. Keep company names, technology names, ATS keywords, metrics and quoted resume text in their original language. Do not invent facts or stronger claims when translating.
+- Use the current date supplied by the server for chronology. Do not label past dates as future dates. Overlapping dates alone do not prove errors or dishonesty. Never assert the candidate has never done something merely because it is absent from their resume.
 - Lead with judgment, not summary. The headline is a verdict a candidate could act on, never "this role involves X and you have some X".
 - Ground every strength in the resume as given. If the resume doesn't support a claim, it is a gap, not a strength.
 - Read the JD skeptically: titles inflate, requirement lists pad. Weight what the responsibilities and the company's situation imply they'll spend their days doing.
@@ -75,7 +78,13 @@ const VERDICTS = new Set(["strong", "good", "stretch", "weak"]);
 
 function sanitize(brief: FitBrief): FitBrief {
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const list = (v: unknown) => Array.isArray(v) ? v.map(str).filter(Boolean).slice(0, 3) : [];
+  const zh = brief.quickZh;
   return {
+    ...(zh && str(zh.headline) && str(zh.employerNeeds) ? { quickZh: {
+      headline: str(zh.headline), employerNeeds: str(zh.employerNeeds),
+      strengths: list(zh.strengths), gaps: list(zh.gaps), actions: list(zh.actions),
+    } } : {}),
     verdict: VERDICTS.has(brief.verdict) ? brief.verdict : "good",
     headline: str(brief.headline),
     whatTheyWant: str(brief.whatTheyWant),
@@ -122,9 +131,9 @@ export async function POST(req: NextRequest) {
 
     const brief = await jsonCompletion<FitBrief>({
       system: SYSTEM,
-      user: `${jobBlock}\n\n---\n\nCandidate resume:\n${resumeDigest(resume)}`,
+      user: `Current date (UTC): ${new Date().toISOString().slice(0, 10)}\n\n${jobBlock}\n\n---\n\nCandidate resume:\n${resumeDigest(resume)}`,
       model,
-      maxTokens: 1600,
+      maxTokens: 3200,
     });
 
     return NextResponse.json({ brief: sanitize(brief) });

@@ -55,7 +55,7 @@ export default function AnalysisPage() {
   // The strategic read doesn't depend on the ATS arithmetic, so it starts
   // immediately — it is the slowest call on the page.
   useEffect(() => {
-    if (!resume || !job || fitBrief || briefRan.current) return;
+    if (!resume || !job || fitBrief?.quickZh || briefRan.current) return;
     briefRan.current = true;
     setBriefLoading(true);
     (async () => {
@@ -438,9 +438,10 @@ function FitBriefBlock({
   brief: FitBrief | null;
   loading: boolean;
 }) {
+  const [language, setLanguage] = useState<"zh" | "en">("zh");
   if (!brief && !loading) return null;
 
-  if (loading || !brief) {
+  if (!brief) {
     return (
       <div className="card p-6">
         <div className="flex items-center gap-2 text-xs text-ink-400">
@@ -457,22 +458,45 @@ function FitBriefBlock({
   }
 
   const verdict = VERDICT_STYLE[brief.verdict];
+  const chinese = language === "zh" && Boolean(brief.quickZh);
 
   return (
     <div className="card overflow-hidden">
       <div className="px-5 py-3 bg-gradient-to-r from-ink-50/70 to-white border-b border-ink-100 flex items-center justify-between gap-3">
         <span className="pill">
           <Compass size={11} />
-          Strategic read
+          {chinese ? "岗位匹配速览" : "Strategic read"}
         </span>
         <span
           className={`text-xs font-medium px-2.5 py-1 rounded-md border ${verdict.className}`}
         >
-          {verdict.label}
+          {chinese ? ({ strong: "高度匹配", good: "较为匹配", stretch: "有挑战", weak: "匹配较弱" })[brief.verdict] : verdict.label}
         </span>
       </div>
 
-      <div className="p-6 space-y-5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-5 py-3" role="group" aria-label="Analysis language">
+        {([['zh', '中文速览'], ['en', 'English']] as const).map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={chinese ? value === 'zh' : value === 'en'} disabled={value === 'zh' && !brief.quickZh}
+            onClick={() => setLanguage(value)}
+            className={`rounded-md px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-500 disabled:opacity-40 ${(chinese ? value === 'zh' : value === 'en') ? 'bg-ink-900 text-white' : 'bg-ink-50 text-ink-600 hover:bg-ink-100'}`}>
+            {label}
+          </button>
+        ))}
+        {!brief.quickZh && <span role="status" className="text-xs text-ink-500">{loading ? '正在生成中文速览…' : '中文速览暂不可用，请刷新重试。'}</span>}
+      </div>
+
+      {chinese && brief.quickZh ? <div lang="zh-CN" className="space-y-5 p-6">
+        <p className="text-lg font-semibold leading-relaxed text-ink-900">{brief.quickZh.headline}</p>
+        <div><h4 className="text-sm font-semibold text-ink-900">岗位真正需要什么</h4><p className="mt-1.5 text-sm leading-relaxed text-ink-600">{brief.quickZh.employerNeeds}</p></div>
+        <div className="grid gap-5 md:grid-cols-2">
+          {[{ title: '你的优势', items: brief.quickZh.strengths }, { title: '主要差距', items: brief.quickZh.gaps }].map(section => <div key={section.title}>
+            <h4 className="text-sm font-semibold text-ink-900">{section.title}</h4>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-ink-600">{section.items.map((item, i) => <li key={i}>{item}</li>)}</ul>
+          </div>)}
+        </div>
+        <div className="rounded-lg bg-ink-50 p-4"><h4 className="text-sm font-semibold text-ink-900">优先修改</h4><ol className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-ink-700">{brief.quickZh.actions.map((action, i) => <li key={i}>{action}</li>)}</ol></div>
+        <p className="text-xs text-ink-400">英文关键词与简历原文保持不变；切换 English 查看完整分析及依据。</p>
+      </div> : <div lang="en" className="p-6 space-y-5">
         <p className="text-lg font-semibold text-ink-900 leading-snug">
           {brief.headline}
         </p>
@@ -565,7 +589,7 @@ function FitBriefBlock({
             <p className="text-sm text-ink-700 mt-1.5">{brief.yourStory}</p>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
