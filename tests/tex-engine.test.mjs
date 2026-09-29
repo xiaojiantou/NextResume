@@ -57,3 +57,20 @@ Hello
 \\end{document}`;
   assert.equal(detectTexEngine(source), "pdflatex");
 });
+
+
+test("Chinese templates default to XeLaTeX while explicit engines win", () => {
+  for (const source of [
+    String.raw`\documentclass[UTF8]{ctexart}`,
+    String.raw`\documentclass{ctexrep}`,
+    String.raw`\documentclass{ctexbook}`,
+    String.raw`\usepackage[UTF8]{ctex}`,
+    String.raw`\usepackage{amsmath,ctex,xcolor}`,
+    String.raw`\setCJKmainfont{Noto Serif CJK SC}`,
+  ]) {
+    assert.equal(detectTexEngine(source), "xelatex");
+    assert.equal(detectTexEngine("% !TEX program = lualatex\n" + source), "lualatex");
+    assert.equal(detectTexEngine("% !TEX program = pdflatex\n" + source), "pdflatex");
+  }
+  assert.equal(detectTexEngine(String.raw`\usepackage{ctex,luatextra}`), "lualatex");
+});

@@ -82,3 +82,23 @@ the `.tex` in Overleaf.
 `texlive-latex-extra` (titlesec, enumitem, tabularx) and
 `texlive-fonts-extra` (fontawesome) cover the templates resumes actually use.
 A document needing something else fails with its TeX log, which the app shows.
+
+`cm-super` supplies the outline fonts for T1-encoded Computer Modern. It is
+installed explicitly because the image disables recommended packages. Without
+it, templates using `\usepackage[T1]{fontenc}` can fall back to bitmap Type 3
+fonts, with degraded rendering and broken ligature extraction. `lmodern` alone
+does not replace these fonts unless the document explicitly selects it.
+
+## Font and language build checks
+
+The image explicitly installs `texlive-lang-chinese`, `fonts-noto-cjk`, and
+`texlive-fonts-extra-links`. The app defaults ctex templates to XeLaTeX while
+respecting explicit engine comments. Templates naming other system fonts still
+need those exact fonts; installed fonts are not silently substituted.
+
+Every image build runs `smoke-test.js` as the unprivileged runtime user, under
+the runtime file-access restrictions. It compiles English T1 text, default
+ctex Chinese, Noto Simplified/Traditional Chinese, and LuaLaTeX/fontspec text.
+Poppler's `pdffonts` and `pdftotext` reject Type 3 fallback, unembedded fonts,
+broken ligatures, and missing expected text. TeX logs are checked for missing
+glyphs and font shapes. These checks must pass before the image can deploy.

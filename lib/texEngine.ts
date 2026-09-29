@@ -28,6 +28,11 @@ const MAGIC_COMMENT =
 const XETEX_ONLY_PACKAGES =
   /\\(?:usepackage|RequirePackage)(?:\[[^\]]*\])?\{(?:[^}]*,\s*)?(?:fontspec|unicode-math|polyglossia|xeCJK)(?:\s*,[^}]*)?\}|\\setmainfont\b|\\setsansfont\b|\\setmonofont\b/;
 
+// ctex supports several engines, but XeLaTeX is the portable default for
+// Chinese templates unless the author explicitly selects another engine.
+const CHINESE_TEMPLATE =
+  /\\(?:documentclass|LoadClass)(?:\[[^\]]*\])?\{ctex(?:art|rep|book|beamer)\}|\\(?:usepackage|RequirePackage)(?:\[[^\]]*\])?\{(?:[^}]*,\s*)?ctex(?:\s*,[^}]*)?\}|\\setCJK(?:main|sans|mono)font\b/;
+
 // Packages specific to LuaTeX's Lua integration. Rarer than fontspec-only
 // templates but a real signal when present.
 const LUATEX_ONLY_PACKAGES =
@@ -49,6 +54,6 @@ export function detectTexEngine(source: string): TexEngine {
     if (engine) return engine;
   }
   if (LUATEX_ONLY_PACKAGES.test(source)) return "lualatex";
-  if (XETEX_ONLY_PACKAGES.test(source)) return "xelatex";
+  if (XETEX_ONLY_PACKAGES.test(source) || CHINESE_TEMPLATE.test(source)) return "xelatex";
   return "pdflatex";
 }

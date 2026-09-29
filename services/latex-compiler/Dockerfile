@@ -13,6 +13,9 @@ FROM debian:bookworm-slim
 # system font (fontspec + \setmainfont) needs one of them — pdflatex cannot
 # run fontspec at all — and the server picks whichever the template declares
 # or requires (lib/texEngine.ts), so both must actually be installed.
+# T1-encoded Computer Modern needs CM-Super outline fonts. Without it,
+# TeX generates bitmap Type 3 fonts, changing rendering and breaking
+# ligature text extraction. Keep the source font choice intact.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       nodejs \
       texlive-latex-base \
@@ -23,6 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       texlive-xetex \
       texlive-luatex \
       lmodern \
+      cm-super \
+      texlive-lang-chinese \
+      fonts-noto-cjk \
+      texlive-fonts-extra-links \
+      poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /usr/share/doc /usr/share/man
 
@@ -30,10 +38,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # of the per-request scratch directory.
 RUN useradd --system --create-home --shell /usr/sbin/nologin texc
 WORKDIR /srv
-COPY server.js /srv/server.js
+COPY server.js smoke-test.js /srv/
 RUN chown -R texc:texc /srv
 
 USER texc
+# Fail the image build if fonts, Chinese support, or text extraction regress.
+RUN node /srv/smoke-test.js
 ENV PORT=8080
 EXPOSE 8080
 CMD ["node", "/srv/server.js"]
