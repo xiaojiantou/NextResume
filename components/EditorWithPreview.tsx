@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { EditableResumeCanvas } from "./EditableResumeCanvas";
 import { LivePdfPreview } from "./LivePdfPreview";
 import type {
@@ -58,6 +59,7 @@ export function EditorWithPreview({
   onToggleKeep?: (contentId: string) => void;
   includeSummary?: boolean;
 }) {
+  const { t } = useI18n();
   const [layout, setLayout] = useState<"split" | "editor" | "preview">("split");
 
   return (
@@ -73,8 +75,7 @@ export function EditorWithPreview({
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
-            Split
-          </button>
+            {t("Split")}</button>
           <button
             onClick={() => setLayout("editor")}
             className={`px-3 py-1.5 rounded text-sm font-medium transition ${
@@ -83,8 +84,7 @@ export function EditorWithPreview({
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
-            Editor Only
-          </button>
+            {t("Editor Only")}</button>
           <button
             onClick={() => setLayout("preview")}
             className={`px-3 py-1.5 rounded text-sm font-medium transition ${
@@ -93,8 +93,7 @@ export function EditorWithPreview({
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
-            Preview Only
-          </button>
+            {t("Preview Only")}</button>
         </div>
       </div>
 

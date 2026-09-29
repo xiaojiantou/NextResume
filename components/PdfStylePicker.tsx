@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { cn } from "@/lib/cn";
 import type { PersonalizedStatus } from "@/lib/store";
 import {
@@ -132,6 +133,7 @@ export function PdfStylePicker({
   personalizedStatus?: PersonalizedStatus;
   personalizedAvailable?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const currentInfo = STYLES.find((s) => s.id === current) ?? STYLES[0];
@@ -161,7 +163,7 @@ export function PdfStylePicker({
           <FileText size={13} className="text-ink-500" />
         )}
         <span className="font-medium text-ink-900">
-          {currentIsGenerating ? "Generating…" : currentInfo.label}
+          {t(currentIsGenerating ? "Generating…" : currentInfo.label)}
         </span>
         <ChevronDown
           size={13}
@@ -180,11 +182,9 @@ export function PdfStylePicker({
                 key={s.id}
                 type="button"
                 disabled={unavailable}
-                title={
-                  unavailable
+                title={t(unavailable
                     ? "Needs page images of the original, which only a PDF upload provides"
-                    : undefined
-                }
+                    : undefined)}
                 onClick={() => {
                   onPick(s.id);
                   setOpen(false);
@@ -201,7 +201,7 @@ export function PdfStylePicker({
                 <StyleThumb id={s.id} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink-900 flex items-center gap-1.5">
-                    {s.label}
+                    {t(s.label)}
                     <AtsBadge level={s.ats} />
                     {isPersonalized && personalizedStatus === "generating" && (
                       <Loader2 size={12} className="text-accent-600 animate-spin" />
@@ -212,11 +212,11 @@ export function PdfStylePicker({
                   </div>
                   <div className="text-xs text-ink-500 mt-0.5">
                     {unavailable
-                      ? "Only available for PDF uploads — it is rebuilt from images of your original"
+                      ? t("Only available for PDF uploads — it is rebuilt from images of your original")
                       : isPersonalized && personalizedStatus === "generating"
-                        ? "Rebuilding the uploaded resume's regions and visual hierarchy…"
+                        ? t("Rebuilding the uploaded resume's regions and visual hierarchy…")
                         : isPersonalized && personalizedStatus === "failed"
-                          ? "Couldn't rebuild this time — try again, or pick another style"
+                          ? t("Couldn't rebuild this time — try again, or pick another style")
                           : s.blurb}
                   </div>
                 </div>
@@ -237,6 +237,7 @@ export function PdfStylePicker({
 }
 
 function AtsBadge({ level }: { level: AtsCompatibility }) {
+  const { t } = useI18n();
   const label =
     level === "optimized"
       ? "ATS optimized"
@@ -254,7 +255,7 @@ function AtsBadge({ level }: { level: AtsCompatibility }) {
             : "bg-amber-50 text-amber-700",
       )}
     >
-      {label}
+      {t(label)}
     </span>
   );
 }

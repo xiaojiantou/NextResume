@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { AppShell } from "@/components/AppShell";
 import { ContentStructurePicker } from "@/components/ContentStructurePicker";
 import { useFlow } from "@/lib/store";
@@ -30,6 +31,7 @@ type SkuOption = {
 };
 
 export default function CheckoutPage() {
+  const { t } = useI18n();
   const {
     markPaid,
     resume,
@@ -169,18 +171,15 @@ export default function CheckoutPage() {
         <div className="lg:col-span-3 space-y-5">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-ink-900">
-              Unlock your optimized resume
-            </h1>
+              {t("Unlock your optimized resume")}</h1>
             <p className="text-ink-500 mt-2">
-              Secure Stripe checkout. No subscription.
-            </p>
+              {t("Secure Stripe checkout. No subscription.")}</p>
           </div>
 
           {toppedUp && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 flex items-start gap-2">
               <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
-              Your pack is ready. Spend a credit below to unlock this resume.
-            </div>
+              {t("Your pack is ready. Spend a credit below to unlock this resume.")}</div>
           )}
 
           <div className="card p-5 space-y-4">
@@ -197,12 +196,10 @@ export default function CheckoutPage() {
                 <div>
                   <div className="text-sm font-medium text-ink-900 inline-flex items-center gap-2">
                     <Layers size={14} className="text-accent-600" />
-                    {credits} resume {credits === 1 ? "credit" : "credits"}{" "}
-                    available
-                  </div>
+                    {credits} {t("resume")}{" "}{t(credits === 1 ? "credit" : "credits")}{t(" ")}
+                    {t("available")}</div>
                   <p className="text-xs text-ink-400 mt-1">
-                    Nothing more to pay — this unlock comes out of your pack.
-                  </p>
+                    {t("Nothing more to pay — this unlock comes out of your pack.")}</p>
                 </div>
               </div>
               <button
@@ -214,19 +211,17 @@ export default function CheckoutPage() {
                 {usingCredit ? (
                   <>
                     <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Unlocking…
-                  </>
+                    {t("Unlocking…")}</>
                 ) : (
                   <>
                     <Sparkles size={14} />
-                    Use 1 credit to unlock this resume
-                  </>
+                    {t("Use 1 credit to unlock this resume")}</>
                 )}
               </button>
               {creditError && (
                 <div className="text-xs text-rose-700 inline-flex items-center gap-1.5">
                   <AlertCircle size={11} />
-                  {creditError}
+                  {t(creditError)}
                 </div>
               )}
             </div>
@@ -236,15 +231,13 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="text-sm font-medium text-ink-900">
-                  {credits > 0 ? "Top up" : "Pay with Stripe"}
+                  {t(credits > 0 ? "Top up" : "Pay with Stripe")}
                 </div>
                 <p className="text-xs text-ink-400 mt-1">
-                  You'll return here automatically after payment.
-                </p>
+                  {t("You'll return here automatically after payment.")}</p>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-ink-400">
-                <Lock size={11} /> Test mode ready
-              </div>
+                <Lock size={11} /> {t("Test mode ready")}</div>
             </div>
 
             {skus.length > 1 && (
@@ -264,7 +257,7 @@ export default function CheckoutPage() {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-medium text-ink-900">
-                          {sku.label}
+                          {t(sku.label)}
                         </span>
                         <span className="text-sm font-semibold tabular-nums text-ink-900">
                           {sku.amount}
@@ -272,10 +265,10 @@ export default function CheckoutPage() {
                       </div>
                       <div className="mt-1 flex items-center justify-between gap-3">
                         <span className="text-xs text-ink-500">
-                          {sku.blurb}
+                          {t(sku.blurb)}
                         </span>
                         <span className="text-[11px] text-ink-400 tabular-nums shrink-0">
-                          {sku.perResume}
+                          {t(sku.perResume)}
                         </span>
                       </div>
                     </button>
@@ -295,19 +288,17 @@ export default function CheckoutPage() {
               {processing ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Opening Stripe…
-                </>
+                  {t("Opening Stripe…")}</>
               ) : (
                 <>
                   <CreditCard size={14} />
-                  Pay {activeSku?.amount ?? "$9.99"} with Stripe
-                </>
+                  {t("Pay")}{" "}{activeSku?.amount ?? "$9.99"} {t("with Stripe")}</>
               )}
             </button>
             {checkoutError && (
               <div className="text-xs text-rose-700 inline-flex items-center gap-1.5">
                 <AlertCircle size={11} />
-                {checkoutError}
+                {t(checkoutError)}
               </div>
             )}
           </div>
@@ -317,19 +308,16 @@ export default function CheckoutPage() {
               <div>
                 <span className="text-sm font-medium text-ink-900 inline-flex items-center gap-2">
                   <Ticket size={14} className="text-accent-600" />
-                  Access code
-                </span>
+                  {t("Access code")}</span>
                 <p className="text-xs text-ink-400 mt-1">
-                  Set PROMO_CODES in .env.local, or use DEV-UNLOCK while
-                  running locally.
-                </p>
+                  {t("Set PROMO_CODES in .env.local, or use DEV-UNLOCK while running locally.")}</p>
               </div>
               <div className="flex gap-2">
                 <input
                   autoFocus
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="DEV-UNLOCK"
+                  placeholder={t("DEV-UNLOCK")}
                   className="flex-1 px-3 py-2.5 border border-ink-200 rounded-lg text-sm uppercase tracking-wider outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10 placeholder:text-ink-300"
                 />
                 <button
@@ -340,20 +328,18 @@ export default function CheckoutPage() {
                   {redeeming ? (
                     <>
                       <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Checking…
-                    </>
+                      {t("Checking…")}</>
                   ) : (
                     <>
                       <CheckCircle2 size={14} />
-                      Unlock
-                    </>
+                      {t("Unlock")}</>
                   )}
                 </button>
               </div>
               {codeError && (
                 <div className="text-xs text-rose-700 inline-flex items-center gap-1.5">
                   <AlertCircle size={11} />
-                  {codeError}
+                  {t(codeError)}
                 </div>
               )}
             </form>
@@ -361,29 +347,28 @@ export default function CheckoutPage() {
 
           <div className="flex items-center justify-between">
             <Link href="/analysis" className="btn btn-ghost">
-              <ArrowLeft size={14} /> Back
-            </Link>
+              <ArrowLeft size={14} /> {t("Back")}</Link>
           </div>
         </div>
 
         {/* Order summary */}
         <aside className="lg:col-span-2">
           <div className="card p-5 sticky top-20">
-            <div className="text-xs text-ink-500">Order summary</div>
+            <div className="text-xs text-ink-500">{t("Order summary")}</div>
             <div className="mt-3 flex items-start gap-3">
               <div className="w-10 h-10 rounded-lg bg-ink-900 text-white inline-flex items-center justify-center">
                 <Sparkles size={16} />
               </div>
               <div className="flex-1">
                 <div className="font-medium text-ink-900">
-                  {activeSku && activeSku.credits > 1
+                  {t(activeSku && activeSku.credits > 1
                     ? `Resume pack — ${activeSku.credits}`
-                    : "Optimized Resume"}
+                    : "Optimized Resume")}
                 </div>
                 <div className="text-xs text-ink-500 mt-0.5">
                   {activeSku && activeSku.credits > 1
                     ? activeSku.perResume
-                    : "Full rewrite unlock"}
+                    : t("Full rewrite unlock")}
                 </div>
               </div>
               <div className="text-sm font-medium tabular-nums">
@@ -394,17 +379,15 @@ export default function CheckoutPage() {
             <div className="hairline my-5" />
 
             <div className="space-y-2 text-sm">
-              <Row label="Subtotal" value={activeSku?.amount ?? "$9.99"} />
-              <Row label="Tax" value="$0.00" muted />
+              <Row label={t("Subtotal")} value={activeSku?.amount ?? "$9.99"} />
+              <Row label={t("Tax")} value="$0.00" muted />
               <div className="hairline" />
-              <Row label="Total" value={activeSku?.amount ?? "$9.99"} bold />
+              <Row label={t("Total")} value={activeSku?.amount ?? "$9.99"} bold />
             </div>
 
             {credits > 0 && (
               <div className="mt-4 rounded-lg border border-accent-200 bg-accent-50/50 px-3 py-2 text-xs text-ink-700">
-                {credits} unused {credits === 1 ? "credit" : "credits"} on your
-                account. Spending one costs nothing extra.
-              </div>
+                {credits} {t("unused")}{" "}{t(credits === 1 ? "credit" : "credits")} {t("on your account. Spending one costs nothing extra.")}</div>
             )}
 
             <div className="mt-5 rounded-lg bg-ink-50/60 p-3.5 text-xs text-ink-600 space-y-2">
@@ -413,21 +396,20 @@ export default function CheckoutPage() {
                 "Evidence Mode — bullet-level traceability",
                 "Side-by-side comparison",
                 "Browser PDF export",
-              ].map((t) => (
-                <div key={t} className="flex items-start gap-2">
+              ].map((itemText) => (
+                <div key={itemText} className="flex items-start gap-2">
                   <Check
                     size={12}
                     className="mt-0.5 text-emerald-600 shrink-0"
                     strokeWidth={3}
                   />
-                  {t}
+                  {t(itemText)}
                 </div>
               ))}
             </div>
 
             <div className="mt-4 flex items-center gap-1.5 text-[11px] text-ink-400">
-              <Lock size={11} /> Stripe-hosted checkout
-            </div>
+              <Lock size={11} /> {t("Stripe-hosted checkout")}</div>
           </div>
         </aside>
       </div>
@@ -446,9 +428,10 @@ function Row({
   bold?: boolean;
   muted?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-between">
-      <span className={muted ? "text-ink-400" : "text-ink-600"}>{label}</span>
+      <span className={muted ? "text-ink-400" : "text-ink-600"}>{t(label)}</span>
       <span
         className={`tabular-nums ${
           bold ? "font-semibold text-ink-900" : "text-ink-700"

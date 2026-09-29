@@ -13,6 +13,9 @@
 // template preview this one debounces: it waits for edits to settle before
 // asking the compiler for a new page, and keeps showing the last good page
 // while a new one is pending rather than blanking the pane on every change.
+"use client";
+
+import { useI18n } from "@/components/LanguageProvider";
 import { orderAuthHeaders } from "@/lib/store";
 import type { Optimization, Resume } from "@/lib/types";
 import { RefreshCw } from "lucide-react";
@@ -70,6 +73,7 @@ export function CompiledOptimizedTexPreview({
   targetTitle?: string;
   pageSize: { widthPt: number; heightPt: number };
 }) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<"compiling" | "ready" | "failed">(
     "compiling",
   );
@@ -144,7 +148,7 @@ export function CompiledOptimizedTexPreview({
       <div className="h-[320px] sm:h-[400px] [&>div]:h-full">
         {listing}
       </div>
-      <h3 className="mb-2 mt-5 text-xs font-medium text-ink-500">Compiled PDF</h3>
+      <h3 className="mb-2 mt-5 text-xs font-medium text-ink-500">{t("Compiled PDF")}</h3>
         <div
           className="relative overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
           style={{ aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}` }}
@@ -152,7 +156,7 @@ export function CompiledOptimizedTexPreview({
           {status === "ready" && url ? (
             <iframe
               src={`${url}#toolbar=1&view=Fit`}
-              title="Optimized resume compiled from your LaTeX"
+              title={t("Optimized resume compiled from your LaTeX")}
               className="h-full w-full rounded-lg"
             />
           ) : (
@@ -162,27 +166,26 @@ export function CompiledOptimizedTexPreview({
             >
               <span className="inline-flex items-center gap-2">
                 {status === "failed" && !updating ? (
-                  <span>PDF unavailable: {error}<button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 block w-full text-sm underline underline-offset-2">Retry compilation</button></span>
-                ) : <><RefreshCw size={14} className="animate-spin" />Compiling your LaTeX…</>}
+                  <span>{t("PDF unavailable:")}{" "}{t(error)}<button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 block w-full text-sm underline underline-offset-2">{t("Retry compilation")}</button></span>
+                ) : <><RefreshCw size={14} className="animate-spin" />{t("Compiling your LaTeX…")}</>}
               </span>
             </div>
           )}
           {updating && status === "ready" ? (
             <div
               role="status"
-              aria-label="Updating preview"
+              aria-label={t("Updating preview")}
               className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full border border-ink-100 bg-white/90 px-2 py-1 text-[11px] text-ink-500 shadow-soft"
             >
               <RefreshCw size={11} className="animate-spin" />
-              Updating…
-            </div>
+              {t("Updating…")}</div>
           ) : null}
           {error && status === "ready" ? (
             <div
               role="status"
               className="absolute inset-x-0 bottom-0 bg-amber-50/95 px-3 py-1.5 text-[11px] text-amber-800"
             >
-              {error}
+              {t(error)}
             </div>
           ) : null}
         </div>

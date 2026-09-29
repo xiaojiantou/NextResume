@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { Check, ChevronDown, Palette } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -20,6 +21,7 @@ export function PdfPalettePicker({
   current: string;
   onPick: (paletteId: string) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const palettes = getPdfStyleDefinition(style).palettes;
@@ -52,7 +54,7 @@ export function PdfPalettePicker({
           className="h-3 w-3 rounded-full border border-black/10"
           style={{ backgroundColor: selected.accent }}
         />
-        <span className="font-medium text-ink-900">{selected.label}</span>
+        <span className="font-medium text-ink-900">{t(selected.label)}</span>
         <ChevronDown
           size={13}
           className={cn("text-ink-400 transition", open && "rotate-180")}
@@ -62,7 +64,7 @@ export function PdfPalettePicker({
       {open ? (
         <div
           role="listbox"
-          aria-label={`${getPdfStyleDefinition(style).label} color palette`}
+          aria-label={t(`${getPdfStyleDefinition(style).label} color palette`)}
           className="absolute right-0 top-full z-30 mt-1.5 w-52 card p-1.5 shadow-pop"
         >
           {palettes.map((candidate) => {
@@ -87,7 +89,7 @@ export function PdfPalettePicker({
                   style={{ backgroundColor: candidate.accent }}
                 />
                 <span className="flex-1 font-medium text-ink-800">
-                  {candidate.label}
+                  {t(candidate.label)}
                 </span>
                 {isSelected ? (
                   <Check size={13} className="text-ink-900" strokeWidth={3} />

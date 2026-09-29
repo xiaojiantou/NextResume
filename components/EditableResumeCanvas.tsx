@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import type { Resume, ResumeRole, ResumeTeam } from "@/lib/types";
 import type { ResumeLink } from "@/lib/resumeLinks";
 import { cn } from "@/lib/cn";
@@ -63,6 +64,7 @@ export function EditableResumeCanvas({
   lockedContentIds?: string[];
   onToggleKeep?: (contentId: string) => void;
 }) {
+  const { t } = useI18n();
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const keptIds = new Set(keptContentIds);
@@ -153,18 +155,14 @@ export function EditableResumeCanvas({
         type="button"
         disabled={locked || !onToggleKeep}
         aria-pressed={kept}
-        aria-label={
-          locked
+        aria-label={t(locked
             ? "This manually edited content is locked"
-            : `${kept ? "Stop keeping" : "Keep"} this content during page fitting`
-        }
-        title={
-          locked
+            : `${kept ? "Stop keeping" : "Keep"} this content during page fitting`)}
+        title={t(locked
             ? "Manual edits are locked and will not be rewritten by Fit"
             : kept
               ? "Allow Fit to shorten or remove this content"
-              : "Prevent Fit from removing this content"
-        }
+              : "Prevent Fit from removing this content")}
         onClick={() => onToggleKeep?.(contentId)}
         className={cn(
           "inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 disabled:cursor-default",
@@ -175,7 +173,7 @@ export function EditableResumeCanvas({
         )}
       >
         {kept ? <Lock size={13} /> : <Unlock size={13} />}
-        <span className={compact ? "sr-only" : undefined}>{label}</span>
+        <span className={compact ? "sr-only" : undefined}>{t(label)}</span>
       </button>
     );
   };
@@ -441,12 +439,12 @@ export function EditableResumeCanvas({
       <div className="flex items-center justify-between gap-4 mb-6 pb-6 border-b border-ink-100">
         <div>
           <h2 className="text-lg font-semibold text-ink-900">
-            {optimizedPreview ? "Edit verified source fields" : "Edit Resume"}
+            {t(optimizedPreview ? "Edit verified source fields" : "Edit Resume")}
           </h2>
           <p className="text-sm text-ink-500 mt-1">
-            {optimizedPreview
+            {t(optimizedPreview
               ? "The preview uses role-optimized wording and system section headings. Source-backed edits update it in real time."
-              : "Click any field to edit. Changes update in real-time."}
+              : "Click any field to edit. Changes update in real-time.")}
           </p>
         </div>
         <button
@@ -457,62 +455,57 @@ export function EditableResumeCanvas({
           {regenerating ? (
             <>
               <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Regenerating…
-            </>
+              {t("Regenerating…")}</>
           ) : (
             <>
               <Wand2 size={14} />
-              Regenerate content
-            </>
+              {t("Regenerate content")}</>
           )}
         </button>
       </div>
 
       {/* Personal Info */}
       <div className="card p-6">
-        <h3 className="text-sm font-semibold text-ink-900 mb-4">Personal Info</h3>
+        <h3 className="text-sm font-semibold text-ink-900 mb-4">{t("Personal Info")}</h3>
         <div className="space-y-4">
           <EditableField
             fieldId="name"
-            label="Name"
+            label={t("Name")}
             value={resume.name}
           />
           <EditableField
             fieldId="title"
-            label="Professional Title"
+            label={t("Professional Title")}
             value={resume.title}
           />
           <div className="grid grid-cols-3 gap-4">
             <EditableField
               fieldId="email"
-              label="Email"
+              label={t("Email")}
               value={resume.email}
             />
             <EditableField
               fieldId="phone"
-              label="Phone"
+              label={t("Phone")}
               value={resume.phone}
             />
             <EditableField
               fieldId="location"
-              label="Location"
+              label={t("Location")}
               value={resume.location}
             />
           </div>
           <EditableField
             fieldId="summary"
-            label="Professional Summary"
+            label={t("Professional Summary")}
             value={resume.summary}
             multiline
           />
           <div className="space-y-1">
             <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-              Links
-            </label>
+              {t("Links")}</label>
             <p className="text-xs text-ink-400 -mt-0.5 mb-1">
-              Every URL the parser found in your source shows in the contact
-              line below your name. Remove the ones you don&apos;t want there.
-            </p>
+              {t("Every URL the parser found in your source shows in the contact line below your name. Remove the ones you don't want there.")}</p>
             <div className="space-y-2">
               {(resume.links ?? []).map((link, index) => (
                 <div key={index} className="flex gap-2">
@@ -520,14 +513,14 @@ export function EditableResumeCanvas({
                     type="text"
                     value={link.label}
                     onChange={(e) => updateLink(index, { label: e.target.value })}
-                    placeholder="Label (e.g. LinkedIn)"
+                    placeholder={t("Label (e.g. LinkedIn)")}
                     className="w-40 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans"
                   />
                   <input
                     type="text"
                     value={link.url ?? ""}
                     onChange={(e) => updateLink(index, { url: e.target.value })}
-                    placeholder="https://…"
+                    placeholder={t("https://…")}
                     className="flex-1 px-3 py-2 rounded-md border border-ink-100 hover:border-ink-200 text-sm font-sans"
                   />
                   <button
@@ -543,8 +536,7 @@ export function EditableResumeCanvas({
                 className="flex items-center gap-1.5 text-sm text-accent-600 hover:text-accent-700 font-medium"
               >
                 <Plus size={14} />
-                Add link
-              </button>
+                {t("Add link")}</button>
             </div>
           </div>
         </div>
@@ -552,7 +544,7 @@ export function EditableResumeCanvas({
 
       {/* Skills */}
       <div className="card p-6">
-        <h3 className="text-sm font-semibold text-ink-900 mb-4">Skills</h3>
+        <h3 className="text-sm font-semibold text-ink-900 mb-4">{t("Skills")}</h3>
         <div className="space-y-4">
           {skillSections.map((section) => (
             <div key={section.key}>
@@ -571,7 +563,7 @@ export function EditableResumeCanvas({
                     <KeepButton contentId={skillContentId(skill)} compact />
                     <button
                       type="button"
-                      aria-label={`Remove ${skill}`}
+                      aria-label={t(`Remove ${skill}`)}
                       onClick={() => removeSkill(skill)}
                       className="grid min-h-11 min-w-11 place-items-center rounded-full text-ink-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                     >
@@ -582,17 +574,16 @@ export function EditableResumeCanvas({
                 <button
                   type="button"
                   onClick={() => {
-                    const newSkill = prompt(
+                    const newSkill = prompt(t(
                       section.label
                         ? `Add a skill under "${section.label}":`
                         : "Add new skill:",
-                    )?.trim();
+                    ))?.trim();
                     if (newSkill) addSkill(newSkill, section.label);
                   }}
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-dashed border-ink-300 px-4 text-sm font-medium text-ink-600 transition hover:border-accent-400 hover:bg-accent-50 hover:text-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                 >
-                  <Plus size={14} /> Add Skill
-                </button>
+                  <Plus size={14} /> {t("Add Skill")}</button>
               </div>
             </div>
           ))}
@@ -605,7 +596,7 @@ export function EditableResumeCanvas({
           <div key={group.id} className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-ink-900">
-                {group.title || "Experience"}
+                {group.title || t("Experience")}
               </h3>
             </div>
             {group.roles.map((role) => (
@@ -616,32 +607,28 @@ export function EditableResumeCanvas({
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                  Company
-                </label>
+                  {t("Company")}</label>
                 <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                   {role.company}
                 </div>
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                  Job Title
-                </label>
+                  {t("Job Title")}</label>
                 <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                   {role.title}
                 </div>
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                  Start Date
-                </label>
+                  {t("Start Date")}</label>
                 <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                   {role.start}
                 </div>
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                  End Date
-                </label>
+                  {t("End Date")}</label>
                 <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                   {role.end}
                 </div>
@@ -651,8 +638,7 @@ export function EditableResumeCanvas({
             {/* Bullets */}
             <div className="mt-4 space-y-3 pt-4 border-t border-ink-100">
               <div className="text-xs font-medium text-ink-600 uppercase tracking-widest">
-                Achievements
-              </div>
+                {t("Achievements")}</div>
               {role.bullets
                 .filter((bullet) => !teamBulletIds(role).has(bullet.id))
                 .map((bullet, bulletIndex) => (
@@ -668,7 +654,7 @@ export function EditableResumeCanvas({
                   <KeepButton contentId={bullet.id} compact />
                   <button
                     type="button"
-                    aria-label="Delete achievement"
+                    aria-label={t("Delete achievement")}
                     onClick={() => deleteBullet(role.id, bullet.id)}
                     className="p-2 hover:bg-rose-100 rounded text-rose-500 shrink-0"
                   >
@@ -680,8 +666,7 @@ export function EditableResumeCanvas({
                 onClick={() => addBullet(role.id)}
                 className="ml-5 text-sm font-medium text-accent-600 hover:text-accent-700 flex items-center gap-1"
               >
-                <Plus size={14} /> Add achievement
-              </button>
+                <Plus size={14} /> {t("Add achievement")}</button>
               {role.teams?.map((team) => {
                 const bullets = teamBullets(role, team);
                 return (
@@ -693,7 +678,7 @@ export function EditableResumeCanvas({
                       {team.name}
                       {team.title ? (
                         <span className="font-normal text-ink-500">
-                          {" "}
+                          {t(" ")}
                           · {team.title}
                         </span>
                       ) : null}
@@ -713,7 +698,7 @@ export function EditableResumeCanvas({
                         <KeepButton contentId={bullet.id} compact />
                         <button
                           type="button"
-                          aria-label="Delete achievement"
+                          aria-label={t("Delete achievement")}
                           onClick={() => deleteBullet(role.id, bullet.id)}
                           className="p-2 hover:bg-rose-100 rounded text-rose-500 shrink-0"
                         >
@@ -725,8 +710,7 @@ export function EditableResumeCanvas({
                       onClick={() => addBullet(role.id, team.id)}
                       className="ml-5 mt-2 text-sm font-medium text-accent-600 hover:text-accent-700 flex items-center gap-1"
                     >
-                      <Plus size={14} /> Add achievement
-                    </button>
+                      <Plus size={14} /> {t("Add achievement")}</button>
                   </div>
                 );
               })}
@@ -741,7 +725,7 @@ export function EditableResumeCanvas({
       {projects.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-ink-900">Projects</h3>
+            <h3 className="text-sm font-semibold text-ink-900">{t("Projects")}</h3>
           </div>
           {projects.map((project) => (
             <div
@@ -754,32 +738,28 @@ export function EditableResumeCanvas({
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                    Project Name
-                  </label>
+                    {t("Project Name")}</label>
                   <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                     {project.name}
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                    Role
-                  </label>
+                    {t("Role")}</label>
                   <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                     {project.role}
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                    Start Date
-                  </label>
+                    {t("Start Date")}</label>
                   <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                     {project.start}
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] uppercase tracking-widest text-ink-400 font-medium">
-                    End Date
-                  </label>
+                    {t("End Date")}</label>
                   <div className="px-3 py-2 rounded-md border border-ink-100 bg-white text-sm font-sans mt-1">
                     {project.end}
                   </div>
@@ -789,8 +769,7 @@ export function EditableResumeCanvas({
               {/* Bullets */}
               <div className="mt-4 space-y-3 pt-4 border-t border-ink-100">
                 <div className="text-xs font-medium text-ink-600 uppercase tracking-widest">
-                  Achievements
-                </div>
+                  {t("Achievements")}</div>
                 {project.bullets.map((bullet, bulletIndex) => (
                   <div
                     key={`${project.id}:${bullet.id}:${bulletIndex}`}
@@ -806,7 +785,7 @@ export function EditableResumeCanvas({
                     <KeepButton contentId={bullet.id} compact />
                     <button
                       type="button"
-                      aria-label="Delete achievement"
+                      aria-label={t("Delete achievement")}
                       onClick={() => deleteProjectBullet(project.id, bullet.id)}
                       className="p-2 hover:bg-rose-100 rounded text-rose-500 shrink-0"
                     >
@@ -818,8 +797,7 @@ export function EditableResumeCanvas({
                   onClick={() => addProjectBullet(project.id)}
                   className="ml-5 text-sm font-medium text-accent-600 hover:text-accent-700 flex items-center gap-1"
                 >
-                  <Plus size={14} /> Add achievement
-                </button>
+                  <Plus size={14} /> {t("Add achievement")}</button>
               </div>
             </div>
           ))}
@@ -833,9 +811,9 @@ export function EditableResumeCanvas({
           disabled={regenerating}
           className="btn btn-primary"
         >
-          {regenerating
+          {t(regenerating
             ? "Regenerating content…"
-            : "Regenerate content with AI"}
+            : "Regenerate content with AI")}
         </button>
       </div>
     </div>

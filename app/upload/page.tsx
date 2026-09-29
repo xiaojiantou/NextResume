@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { AppShell } from "@/components/AppShell";
 import { useFlow } from "@/lib/store";
 import {
@@ -153,6 +154,7 @@ function SectionHeading({
   hint: string;
   done?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-start gap-3">
       <span
@@ -164,15 +166,16 @@ function SectionHeading({
       </span>
       <div>
         <h2 className="text-lg font-semibold tracking-tight text-ink-900">
-          {title}
+          {t(title)}
         </h2>
-        <p className="text-sm text-ink-500 mt-0.5">{hint}</p>
+        <p className="text-sm text-ink-500 mt-0.5">{t(hint)}</p>
       </div>
     </div>
   );
 }
 
 export default function UploadPage() {
+  const { t } = useI18n();
   const {
     fileName,
     fileType,
@@ -385,11 +388,9 @@ export default function UploadPage() {
     <AppShell step="upload">
       <div className="container-x py-10 max-w-5xl">
         <h1 className="text-3xl font-semibold tracking-tight text-ink-900">
-          Your resume and the job
-        </h1>
+          {t("Your resume and the job")}</h1>
         <p className="text-ink-500 mt-2">
-          Add both and we'll score the match for free — no account needed.
-        </p>
+          {t("Add both and we'll score the match for free — no account needed.")}</p>
 
         {/* The two inputs are genuinely parallel — the resume parses in the
             background while the job description is being pasted — so on wide
@@ -399,7 +400,7 @@ export default function UploadPage() {
           <div className="lg:border-r lg:border-ink-100 lg:pr-10">
             <SectionHeading
               n={1}
-              title="Upload your resume"
+              title={t("Upload your resume")}
               hint="PDF, DOCX, or LaTeX (.tex), up to 10MB. We'll extract the structure automatically."
               done={!!resume && !parsing}
             />
@@ -415,8 +416,7 @@ export default function UploadPage() {
                   }`}
                 >
                   <Upload size={13} className="inline mr-1.5 -mt-0.5" />
-                  Upload file
-                </button>
+                  {t("Upload file")}</button>
                 <button
                   onClick={() => setResumeMode("latex")}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
@@ -426,8 +426,7 @@ export default function UploadPage() {
                   }`}
                 >
                   <Code2 size={13} className="inline mr-1.5 -mt-0.5" />
-                  Paste LaTeX
-                </button>
+                  {t("Paste LaTeX")}</button>
               </div>
             ) : null}
 
@@ -435,15 +434,13 @@ export default function UploadPage() {
               <div className="mt-4 card overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-ink-100 flex items-center justify-between bg-ink-50/50">
                   <span className="text-xs text-ink-500">
-                    LaTeX source ·{" "}
+                    {t("LaTeX source ·")}{t(" ")}
                     <span className="tabular-nums">
                       {latexSource.length.toLocaleString()}
-                    </span>{" "}
-                    characters
-                  </span>
+                    </span>{t(" ")}
+                    {t("characters")}</span>
                   <span className="text-xs text-ink-400">
-                    Overleaf: select all in the editor and copy
-                  </span>
+                    {t("Overleaf: select all in the editor and copy")}</span>
                 </div>
                 <textarea
                   value={latexSource}
@@ -454,9 +451,7 @@ export default function UploadPage() {
                 />
                 <div className="px-4 py-3 border-t border-ink-100 flex items-center justify-between gap-3">
                   <span className="text-xs text-ink-400">
-                    We keep your source so the optimized wording can be written
-                    back into it, preamble untouched.
-                  </span>
+                    {t("We keep your source so the optimized wording can be written back into it, preamble untouched.")}</span>
                   <button
                     className="btn btn-primary shrink-0"
                     disabled={latexSource.trim().length < 50 || parsing}
@@ -468,8 +463,7 @@ export default function UploadPage() {
                       )
                     }
                   >
-                    Use this LaTeX
-                  </button>
+                    {t("Use this LaTeX")}</button>
                 </div>
               </div>
             ) : null}
@@ -511,11 +505,9 @@ export default function UploadPage() {
                   <Upload size={20} />
                 </div>
                 <div className="mt-4 font-medium text-ink-900">
-                  Drop your resume here, or click to browse
-                </div>
+                  {t("Drop your resume here, or click to browse")}</div>
                 <div className="text-sm text-ink-400 mt-1">
-                  PDF, DOCX or .tex · Max 10MB
-                </div>
+                  {t("PDF, DOCX or .tex · Max 10MB")}</div>
               </div>
             ) : fileName ? (
               <div className="mt-4 card p-5 flex items-center gap-4">
@@ -531,13 +523,13 @@ export default function UploadPage() {
                     {fileName}
                   </div>
                   <div className="text-xs text-ink-400 mt-0.5">
-                    {fileType?.toUpperCase()} ·{" "}
-                    {((fileSize ?? 0) / 1024).toFixed(1)} KB ·{" "}
-                    {parsing
+                    {fileType?.toUpperCase()} ·{t(" ")}
+                    {((fileSize ?? 0) / 1024).toFixed(1)} {t("KB ·")}{t(" ")}
+                    {t(parsing
                       ? `${phase} — keep going below`
                       : resume
                         ? `Parsed: ${resume.experience.length} roles, ${bulletCount} bullets`
-                        : ""}
+                        : "")}
                   </div>
                   {parsing && (
                     <div className="mt-2.5 max-w-xs flex items-center gap-2">
@@ -547,7 +539,7 @@ export default function UploadPage() {
                         aria-valuenow={progress}
                         aria-valuemin={0}
                         aria-valuemax={100}
-                        aria-label="Resume upload progress"
+                        aria-label={t("Resume upload progress")}
                       >
                         <div
                           className="h-full bg-ink-900 rounded-full transition-[width] duration-300 ease-out"
@@ -570,7 +562,7 @@ export default function UploadPage() {
                   onClick={discardResume}
                   disabled={parsing}
                   className="btn btn-ghost !p-2 text-ink-400"
-                  aria-label="Remove file"
+                  aria-label={t("Remove file")}
                 >
                   <X size={16} />
                 </button>
@@ -580,7 +572,7 @@ export default function UploadPage() {
             {resumeError && (
               <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
                 <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                {resumeError}
+                {t(resumeError)}
               </div>
             )}
           </div>
@@ -589,7 +581,7 @@ export default function UploadPage() {
           <div>
             <SectionHeading
               n={2}
-              title="Tell us about the job"
+              title={t("Tell us about the job")}
               hint="Paste the full job description, or import it from a URL or screenshot."
               done={jdReady}
             />
@@ -604,8 +596,7 @@ export default function UploadPage() {
                 }`}
               >
                 <Briefcase size={13} className="inline mr-1.5 -mt-0.5" />
-                Paste description
-              </button>
+                {t("Paste description")}</button>
               <button
                 onClick={() => setMode("url")}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
@@ -615,8 +606,7 @@ export default function UploadPage() {
                 }`}
               >
                 <Globe size={13} className="inline mr-1.5 -mt-0.5" />
-                Import from URL
-              </button>
+                {t("Import from URL")}</button>
               <button
                 onClick={() => setMode("image")}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${
@@ -626,44 +616,40 @@ export default function UploadPage() {
                 }`}
               >
                 <ImageUp size={13} className="inline mr-1.5 -mt-0.5" />
-                Upload image
-              </button>
+                {t("Upload image")}</button>
             </div>
 
             {mode === "paste" ? (
               <div className="mt-4 card overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-ink-100 flex items-center justify-between bg-ink-50/50">
                   <span className="text-xs text-ink-500">
-                    Job description ·{" "}
+                    {t("Job description ·")}{t(" ")}
                     <span className="tabular-nums">
                       {jobDescription.length.toLocaleString()}
-                    </span>{" "}
-                    characters
-                  </span>
+                    </span>{t(" ")}
+                    {t("characters")}</span>
                   <button
                     onClick={() => setJobDescription(SAMPLE_JD)}
                     className="text-xs text-accent-600 hover:text-accent-700"
                   >
-                    Use sample JD
-                  </button>
+                    {t("Use sample JD")}</button>
                 </div>
                 <textarea
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
-                  placeholder="Paste the full job description here. Include responsibilities, requirements, and any 'nice to haves'."
+                  placeholder={t("Paste the full job description here. Include responsibilities, requirements, and any 'nice to haves'.")}
                   className="w-full h-72 p-4 text-sm text-ink-800 placeholder:text-ink-300 resize-none outline-none font-sans leading-relaxed"
                 />
               </div>
             ) : mode === "url" ? (
               <div className="mt-4 card p-5">
                 <label className="text-sm text-ink-700 font-medium">
-                  Job posting URL
-                </label>
+                  {t("Job posting URL")}</label>
                 <div className="mt-2 flex gap-2">
                   <input
                     value={jobUrl}
                     onChange={(e) => setJobUrl(e.target.value)}
-                    placeholder="https://jobs.example.com/posting/123"
+                    placeholder={t("https://jobs.example.com/posting/123")}
                     className="flex-1 px-3 py-2.5 border border-ink-200 rounded-lg text-sm outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10"
                   />
                   <button
@@ -671,13 +657,11 @@ export default function UploadPage() {
                     onClick={importFromUrl}
                     className="btn btn-primary"
                   >
-                    {importing ? "Importing…" : "Import"}
+                    {t(importing ? "Importing…" : "Import")}
                   </button>
                 </div>
                 <p className="text-xs text-ink-400 mt-3">
-                  Some job boards block automated reading. If import fails,
-                  paste the description directly.
-                </p>
+                  {t("Some job boards block automated reading. If import fails, paste the description directly.")}</p>
               </div>
             ) : (
               <div
@@ -700,20 +684,19 @@ export default function UploadPage() {
                   <ImageUp size={20} />
                 </div>
                 <div className="mt-4 font-medium text-ink-900">
-                  {importingImage
+                  {t(importingImage
                     ? "Reading image…"
-                    : "Click here, then paste (Ctrl/Cmd+V) — or click to browse"}
+                    : "Click here, then paste (Ctrl/Cmd+V) — or click to browse")}
                 </div>
                 <div className="text-sm text-ink-400 mt-1">
-                  JPG or PNG · Max 10MB
-                </div>
+                  {t("JPG or PNG · Max 10MB")}</div>
               </div>
             )}
 
             {job && (
               <div className="mt-5 card p-4 bg-ink-50/30">
                 <div className="text-xs text-ink-500 mb-2">
-                  Detected signals · {job.title} ({job.seniority})
+                  {t("Detected signals ·")}{" "}{job.title} ({job.seniority})
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {job.requiredKeywords.slice(0, 12).map((k) => (
@@ -731,7 +714,7 @@ export default function UploadPage() {
             {jobError && (
               <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
                 <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                {jobError}
+                {t(jobError)}
               </div>
             )}
           </div>
@@ -740,21 +723,18 @@ export default function UploadPage() {
         <div className="mt-8 flex items-start gap-2 text-xs text-ink-400">
           <ShieldCheck size={14} className="mt-0.5 shrink-0" />
           <p>
-            Your resume is processed in-memory and removed within 24 hours. We
-            never use your data to train models.
-          </p>
+            {t("Your resume is processed in-memory and removed within 24 hours. We never use your data to train models.")}</p>
         </div>
 
         <div className="hairline my-8" />
 
         <div className="flex items-center justify-between gap-4">
           <Link href="/" className="btn btn-ghost">
-            Cancel
-          </Link>
+            {t("Cancel")}</Link>
           <div className="flex items-center gap-3">
             {blockedHint && (
               <span className="text-xs text-ink-400 hidden sm:inline">
-                {blockedHint}
+                {t(blockedHint)}
               </span>
             )}
             <button
@@ -762,7 +742,7 @@ export default function UploadPage() {
               onClick={onContinue}
               className="btn btn-primary"
             >
-              {submitting ? "Analyzing…" : "Run free analysis"}
+              {t(submitting ? "Analyzing…" : "Run free analysis")}
               <ArrowRight size={16} />
             </button>
           </div>

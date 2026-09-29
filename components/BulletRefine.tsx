@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -101,6 +102,7 @@ export function BulletRefine({
   onQuotaConsume: () => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const { evidenceAnswers, setEvidenceAnswer, setConfirmedEstimate, removeConfirmedEstimate } = useFlow();
   const storedAnswer = evidenceAnswers[bullet.id];
   const savedAnswer = !storedAnswer?.sourceText || storedAnswer.sourceText === (sourceText || bullet.text) ? storedAnswer : undefined;
@@ -249,8 +251,7 @@ export function BulletRefine({
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium text-accent-700 inline-flex items-center gap-1.5">
           <Sparkles size={12} />
-          Refine · {quotaRemaining} left
-        </div>
+          {t("Refine ·")}{" "}{quotaRemaining} {t("left")}</div>
         <div className="flex items-center gap-2">
           {supported && (
             <div className="flex items-center rounded-md bg-ink-50 p-0.5">
@@ -266,9 +267,9 @@ export function BulletRefine({
                       : "text-ink-500 hover:text-ink-900",
                     recording && "cursor-not-allowed opacity-50",
                   )}
-                  title={`Dictate in ${option.label}`}
+                  title={t(`Dictate in ${option.label}`)}
                 >
-                  {option.label}
+                  {t(option.label)}
                 </button>
               ))}
             </div>
@@ -276,7 +277,7 @@ export function BulletRefine({
           <button
             onClick={reset}
             className="text-ink-400 hover:text-ink-700"
-            aria-label="Close"
+            aria-label={t("Close")}
           >
             <X size={14} />
           </button>
@@ -307,15 +308,14 @@ export function BulletRefine({
         <div className="mt-2.5 rounded-md border border-accent-200 bg-accent-50/40 p-3 text-sm text-ink-900">
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-[10px] font-medium uppercase tracking-widest text-accent-600">
-              Suggestion
-            </span>
+              {t("Suggestion")}</span>
             {turns.length > 1 && (
               <span className="inline-flex items-center gap-1 text-[11px] text-ink-500">
                 <button
                   onClick={() => setShown((i) => Math.max(0, i - 1))}
                   disabled={shown === 0}
                   className="disabled:opacity-30"
-                  aria-label="Previous version"
+                  aria-label={t("Previous version")}
                 >
                   <ChevronLeft size={13} />
                 </button>
@@ -326,7 +326,7 @@ export function BulletRefine({
                   }
                   disabled={shown === turns.length - 1}
                   className="disabled:opacity-30"
-                  aria-label="Next version"
+                  aria-label={t("Next version")}
                 >
                   <ChevronRight size={13} />
                 </button>
@@ -357,11 +357,9 @@ export function BulletRefine({
               className="btn btn-primary !py-1.5 !px-3 text-xs"
             >
               <Check size={12} strokeWidth={3} />
-              Use this bullet
-            </button>
+              {t("Use this bullet")}</button>
             <button onClick={reset} className="btn btn-ghost !py-1.5 !px-3 text-xs">
-              Discard
-            </button>
+              {t("Discard")}</button>
           </div>
         </div>
       )}
@@ -375,18 +373,17 @@ export function BulletRefine({
       {!atTurnLimit && !impactMetrics.includes("monthly_workload") && (
         <button type="button" onClick={() => setAddWorkVolume(true)}
           className="mt-3 text-xs font-medium text-accent-700 underline underline-offset-2">
-          Estimate monthly work volume
-        </button>
+          {t("Estimate monthly work volume")}</button>
       )}
 
       {confirmedEstimates.length > 0 && (
         <div className="mt-3 text-xs text-ink-600">
           {confirmedEstimates.map(estimate => <div key={estimate.metric} className="flex items-start justify-between gap-2">
-            <p>Confirmed estimate: {estimate.description}</p>
+            <p>{t("Confirmed estimate:")}{" "}{estimate.description}</p>
             <button type="button" className="text-ink-500 underline" onClick={() => {
               removeConfirmedEstimate(bullet.id, estimate.metric);
               setInstruction(current => [current, `Remove the previous ${IMPACT_METRICS[estimate.metric].label.toLowerCase()} estimate; I no longer want to claim it.`].filter(Boolean).join("\n"));
-            }}>Remove</button>
+            }}>{t("Remove")}</button>
           </div>)}
         </div>
       )}
@@ -396,7 +393,7 @@ export function BulletRefine({
           <label htmlFor={`evidence-${bullet.id}`} className="block text-xs font-medium text-ink-800">
             {question}
           </label>
-          <p className="mt-1 text-xs text-ink-500">Optional. Add only details you know. Your answer is saved in this browser; review the suggestion before accepting it.</p>
+          <p className="mt-1 text-xs text-ink-500">{t("Optional. Add only details you know. Your answer is saved in this browser; review the suggestion before accepting it.")}</p>
           <textarea
             id={`evidence-${bullet.id}`}
             value={answer}
@@ -404,7 +401,7 @@ export function BulletRefine({
             maxLength={3000}
             rows={3}
             className="mt-2 w-full rounded-md border border-ink-200 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-100"
-            placeholder="Your contribution, method, or observed result…"
+            placeholder={t("Your contribution, method, or observed result…")}
           />
         </div>
       )}
@@ -412,20 +409,19 @@ export function BulletRefine({
       {!atTurnLimit && (
         <div className="mt-2.5">
           <label htmlFor={`story-${bullet.id}`} className="block text-xs font-medium text-ink-800">
-            {suggested ? "Add details or tell us what to change" : "Tell the story behind this bullet"}
+            {t(suggested ? "Add details or tell us what to change" : "Tell the story behind this bullet")}
           </label>
           <p className="mt-1 text-xs text-ink-500">
-            Speak naturally or type what you did, how you did it, and what happened. AI will turn your details into a concise bullet for you to review.
-          </p>
+            {t("Speak naturally or type what you did, how you did it, and what happened. AI will turn your details into a concise bullet for you to review.")}</p>
           <button type="button" onClick={recording ? stopRecording : startRecording}
             disabled={!supported || processing}
-            aria-label={recording ? "Stop recording" : "Tell your story by voice"}
+            aria-label={t(recording ? "Stop recording" : "Tell your story by voice")}
             className={cn("mt-2 inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50",
               recording ? "border-rose-200 bg-rose-50 text-rose-700" : "border-accent-200 bg-white text-accent-700 hover:bg-accent-50")}>
             {recording ? <Square size={13} fill="currentColor" /> : <Mic size={13} />}
-            {recording ? "Stop recording" : "Tell your story"}
+            {t(recording ? "Stop recording" : "Tell your story")}
           </button>
-          {!supported && <p className="mt-1 text-xs text-ink-500">Voice input is unavailable in this browser. You can type or paste your story below.</p>}
+          {!supported && <p className="mt-1 text-xs text-ink-500">{t("Voice input is unavailable in this browser. You can type or paste your story below.")}</p>}
           <div className="relative">
             <textarea
               id={`story-${bullet.id}`}
@@ -440,11 +436,9 @@ export function BulletRefine({
               }}
               rows={3}
               maxLength={4000}
-              placeholder={
-                suggested
+              placeholder={t(suggested
                   ? "What should change about this version?"
-                  : "I worked on… My part was… I used… The result or purpose was…"
-              }
+                  : "I worked on… My part was… I used… The result or purpose was…")}
               className="mt-2 w-full resize-y rounded-md border border-ink-100 bg-white p-2.5 text-xs leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-accent-300 focus:outline-none focus:ring-2 focus:ring-accent-100"
             />
           </div>
@@ -454,8 +448,7 @@ export function BulletRefine({
               {recording ? (
                 <span className="inline-flex items-center gap-1.5 text-rose-600">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
-                  Listening…
-                </span>
+                  {t("Listening…")}</span>
               ) : turnsUsed ? (
                 `Round ${turnsUsed + 1} of ${MAX_TURNS}`
               ) : (
@@ -470,8 +463,7 @@ export function BulletRefine({
               {processing ? (
                 <>
                   <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Rewriting…
-                </>
+                  {t("Rewriting…")}</>
               ) : suggested ? (
                 "Refine again"
               ) : (
@@ -484,14 +476,13 @@ export function BulletRefine({
 
       {atTurnLimit && (
         <div className="mt-2.5 text-[11px] text-ink-500">
-          {MAX_TURNS} rounds used. Pick a version above, or discard and start over.
-        </div>
+          {MAX_TURNS} {t("rounds used. Pick a version above, or discard and start over.")}</div>
       )}
 
       {error && (
         <div className="mt-2.5 text-xs text-rose-700 inline-flex items-start gap-1.5">
           <AlertCircle size={11} className="mt-0.5" />
-          {error}
+          {t(error)}
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { Check, ChevronDown, Files } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -24,6 +25,7 @@ export function TargetPagesPicker({
   recommended?: number;
   onPick: (target: TargetPages) => void;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [customValue, setCustomValue] = useState(
     current === "auto" ? 4 : current,
@@ -66,7 +68,7 @@ export function TargetPagesPicker({
       >
         <Files size={13} className="text-ink-500" />
         <span className="font-medium text-ink-900">
-          {targetLabel(current)}
+          {t(targetLabel(current))}
         </span>
         <ChevronDown
           size={13}
@@ -76,7 +78,7 @@ export function TargetPagesPicker({
 
       {open ? (
         <div className="absolute right-0 top-full z-30 mt-1.5 w-64 card p-1.5 shadow-pop">
-          <div role="listbox" aria-label="Target resume length">
+          <div role="listbox" aria-label={t("Target resume length")}>
             {quickOptions.map((option) => {
               const selected = current === option;
               return (
@@ -95,12 +97,11 @@ export function TargetPagesPicker({
                   )}
                 >
                   <span className="flex-1 font-medium text-ink-800">
-                    {targetLabel(option)}
+                    {t(targetLabel(option))}
                   </span>
                   {option === recommended ? (
                     <span className="mr-2 rounded bg-accent-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent-700">
-                      Recommended
-                    </span>
+                      {t("Recommended")}</span>
                   ) : null}
                   {selected ? (
                     <Check size={13} className="text-ink-900" strokeWidth={3} />
@@ -112,8 +113,7 @@ export function TargetPagesPicker({
 
           <div className="mx-1 my-1.5 h-px bg-ink-100" />
           <label className="block px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-ink-400">
-            Custom target
-          </label>
+            {t("Custom target")}</label>
           <div className="flex items-center gap-2 px-2 pb-2">
             <input
               type="number"
@@ -130,21 +130,18 @@ export function TargetPagesPicker({
                 if (event.key === "Enter") applyCustom();
               }}
               className="min-h-10 w-20 rounded-md border border-ink-200 px-2.5 text-sm tabular-nums outline-none focus:border-ink-900 focus:ring-2 focus:ring-ink-900/10"
-              aria-label="Custom target page count"
+              aria-label={t("Custom target page count")}
             />
-            <span className="text-xs text-ink-500">pages, 1–10</span>
+            <span className="text-xs text-ink-500">{t("pages, 1–10")}</span>
             <button
               type="button"
               onClick={applyCustom}
               className="ml-auto min-h-10 rounded-md bg-ink-900 px-3 text-xs font-medium text-white transition hover:bg-ink-800"
             >
-              Apply
-            </button>
+              {t("Apply")}</button>
           </div>
           <p className="px-2 pb-1 text-[11px] leading-4 text-ink-400">
-            Exact after Fit. Auto keeps the complete resume at its natural
-            length.
-          </p>
+            {t("Exact after Fit. Auto keeps the complete resume at its natural length.")}</p>
         </div>
       ) : null}
     </div>

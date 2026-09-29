@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { LogIn } from "lucide-react";
 import Link from "next/link";
@@ -49,13 +50,12 @@ export function UnlockLink({
 // A one-line heads-up shown next to the unlock offer while signed out, so the
 // account requirement is visible before anyone clicks.
 export function SignInToUnlockNote() {
+  const { t } = useI18n();
   const { isLoaded, isSignedIn } = useUser();
   if (!isLoaded || isSignedIn) return null;
   return (
     <p className="mt-2 text-xs text-ink-500 inline-flex items-center gap-1.5">
       <LogIn size={12} />
-      You&apos;ll sign in (or create a free account) before checkout, so your
-      purchase stays with you.
-    </p>
+      {t("You'll sign in (or create a free account) before checkout, so your purchase stays with you.")}</p>
   );
 }

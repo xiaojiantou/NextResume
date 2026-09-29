@@ -10,6 +10,7 @@
 // point of this path is that we do not restyle anything. The source itself is
 // the honest answer, and marking the lines that will be rewritten says
 // exactly what the export is going to do.
+import { useI18n } from "@/components/LanguageProvider";
 import { useMemo, useRef, useState } from "react";
 import { parseTexBlocks } from "@/lib/tex/blocks";
 import { planTexEdits } from "@/lib/tex/plan";
@@ -106,6 +107,7 @@ export function LatexSourcePreview({
    *  second time. */
   mode?: "original" | "edited";
 }) {
+  const { t } = useI18n();
   const { lines, changingCount } = useMemo(
     () => buildLines(source, resume, optimization, includeSummary, mode),
     [source, resume, optimization, includeSummary, mode],
@@ -132,34 +134,33 @@ export function LatexSourcePreview({
 
   return (
     <div
-      className="flex min-w-0 flex-col rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+      className="flex w-full min-w-0 flex-col rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
       style={
         pageSize
           ? { aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}` }
           : undefined
       }
       role="region"
-      aria-label={edited ? "Rewritten LaTeX source" : "Original LaTeX source"}
+      aria-label={t(edited ? "Rewritten LaTeX source" : "Original LaTeX source")}
     >
       <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-3 py-2">
         <span className="text-[11px] text-ink-500">
-          {edited ? "Your source, rewritten" : "Your source, unmodified"} ·{" "}
-          {lines.length.toLocaleString()} lines
-        </span>
+          {t(edited ? "Your source, rewritten" : "Your source, unmodified")} ·{t(" ")}
+          {lines.length.toLocaleString()} {t("lines")}</span>
         {optimization ? (
           <span className="text-[11px] text-ink-500">
             {changingCount > 0 ? (
               <button
                 type="button"
                 onClick={jumpToNextChange}
-                title="Jump to the next changed line"
+                title={t("Jump to the next changed line")}
                 className="rounded text-left underline decoration-dotted underline-offset-4 hover:text-ink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-500"
               >
                 <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-amber-300 align-middle" />
-                {changingCount} {changingCount === 1 ? "line" : "lines"}{" "}
-                {edited ? "were rewritten" : "will be rewritten"}
+                {changingCount} {t(changingCount === 1 ? "line" : "lines")}{t(" ")}
+                {t(edited ? "were rewritten" : "will be rewritten")}
                 <span className="ml-1" aria-hidden>↓</span>
-                <span className="sr-only">. Jump to the next changed line</span>
+                <span className="sr-only">{t(". Jump to the next changed line")}</span>
               </button>
             ) : (
               "No lines change"
@@ -168,7 +169,7 @@ export function LatexSourcePreview({
         ) : null}
       </div>
       <span role="status" className="sr-only">
-        {selectedNumber !== null ? `Changed line ${selectedNumber}, ${changingLines.findIndex((line) => line.number === selectedNumber) + 1} of ${changingCount}` : ""}
+        {t(selectedNumber !== null ? `Changed line ${selectedNumber}, ${changingLines.findIndex((line) => line.number === selectedNumber) + 1} of ${changingCount}` : "")}
       </span>
       <div
         ref={viewport}

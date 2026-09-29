@@ -1,11 +1,13 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 'use client';
+import { useI18n } from "@/components/LanguageProvider";
 import { useEffect, useRef, useState } from 'react';
 import { useFlow, orderAuthHeaders } from '@/lib/store';
 import { agentTargets, type AgentChange } from '@/lib/resumeAgent';
 import { AgentDictation } from './AgentDictation';
 
 export function ResumeAgent() {
+  const { t } = useI18n();
   const { resume, optimization, job, selectedModel, lockedContentIds, replaceOptimizedBullet } = useFlow();
   const [instruction, setInstruction] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,35 +47,35 @@ export function ResumeAgent() {
     snapshot.current = { resume: updated.resume, optimization: updated.optimization, job: updated.job, selectedModel: updated.selectedModel, lockedContentIds: updated.lockedContentIds };
     setHandled(old => ({ ...old, [change.id]: 'Accepted' }));
   }
-  return <section className="mt-6 rounded-xl border border-ink-200 bg-white p-4 sm:p-5" aria-label="Resume editing assistant">
+  return <section className="mt-6 rounded-xl border border-ink-200 bg-white p-4 sm:p-5" aria-label={t("Resume editing assistant")}>
     <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 className="text-base font-semibold text-ink-900">Edit with your assistant</h2>
-      <span className="text-xs text-ink-500">Up to 3 achievement edits · Review before applying</span>
+      <h2 className="text-base font-semibold text-ink-900">{t("Edit with your assistant")}</h2>
+      <span className="text-xs text-ink-500">{t("Up to 3 achievement edits · Review before applying")}</span>
     </div>
-    <p className="mt-1 text-sm text-ink-500">Describe what to change in any language. Each suggestion is checked against your evidence. Locked achievements stay protected.</p>
+    <p className="mt-1 text-sm text-ink-500">{t("Describe what to change in any language. Each suggestion is checked against your evidence. Locked achievements stay protected.")}</p>
     <form className="mt-4" onSubmit={e => { e.preventDefault(); void ask(); }}>
       <AgentDictation value={instruction} disabled={busy} onChange={setInstruction} onActiveChange={setDictating} />
-      <label htmlFor="resume-agent-request" className="sr-only">What would you like to change?</label>
+      <label htmlFor="resume-agent-request" className="sr-only">{t("What would you like to change?")}</label>
       <textarea id="resume-agent-request" value={instruction} onChange={e => setInstruction(e.target.value)} maxLength={4000} rows={3} disabled={busy} readOnly={dictating}
-        placeholder="Make my AI project achievements more concise, and keep the original tone."
+        placeholder={t("Make my AI project achievements more concise, and keep the original tone.")}
         className="w-full resize-y rounded-lg border border-ink-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-400 disabled:opacity-60" />
       <div className="mt-2 flex items-center justify-between gap-3">
-        <p className="text-xs text-ink-400">Edits achievement wording; page layout, summary and skills use the existing controls.</p>
-        {busy ? <button type="button" className="btn btn-secondary" onClick={() => controller.current?.abort()}>Cancel</button> : <button className="btn btn-primary shrink-0" disabled={dictating || instruction.trim().length < 4}>Suggest changes</button>}
+        <p className="text-xs text-ink-400">{t("Edits achievement wording; page layout, summary and skills use the existing controls.")}</p>
+        {busy ? <button type="button" className="btn btn-secondary" onClick={() => controller.current?.abort()}>{t("Cancel")}</button> : <button className="btn btn-primary shrink-0" disabled={dictating || instruction.trim().length < 4}>{t("Suggest changes")}</button>}
       </div>
     </form>
-    {busy && <p role="status" className="mt-3 text-sm text-ink-500">Choosing achievements, rewriting and checking evidence…</p>}
-    {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+    {busy && <p role="status" className="mt-3 text-sm text-ink-500">{t("Choosing achievements, rewriting and checking evidence…")}</p>}
+    {error && <p role="alert" className="mt-3 text-sm text-red-600">{t(error)}</p>}
     {reply && <div className="mt-4 border-t border-ink-100 pt-4">
       <p className="whitespace-pre-wrap text-sm text-ink-700" role="status">{reply.message}</p>
       {reply.changes.map(change => <article key={change.id} className="mt-4 rounded-lg border border-ink-200 p-3">
         <div className="mb-2 text-xs font-medium text-ink-500">{change.label}</div>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
-          <div><p className="mb-1 text-xs text-ink-400">Current</p><p className="whitespace-pre-wrap text-ink-600">{change.before}</p></div>
-          <div className="rounded bg-emerald-50 p-2"><p className="mb-1 text-xs text-emerald-700">Suggested</p><p className="whitespace-pre-wrap text-ink-900">{change.after.text}</p></div>
+          <div><p className="mb-1 text-xs text-ink-400">{t("Current")}</p><p className="whitespace-pre-wrap text-ink-600">{change.before}</p></div>
+          <div className="rounded bg-emerald-50 p-2"><p className="mb-1 text-xs text-emerald-700">{t("Suggested")}</p><p className="whitespace-pre-wrap text-ink-900">{change.after.text}</p></div>
         </div>
         <p className="mt-2 text-xs text-ink-500">{change.after.rationale}</p>
-        <div className="mt-3 flex gap-2">{handled[change.id] ? <span role="status" className="text-sm text-ink-500">{handled[change.id]}</span> : <><button type="button" className="btn btn-primary" onClick={() => accept(change)}>Accept change</button><button type="button" className="btn btn-secondary" onClick={() => setHandled(old => ({ ...old, [change.id]: 'Dismissed' }))}>Dismiss</button></>}</div>
+        <div className="mt-3 flex gap-2">{handled[change.id] ? <span role="status" className="text-sm text-ink-500">{t(handled[change.id])}</span> : <><button type="button" className="btn btn-primary" onClick={() => accept(change)}>{t("Accept change")}</button><button type="button" className="btn btn-secondary" onClick={() => setHandled(old => ({ ...old, [change.id]: 'Dismissed' }))}>{t("Dismiss")}</button></>}</div>
       </article>)}
     </div>}
   </section>;

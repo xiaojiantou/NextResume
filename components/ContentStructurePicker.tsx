@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { cn } from "@/lib/cn";
 import type { ContentStructureMode } from "@/lib/types";
 import {
@@ -42,6 +43,7 @@ export function ContentStructurePicker({
   variant?: "compact" | "cards";
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const currentOption =
@@ -61,12 +63,9 @@ export function ContentStructurePicker({
     return (
       <fieldset>
         <legend className="text-sm font-medium text-ink-900">
-          Content structure
-        </legend>
+          {t("Content structure")}</legend>
         <p className="mt-1 text-xs leading-5 text-ink-500">
-          Choose how the resume is organized. PDF Style controls colors,
-          typography, and visual layout separately.
-        </p>
+          {t("Choose how the resume is organized. PDF Style controls colors, typography, and visual layout separately.")}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {OPTIONS.map((option) => {
             const selected = option.id === current;
@@ -103,11 +102,11 @@ export function ContentStructurePicker({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2 text-sm font-medium text-ink-900">
-                    {option.label}
+                    {t(option.label)}
                     {selected ? <Check size={14} strokeWidth={3} /> : null}
                   </span>
                   <span className="mt-1 block text-xs leading-5 text-ink-500">
-                    {option.description}
+                    {t(option.description)}
                   </span>
                 </span>
               </label>
@@ -133,7 +132,7 @@ export function ContentStructurePicker({
         ) : (
           <ListChecks size={13} className="text-ink-500" />
         )}
-        <span className="font-medium text-ink-900">{currentOption.label}</span>
+        <span className="font-medium text-ink-900">{t(currentOption.label)}</span>
         <ChevronDown
           size={13}
           className={cn("text-ink-400 transition", open && "rotate-180")}
@@ -142,7 +141,7 @@ export function ContentStructurePicker({
 
       {open ? (
         <div className="absolute right-0 top-full z-30 mt-1.5 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-ink-100 bg-white p-1.5 shadow-pop">
-          <div role="listbox" aria-label="Content structure">
+          <div role="listbox" aria-label={t("Content structure")}>
             {OPTIONS.map((option) => {
               const selected = option.id === current;
               const Icon = option.id === "preserve" ? ShieldCheck : ListChecks;
@@ -164,10 +163,10 @@ export function ContentStructurePicker({
                   <Icon size={16} className="mt-0.5 shrink-0 text-ink-500" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-ink-900">
-                      {option.label}
+                      {t(option.label)}
                     </span>
                     <span className="mt-0.5 block text-xs leading-4 text-ink-500">
-                      {option.description}
+                      {t(option.description)}
                     </span>
                   </span>
                   {selected ? (
@@ -178,8 +177,7 @@ export function ContentStructurePicker({
             })}
           </div>
           <p className="mx-2 border-t border-ink-100 px-1 pt-2 pb-1 text-[11px] leading-4 text-ink-400">
-            Visual design remains controlled by PDF Style.
-          </p>
+            {t("Visual design remains controlled by PDF Style.")}</p>
         </div>
       ) : null}
     </div>

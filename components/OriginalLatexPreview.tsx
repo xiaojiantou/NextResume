@@ -10,6 +10,7 @@
 // parsed content in one of our styles would read as a before/after of a
 // restyle that never happens on this path. Source and compiled PDF are
 // stacked so changed-line highlights stay visible during compilation.
+import { useI18n } from "@/components/LanguageProvider";
 import { orderAuthHeaders } from "@/lib/store";
 import type { Optimization, Resume } from "@/lib/types";
 import { RefreshCw } from "lucide-react";
@@ -68,6 +69,7 @@ export function OriginalLatexPreview({
   includeSummary: boolean;
   pageSize: { widthPt: number; heightPt: number };
 }) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<"compiling" | "ready" | "failed">(
     "compiling",
   );
@@ -114,7 +116,7 @@ export function OriginalLatexPreview({
       <div className="h-[320px] sm:h-[400px] [&>div]:h-full">
         {listing}
       </div>
-      <h3 className="mb-2 mt-5 text-xs font-medium text-ink-500">Compiled PDF</h3>
+      <h3 className="mb-2 mt-5 text-xs font-medium text-ink-500">{t("Compiled PDF")}</h3>
         <div
           className="overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
           style={{ aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}` }}
@@ -122,7 +124,7 @@ export function OriginalLatexPreview({
           {status === "ready" && url ? (
             <iframe
               src={`${url}#toolbar=1&view=Fit`}
-              title="Original LaTeX compiled to PDF"
+              title={t("Original LaTeX compiled to PDF")}
               className="h-full w-full rounded-lg"
             />
           ) : (
@@ -132,8 +134,8 @@ export function OriginalLatexPreview({
             >
               <span className="inline-flex items-center gap-2">
                 {status === "failed" ? (
-                  <span>PDF unavailable: {error}<button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 block w-full text-sm underline underline-offset-2">Retry compilation</button></span>
-                ) : <><RefreshCw size={14} className="animate-spin" />Compiling your LaTeX…</>}
+                  <span>{t("PDF unavailable:")}{" "}{t(error)}<button type="button" onClick={() => setRetry(value => value + 1)} className="mt-3 block w-full text-sm underline underline-offset-2">{t("Retry compilation")}</button></span>
+                ) : <><RefreshCw size={14} className="animate-spin" />{t("Compiling your LaTeX…")}</>}
               </span>
             </div>
           )}

@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { MODELS, PROVIDER_LABEL, findModel } from "@/lib/models";
 import { cn } from "@/lib/cn";
 import { Check, ChevronDown, Cpu, RefreshCw, Zap } from "lucide-react";
@@ -20,6 +21,7 @@ export function ModelPicker({
   regenerating?: boolean;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const model = findModel(current);
@@ -64,7 +66,7 @@ export function ModelPicker({
                   "bg-amber-100 text-amber-700",
               )}
             >
-              {model.badge}
+              {t(model.badge)}
             </span>
           )}
           <ChevronDown
@@ -136,12 +138,12 @@ export function ModelPicker({
                                       "bg-emerald-100 text-emerald-700",
                                   )}
                                 >
-                                  {m.badge}
+                                  {t(m.badge)}
                                 </span>
                               )}
                             </div>
                             <div className="text-xs text-ink-500 mt-0.5">
-                              {m.tagline}
+                              {t(m.tagline)}
                             </div>
                           </div>
                           {selected && (
@@ -167,7 +169,7 @@ export function ModelPicker({
           type="button"
           onClick={onRegenerate}
           disabled={regenerating}
-          title="Regenerate content"
+          title={t("Regenerate content")}
           className={cn(
             "btn btn-outline",
             compact && "min-h-10 !px-2.5 !py-1 text-xs",
@@ -177,13 +179,13 @@ export function ModelPicker({
             size={12}
             className={regenerating ? "animate-spin" : ""}
           />
-          {regenerating
+          {t(regenerating
             ? compact
               ? "Regenerating…"
               : "Regenerating content…"
             : compact
               ? "Regenerate"
-              : "Regenerate content"}
+              : "Regenerate content")}
         </button>
       )}
     </div>

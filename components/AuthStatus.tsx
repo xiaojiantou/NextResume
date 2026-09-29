@@ -2,12 +2,14 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { UserButton, useClerk, useUser } from "@clerk/nextjs";
 
 // Shows on every app step (upload → result) whether there's a signed-in
 // account, so nobody discovers they're signed out only when checkout bounces
 // them. Renders nothing until Clerk has loaded, to avoid a sign-in/avatar flash.
 export function AuthStatus() {
+  const { t } = useI18n();
   const { isLoaded, isSignedIn } = useUser();
   const { openSignIn } = useClerk();
 
@@ -19,7 +21,6 @@ export function AuthStatus() {
       onClick={() => openSignIn()}
       className="btn btn-ghost !py-1.5 !px-2 text-ink-700"
     >
-      Sign in
-    </button>
+      {t("Sign in")}</button>
   );
 }

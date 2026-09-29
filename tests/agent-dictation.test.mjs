@@ -15,7 +15,8 @@ function setup() {
     abort() { this.aborted = true; }
   }
   const modules = {
-    'react': { useState: v => [v, () => {}], useRef: v => ({ current: v }), useEffect: fn => { cleanup = fn(); } },
+    '@/components/LanguageProvider': { useI18n: () => ({ t: value => value, locale: 'en' }) },
+    'react': { useState: v => [v, () => {}], useRef: v => ({ current: v }), useEffect: fn => { const next = fn(); if (next) cleanup = next; } },
     'react/jsx-runtime': { jsx, jsxs: jsx }, 'lucide-react': { Mic: 'mic', Square: 'square' },
   };
   const exports = {};

@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { AppShell } from "@/components/AppShell";
 import { ModelPicker } from "@/components/ModelPicker";
 import { PdfStylePicker } from "@/components/PdfStylePicker";
@@ -150,14 +151,14 @@ function describeFailure(status: number): string {
 const inFlightOptimize = new Map<string, Promise<void>>();
 
 export default function ResultPage() {
+  const { t } = useI18n();
   return (
     <Suspense
       fallback={
         <AppShell step="result">
           <div className="container-x py-16 max-w-2xl">
             <div className="card p-10 text-center text-ink-500 text-sm">
-              Loading…
-            </div>
+              {t("Loading…")}</div>
           </div>
         </AppShell>
       }
@@ -192,6 +193,7 @@ async function saveResponseAsFile(res: Response, fallbackName: string) {
 }
 
 function ResultPageInner() {
+  const { t } = useI18n();
   const {
     resume,
     sourceDocument,
@@ -887,7 +889,7 @@ function ResultPageInner() {
             ? `\n\n${data.log.trim().split("\n").slice(0, 4).join("\n")}`
             : "";
         throw new Error(
-          `${data.error || `${isTex ? "LaTeX" : "Word"} export failed (${res.status})`}${detail}`,
+          `${data.error || `${isTex ? "LaTeX" : "Word"} export failed (${res.status})`}${t(detail)}`,
         );
       }
       // Some lines deliberately keep their original wording: anything carrying
@@ -1288,11 +1290,9 @@ function ResultPageInner() {
               <Sparkles size={20} />
             </div>
             <h2 className="text-2xl font-semibold tracking-tight mt-5 text-ink-900">
-              Loading your resume…
-            </h2>
+              {t("Loading your resume…")}</h2>
             <p className="text-ink-500 mt-2 max-w-md mx-auto">
-              Restoring your order from the link in your email.
-            </p>
+              {t("Restoring your order from the link in your email.")}</p>
             <div className="mt-6 max-w-xs mx-auto">
               <div className="h-1.5 bg-ink-100 rounded-full overflow-hidden">
                 <div className="h-full w-1/3 bg-ink-900 shimmer" />
@@ -1317,23 +1317,22 @@ function ResultPageInner() {
               <AlertCircle size={20} />
             </div>
             <h2 className="text-xl font-semibold mt-4 text-ink-900">
-              Optimization failed
-            </h2>
+              {t("Optimization failed")}</h2>
             <div className="mt-2 inline-flex rounded-full border border-ink-100 bg-ink-50 px-2.5 py-1 text-xs font-medium text-ink-600">
-              Mode: {contentStructure === "preserve" ? "Keep original" : "Optimize for role"}
+              {t("Mode:")}{" "}{t(contentStructure === "preserve" ? "Keep original" : "Optimize for role")}
             </div>
-            <p className="text-ink-500 text-sm mt-2">{error}</p>
+            <p className="text-ink-500 text-sm mt-2">{t(error)}</p>
             {errorDetails.length > 0 ? (
               <ul className="mx-auto mt-3 max-w-lg list-disc space-y-1 rounded-lg border border-rose-100 bg-rose-50/60 px-5 py-3 text-left text-xs leading-5 text-rose-800">
                 {errorDetails.slice(0, 5).map((detail) => (
-                  <li key={detail}>{detail}</li>
+                  <li key={detail}>{t(detail)}</li>
                 ))}
               </ul>
             ) : null}
             <p className="text-ink-400 text-xs mt-3">
-              {errorDetails.length > 0
+              {t(errorDetails.length > 0
                 ? "Your resume was left untouched. Review the issues above, then retry or switch structure mode."
-                : "Your resume was left untouched. Retry, pick a different model, or switch structure mode."}
+                : "Your resume was left untouched. Retry, pick a different model, or switch structure mode.")}
             </p>
             <div className="mt-3 flex justify-center">
               <ModelPicker
@@ -1354,8 +1353,7 @@ function ResultPageInner() {
               }}
               className="btn btn-primary mt-5 min-h-11"
             >
-              Retry
-            </button>
+              {t("Retry")}</button>
             {contentStructure === "preserve" ? (
               <button
                 type="button"
@@ -1367,8 +1365,7 @@ function ResultPageInner() {
                 }}
                 className="btn btn-outline mt-3 ml-2 min-h-11"
               >
-                Use Optimize for role
-              </button>
+                {t("Use Optimize for role")}</button>
             ) : (
               <button
                 type="button"
@@ -1380,8 +1377,7 @@ function ResultPageInner() {
                 }}
                 className="btn btn-outline mt-3 ml-2 min-h-11"
               >
-                Use Keep original
-              </button>
+                {t("Use Keep original")}</button>
             )}
           </div>
         </div>
@@ -1399,12 +1395,9 @@ function ResultPageInner() {
               <Sparkles size={20} />
             </div>
             <h2 className="text-2xl font-semibold tracking-tight mt-5 text-ink-900">
-              Rewriting your resume…
-            </h2>
+              {t("Rewriting your resume…")}</h2>
             <p className="text-ink-500 mt-2 max-w-md mx-auto">
-              Tailoring every bullet to the job description. Each rewrite is
-              cited back to your original experience.
-            </p>
+              {t("Tailoring every bullet to the job description. Each rewrite is cited back to your original experience.")}</p>
             <div className="mt-7 max-w-xs mx-auto">
               <div
                 className="h-1.5 bg-ink-100 rounded-full overflow-hidden"
@@ -1424,9 +1417,9 @@ function ResultPageInner() {
                 />
               </div>
               <div className="mt-3 text-xs text-ink-500" aria-live="polite">
-                {REWRITE_PROGRESS_STAGES[rewriteStage]}
+                {t(REWRITE_PROGRESS_STAGES[rewriteStage])}
                 <span className="text-ink-300 tabular-nums">
-                  {" · "}
+                  {t(" · ")}
                   {rewriteStage + 1}/{REWRITE_PROGRESS_STAGES.length}
                   {rewriteStage === REWRITE_HOLD_STAGE && (
                     <> · {formatElapsed(rewriteElapsed)}</>
@@ -1435,10 +1428,7 @@ function ResultPageInner() {
               </div>
               {rewriteStage === REWRITE_HOLD_STAGE && (
                 <p className="mt-3 text-xs text-ink-400 max-w-xs mx-auto">
-                  This is the slow part: the model writes the whole resume in
-                  one pass, which can take a few minutes. The remaining checks
-                  and scoring finish in seconds.
-                </p>
+                  {t("This is the slow part: the model writes the whole resume in one pass, which can take a few minutes. The remaining checks and scoring finish in seconds.")}</p>
               )}
             </div>
 
@@ -1545,43 +1535,40 @@ function ResultPageInner() {
           <div>
             <div className="pill !text-emerald-700 !border-emerald-200 !bg-emerald-50">
               <Check size={12} strokeWidth={3} />
-              Resume optimized
-            </div>
+              {t("Resume optimized")}</div>
             <h1 className="text-3xl font-semibold tracking-tight mt-3 text-ink-900">
-              Your tailored resume is ready.
-            </h1>
+              {t("Your tailored resume is ready.")}</h1>
             <p className="text-ink-500 mt-1">
-              Tailored for{" "}
+              {t("Tailored for")}{t(" ")}
               <span className="font-medium text-ink-900">
                 {job.title}
-                {job.company ? ` @ ${job.company}` : ""}
+                {t(job.company ? ` @ ${job.company}` : "")}
               </span>
-              .{" "}
+              .{t(" ")}
               {typeof activeFitVariant?.atsScore === "number" ? (
                 <>
-                  ATS score: {report.overallBefore} →{" "}
+                  {t("ATS score:")}{" "}{report.overallBefore} →{t(" ")}
                   {activeFitVariant.atsScore}
                 </>
               ) : typeof report.measuredAfter === "number" ? (
                 <>
-                  ATS score:{" "}
+                  {t("ATS score:")}{t(" ")}
                   {report.overallBefore > 0 && (
                     <>{report.overallBefore} → </>
                   )}
                   <span className="font-medium text-ink-900">
                     {report.measuredAfter}
-                  </span>{" "}
+                  </span>{t(" ")}
                   <span className="text-emerald-700">
-                    (measured on the rewrite)
-                  </span>
+                    {t("(measured on the rewrite)")}</span>
                 </>
               ) : report.overallBefore > 0 ? (
                 <>
-                  ATS score: {report.overallBefore} → up to {report.overallAfter}{" "}
-                  <span className="text-ink-400">(measuring…)</span>
+                  {t("ATS score:")}{" "}{report.overallBefore} {t("→ up to")}{" "}{report.overallAfter}{t(" ")}
+                  <span className="text-ink-400">{t("(measuring…)")}</span>
                 </>
               ) : (
-                <>Measuring ATS score…</>
+                <>{t("Measuring ATS score…")}</>
               )}
             </p>
             {/* The headline barely moves on an already-strong resume, because
@@ -1604,7 +1591,7 @@ function ResultPageInner() {
                           : "pill !text-xs !text-ink-500"
                       }
                     >
-                      {after.label}{" "}
+                      {t(after.label)}{t(" ")}
                       {delta !== 0 && before ? (
                         <span className="font-medium">
                           {before.score} → {after.score}
@@ -1612,7 +1599,7 @@ function ResultPageInner() {
                       ) : (
                         <span className="font-medium">{after.score}</span>
                       )}
-                      {delta > 0 ? ` (+${delta})` : ""}
+                      {t(delta > 0 ? ` (+${delta})` : "")}
                     </span>
                   );
                 })}
@@ -1622,7 +1609,7 @@ function ResultPageInner() {
               <div className="mt-2 space-y-1">
                 {report.stuffingWarnings.map((warning) => (
                   <p key={warning} className="text-xs text-amber-700">
-                    ⚠ {warning}
+                    ⚠ {t(warning)}
                   </p>
                 ))}
               </div>
@@ -1634,8 +1621,7 @@ function ResultPageInner() {
               onClick={() => regenerate(selectedModel)}
               disabled={generating}
             >
-              <FileDown size={14} /> New variation
-            </button>
+              <FileDown size={14} /> {t("New variation")}</button>
             <button
               className="btn btn-primary"
               onClick={() => void primaryAction()}
@@ -1644,29 +1630,26 @@ function ResultPageInner() {
               {fitting ? (
                 <>
                   <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Fitting…
-                </>
+                  {t("Fitting…")}</>
               ) : exporting ? (
                 <>
                   <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Preparing…
-                </>
+                  {t("Preparing…")}</>
               ) : structureStale ? (
                 <>
-                  <RefreshCw size={14} /> Regenerate with{" "}
-                  {contentStructure === "preserve"
+                  <RefreshCw size={14} /> {t("Regenerate with")}{t(" ")}
+                  {t(contentStructure === "preserve"
                     ? "original structure"
-                    : "role optimization"}
+                    : "role optimization")}
                 </>
               ) : needsFit ? (
                 <>
-                  <Sparkles size={14} /> Fit to {targetPages}{" "}
-                  {targetPages === 1 ? "page" : "pages"}
+                  <Sparkles size={14} /> {t("Fit to")}{" "}{targetPages}{t(" ")}
+                  {t(targetPages === 1 ? "page" : "pages")}
                 </>
               ) : (
                 <>
-                  <Download size={14} /> Download PDF
-                </>
+                  <Download size={14} /> {t("Download PDF")}</>
               )}
             </button>
             {sourceDocument ? (
@@ -1674,14 +1657,14 @@ function ResultPageInner() {
                 className="btn btn-outline"
                 onClick={() => void downloadSource()}
                 disabled={exporting || generating || structureStale}
-                title={`Writes the new wording into your original ${
+                title={t(`Writes the new wording into your original ${
                   sourceDocument.kind === "tex" ? "LaTeX source" : "Word file"
-                }, keeping its exact formatting and links`}
+                }, keeping its exact formatting and links`)}
               >
-                <FileText size={14} />{" "}
-                {sourceDocument.kind === "tex"
+                <FileText size={14} />{t(" ")}
+                {t(sourceDocument.kind === "tex"
                   ? "Download .tex"
-                  : "Download Word"}
+                  : "Download Word")}
               </button>
             ) : null}
             {sourceDocument?.kind === "tex" &&
@@ -1690,10 +1673,9 @@ function ResultPageInner() {
                 className="btn btn-outline"
                 onClick={() => void downloadSource(true)}
                 disabled={exporting || generating || structureStale}
-                title="Compiles your own LaTeX, so the PDF is your template's typesetting rather than one of ours"
+                title={t("Compiles your own LaTeX, so the PDF is your template's typesetting rather than one of ours")}
               >
-                <FileDown size={14} /> PDF from your LaTeX
-              </button>
+                <FileDown size={14} /> {t("PDF from your LaTeX")}</button>
             ) : null}
           </div>
         </div>
@@ -1705,10 +1687,7 @@ function ResultPageInner() {
           >
             <Info size={15} className="mt-0.5 shrink-0" />
             <span>
-              Some source page regions were detected approximately.
-              Original-inspired will preserve the closest safe layout without
-              blocking your workflow; all parsed content remains editable.
-            </span>
+              {t("Some source page regions were detected approximately. Original-inspired will preserve the closest safe layout without blocking your workflow; all parsed content remains editable.")}</span>
           </div>
         ) : null}
 
@@ -1717,7 +1696,7 @@ function ResultPageInner() {
             role="alert"
             className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
           >
-            {exportError}
+            {t(exportError)}
           </div>
         )}
         {exportNotice && (
@@ -1725,7 +1704,7 @@ function ResultPageInner() {
             role="status"
             className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
           >
-            {exportNotice}
+            {t(exportNotice)}
           </div>
         )}
 
@@ -1740,14 +1719,13 @@ function ResultPageInner() {
           >
             {exportedPages > 1 ? (
               <>
-                Exported {exportedPages} pages — even at maximum compaction
-                this content doesn't fit one page.{" "}
-                {!resume.summary && optimization?.summary && summaryEnabled
+                {t("Exported")}{" "}{exportedPages} {t("pages — even at maximum compaction this content doesn't fit one page.")}{t(" ")}
+                {t(!resume.summary && optimization?.summary && summaryEnabled
                   ? "Try turning off the AI summary, or cut the bullets marked low-relevance in the diff below."
-                  : "Try cutting the bullets marked low-relevance in the diff below."}
+                  : "Try cutting the bullets marked low-relevance in the diff below.")}
               </>
             ) : (
-              <>Exported as a single page.</>
+              <>{t("Exported as a single page.")}</>
             )}
           </div>
         )}
@@ -1759,8 +1737,8 @@ function ResultPageInner() {
               className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex flex-wrap items-center justify-between gap-3"
             >
               <span>
-                {personalizedError ||
-                  "Original-inspired layout failed. Retry or choose Classic."}
+                {t(personalizedError ||
+                  "Original-inspired layout failed. Retry or choose Classic.")}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1771,15 +1749,13 @@ function ResultPageInner() {
                     void generatePersonalized();
                   }}
                 >
-                  Retry
-                </button>
+                  {t("Retry")}</button>
                 <button
                   type="button"
                   className="btn btn-outline min-h-11"
                   onClick={() => setPdfStyle("classic")}
                 >
-                  Use Classic
-                </button>
+                  {t("Use Classic")}</button>
               </div>
             </div>
           )}
@@ -1790,7 +1766,7 @@ function ResultPageInner() {
             <div
               className="grid grid-cols-1 gap-1 rounded-lg bg-ink-50 p-1 sm:inline-grid sm:grid-cols-3"
               role="tablist"
-              aria-label="Result view"
+              aria-label={t("Result view")}
             >
               <ToolbarTab
                 active={view === "edit"}
@@ -1798,20 +1774,20 @@ function ResultPageInner() {
                   if (resume) setView("edit");
                 }}
                 icon={<Pencil size={14} />}
-                label="Edit Resume"
+                label={t("Edit Resume")}
                 disabled={!resume}
               />
               <ToolbarTab
                 active={view === "split"}
                 onClick={() => setView("split")}
                 icon={<Columns2 size={14} />}
-                label="Side-by-side"
+                label={t("Side-by-side")}
               />
               <ToolbarTab
                 active={view === "bullets"}
                 onClick={() => setView("bullets")}
                 icon={<ListChecks size={14} />}
-                label="Bullet by bullet"
+                label={t("Bullet by bullet")}
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1820,7 +1796,7 @@ function ResultPageInner() {
                   checked={evidenceMode}
                   onChange={() => setEvidenceMode((v) => !v)}
                   icon={<Layers size={14} />}
-                  label="Evidence"
+                  label={t("Evidence")}
                 />
               ) : null}
               {!resume.summary && optimization.summary ? (
@@ -1828,8 +1804,8 @@ function ResultPageInner() {
                   checked={summaryEnabled}
                   onChange={() => setIncludeSummary(!summaryEnabled)}
                   icon={<FileText size={14} />}
-                  label="AI summary"
-                  title="Your original resume has no summary section. Include the AI-written one?"
+                  label={t("AI summary")}
+                  title={t("Your original resume has no summary section. Include the AI-written one?")}
                 />
               ) : null}
               {sourceDocument?.kind === "tex" &&
@@ -1838,15 +1814,15 @@ function ResultPageInner() {
                   checked={preferLatexCompile}
                   onChange={() => setPreferLatexCompile((v) => !v)}
                   icon={<FileDown size={14} />}
-                  label="Use your LaTeX"
-                  title="Download PDF compiles your own LaTeX source first, falling back to our template only if that fails. Turn off to always use the template."
+                  label={t("Use your LaTeX")}
+                  title={t("Download PDF compiles your own LaTeX source first, falling back to our template only if that fails. Turn off to always use the template.")}
                 />
               ) : null}
             </div>
           </div>
 
           <div className="grid gap-2 bg-ink-50/40 p-3 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1.45fr)_auto]">
-            <ToolbarGroup label="Rewrite" icon={<Cpu size={13} />}>
+            <ToolbarGroup label={t("Rewrite")} icon={<Cpu size={13} />}>
               <ModelPicker
                 current={selectedModel}
                 onPick={switchOptimizationModel}
@@ -1856,7 +1832,7 @@ function ResultPageInner() {
               />
             </ToolbarGroup>
 
-            <ToolbarGroup label="Layout" icon={<FileText size={13} />}>
+            <ToolbarGroup label={t("Layout")} icon={<FileText size={13} />}>
               <ContentStructurePicker
                 current={contentStructure}
                 onPick={switchStructureMode}
@@ -1894,7 +1870,7 @@ function ResultPageInner() {
                     void generatePersonalized();
                   }}
                   className="btn btn-outline min-h-10 !px-2.5 text-xs"
-                  title="Rebuild the uploaded resume's page regions and visual style"
+                  title={t("Rebuild the uploaded resume's page regions and visual style")}
                 >
                   <RefreshCw
                     size={13}
@@ -1904,7 +1880,7 @@ function ResultPageInner() {
                         : undefined
                     }
                   />
-                  {personalizedStatus === "generating" ? "Rebuilding…" : "Rebuild"}
+                  {t(personalizedStatus === "generating" ? "Rebuilding…" : "Rebuild")}
                 </button>
               ) : null}
               {pdfStyle !== "personalized" ? (
@@ -1921,7 +1897,7 @@ function ResultPageInner() {
               ) : null}
             </ToolbarGroup>
 
-            <ToolbarGroup label="Length" icon={<Files size={13} />}>
+            <ToolbarGroup label={t("Length")} icon={<Files size={13} />}>
               <TargetPagesPicker
                 current={targetPages}
                 recommended={recommendedPages}
@@ -1943,18 +1919,16 @@ function ResultPageInner() {
           >
             <div>
               <div className="font-medium">
-                {optimizationNeedsStructureUpgrade
+                {t(optimizationNeedsStructureUpgrade
                   ? "Regenerate to apply optimized headings and order"
                   : `This result uses ${
                       optimizationStructureMode === "preserve"
                         ? "Keep original sections"
                         : "Optimize for role"
-                    }`}
+                    }`)}
               </div>
               <p className="mt-0.5 text-xs text-amber-800">
-                Generate a new version before fitting or downloading. Your
-                current result remains visible and is saved in its own cache.
-              </p>
+                {t("Generate a new version before fitting or downloading. Your current result remains visible and is saved in its own cache.")}</p>
             </div>
             <button
               type="button"
@@ -1964,10 +1938,10 @@ function ResultPageInner() {
                 void regenerate(selectedModel, contentStructure)
               }
             >
-              <RefreshCw size={14} /> Regenerate with{" "}
-              {contentStructure === "preserve"
+              <RefreshCw size={14} /> {t("Regenerate with")}{t(" ")}
+              {t(contentStructure === "preserve"
                 ? "original structure"
-                : "role optimization"}
+                : "role optimization")}
             </button>
           </div>
         ) : null}
@@ -1985,12 +1959,11 @@ function ResultPageInner() {
         {optimizationModel && (
           <div className="mt-2 text-xs text-ink-400 flex items-center gap-1.5">
             <Cpu size={11} />
-            Generated with{" "}
+            {t("Generated with")}{t(" ")}
             <span className="text-ink-600 font-medium">
               {findModel(optimizationModel).name}
             </span>
-            . Pick another model to compare rewrites.
-          </div>
+            {t(". Pick another model to compare rewrites.")}</div>
         )}
 
         {targetPages !== "auto" && !structureStale ? (
@@ -2025,16 +1998,14 @@ function ResultPageInner() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-100 bg-white px-3 py-2">
             <div>
               <div className="text-sm font-medium text-ink-900">
-                Content version
-              </div>
+                {t("Content version")}</div>
               <div className="text-xs text-ink-500">
-                Page-fit choices never overwrite the complete optimized master.
-              </div>
+                {t("Page-fit choices never overwrite the complete optimized master.")}</div>
             </div>
             <div
               className="flex rounded-lg bg-ink-50 p-1"
               role="group"
-              aria-label="Resume content version"
+              aria-label={t("Resume content version")}
             >
               <button
                 type="button"
@@ -2046,8 +2017,7 @@ function ResultPageInner() {
                     : "text-ink-500 hover:text-ink-900",
                 )}
               >
-                Full optimized
-              </button>
+                {t("Full optimized")}</button>
               <button
                 type="button"
                 onClick={() => setContentVersion("fitted")}
@@ -2058,7 +2028,7 @@ function ResultPageInner() {
                     : "text-ink-500 hover:text-ink-900",
                 )}
               >
-                {targetPages}-page {pdfStyle}
+                {targetPages}{t("-page")}{" "}{pdfStyle}
               </button>
             </div>
           </div>
@@ -2068,12 +2038,10 @@ function ResultPageInner() {
           <div className="mt-3 rounded-lg border border-accent-200 bg-accent-50/40 px-4 py-3 text-sm text-ink-700 flex items-start gap-2.5">
             <Info size={14} className="mt-0.5 text-accent-600 shrink-0" />
             <div>
-              Every rewritten bullet is shown{" "}
+              {t("Every rewritten bullet is shown")}{t(" ")}
               <span className="font-medium">
-                next to the original sentences it came from
-              </span>{" "}
-              here. We never invent experience.
-            </div>
+                {t("next to the original sentences it came from")}</span>{t(" ")}
+              {t("here. We never invent experience.")}</div>
           </div>
         )}
 
@@ -2087,17 +2055,14 @@ function ResultPageInner() {
                   <AlertCircle size={20} />
                 </div>
                 <h2 className="text-xl font-semibold mt-4 text-ink-900">
-                  Upload a resume first
-                </h2>
+                  {t("Upload a resume first")}</h2>
                 <p className="text-ink-500 text-sm mt-2">
-                  You need to upload and parse your resume before you can edit it.
-                </p>
+                  {t("You need to upload and parse your resume before you can edit it.")}</p>
                 <button
                   onClick={() => router.push("/upload")}
                   className="btn btn-primary mt-5"
                 >
-                  Upload Resume
-                </button>
+                  {t("Upload Resume")}</button>
               </div>
             ) : (
               <EditorWithPreview
@@ -2145,13 +2110,11 @@ function ResultPageInner() {
           <div className="mt-5 grid gap-5 lg:grid-cols-2">
             {view === "split" ? (
               <PaneWrapper
-                title={
-                  resumeStyleSource?.screenshots.length
+                title={t(resumeStyleSource?.screenshots.length
                     ? "Original PDF"
                     : latexSource
                       ? "Original LaTeX"
-                      : "Original content (reconstructed)"
-                }
+                      : "Original content (reconstructed)")}
                 tone="muted"
                 meta={
                   resume.sourceLayout
@@ -2196,11 +2159,9 @@ function ResultPageInner() {
             ) : null}
             {view === "split" ? (
               <PaneWrapper
-                title={
-                  fittedViewActive
+                title={t(fittedViewActive
                     ? `${targetPages}-page version for ${job.title}`
-                    : `Optimized for ${job.title}`
-                }
+                    : `Optimized for ${job.title}`)}
                 tone="accent"
                 meta={
                   `${pageLabel} · ${
@@ -2250,8 +2211,7 @@ function ResultPageInner() {
                 onClick={() => regenerate(selectedModel)}
                 disabled={generating}
               >
-                <ArrowLeftRight size={14} /> Generate another variation
-              </button>
+                <ArrowLeftRight size={14} /> {t("Generate another variation")}</button>
               <button
                 className="btn btn-primary !px-5"
                 onClick={() => void primaryAction()}
@@ -2260,29 +2220,25 @@ function ResultPageInner() {
                 {fitting ? (
                   <>
                     <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Fitting…
-                  </>
+                    {t("Fitting…")}</>
                 ) : exporting ? (
                   <>
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Preparing…
-                  </>
+                    {t("Preparing…")}</>
                 ) : needsFit ? (
                   <>
-                    <Sparkles size={14} /> Fit to {targetPages}{" "}
-                    {targetPages === 1 ? "page" : "pages"}
+                    <Sparkles size={14} /> {t("Fit to")}{" "}{targetPages}{t(" ")}
+                    {t(targetPages === 1 ? "page" : "pages")}
                   </>
                 ) : (
                   <>
-                    <Download size={14} /> Download PDF
-                  </>
+                    <Download size={14} /> {t("Download PDF")}</>
                 )}
               </button>
             </div>
 
             <div className="text-xs text-ink-400 text-center">
-              {bulletsRewritten} bullets rewritten · Every change evidence-backed
-            </div>
+              {bulletsRewritten} {t("bullets rewritten · Every change evidence-backed")}</div>
           </>
         )}
       </div>
@@ -2301,6 +2257,7 @@ function PaneWrapper({
   tone: "muted" | "accent";
   meta: string;
 }) {
+  const { t } = useI18n();
   return (
     <div>
       <div
@@ -2309,8 +2266,8 @@ function PaneWrapper({
           tone === "accent" ? "text-accent-700" : "text-ink-500",
         )}
       >
-        <span className="font-medium">{title}</span>
-        <span className="text-ink-400">{meta}</span>
+        <span className="font-medium">{t(title)}</span>
+        <span className="text-ink-400">{t(meta)}</span>
       </div>
       {children}
     </div>
@@ -2326,6 +2283,7 @@ function StructureIntegrityPanel({
   sourceLayout?: Resume["sourceLayout"];
   pdfStyle: PdfStyle;
 }) {
+  const { t } = useI18n();
   const checks = [
     `${integrity.sectionsPreserved}/${integrity.totalSections} sections`,
     `${integrity.entriesPreserved}/${integrity.totalEntries} entries`,
@@ -2348,35 +2306,31 @@ function StructureIntegrityPanel({
         ) : (
           <AlertCircle size={16} />
         )}
-        {integrity.valid
+        {t(integrity.valid
           ? "Full resume structure verified"
-          : "Structure integrity failed"}
+          : "Structure integrity failed")}
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         {checks.map((check) => (
-          <span key={check}>{check}</span>
+          <span key={check}>{t(check)}</span>
         ))}
       </div>
       {!integrity.valid && integrity.issues.length > 0 ? (
         <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
           {integrity.issues.slice(0, 6).map((issue) => (
-            <li key={issue}>{issue}</li>
+            <li key={issue}>{t(issue)}</li>
           ))}
         </ul>
       ) : null}
       {integrity.valid ? (
         <p className="mt-2 text-xs leading-5 text-emerald-800">
-          The full optimized master preserves headings, section order, entries,
-          and bullets. Exact page-fit versions keep every source heading and its
-          order, but may shorten or omit lower-priority entries, bullets, and
-          skills while leaving content under every heading. The
-          source was detected as {sourceLayout?.maxColumns === 2 ? "multi-column" : "single-column"};{" "}
-          {pdfStyle === "personalized"
+          {t("The full optimized master preserves headings, section order, entries, and bullets. Exact page-fit versions keep every source heading and its order, but may shorten or omit lower-priority entries, bullets, and skills while leaving content under every heading. The source was detected as")}{" "}{t(sourceLayout?.maxColumns === 2 ? "multi-column" : "single-column")};{t(" ")}
+          {t(pdfStyle === "personalized"
             ? "Original-inspired controls the recreated visual layout."
             : `the output still uses the selected ${
                 PDF_STYLE_DEFINITIONS.find((style) => style.id === pdfStyle)
                   ?.label ?? pdfStyle
-              } visual layout.`}
+              } visual layout.`)}
         </p>
       ) : null}
     </div>
@@ -2396,6 +2350,7 @@ function ToolbarTab({
   label: string;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -2411,10 +2366,10 @@ function ToolbarTab({
             ? "bg-ink-900 text-white shadow-soft"
             : "text-ink-600 hover:bg-ink-100",
       )}
-      title={disabled ? "Upload a resume first" : undefined}
+      title={t(disabled ? "Upload a resume first" : undefined)}
     >
       {icon}
-      {label}
+      {t(label)}
     </button>
   );
 }
@@ -2428,11 +2383,12 @@ function ToolbarGroup({
   icon: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <div className="min-w-0 rounded-lg border border-ink-100 bg-white px-3 py-2 shadow-[0_1px_1px_rgba(16,24,40,0.02)]">
       <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-ink-400">
         {icon}
-        {label}
+        {t(label)}
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         {children}
@@ -2454,6 +2410,7 @@ function ToolbarSwitch({
   label: string;
   title?: string;
 }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
@@ -2471,7 +2428,7 @@ function ToolbarSwitch({
         <span className={checked ? "text-accent-600" : "text-ink-400"}>
           {icon}
         </span>
-        {label}
+        {t(label)}
       </span>
       <span
         className={cn(
@@ -2492,6 +2449,7 @@ function ToolbarSwitch({
 }
 
 function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
+  const { t } = useI18n();
   const { resume, optimization } = useFlow();
   if (!resume || !optimization) return null;
   const all = [
@@ -2514,19 +2472,17 @@ function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
     <div className="mt-5 card p-5">
       <div className="flex items-center gap-2 text-sm font-medium text-ink-900">
         <Layers size={14} className="text-accent-600" />
-        Evidence trace
-        <span className="text-ink-400 font-normal text-xs ml-2">
-          {bullet
+        {t("Evidence trace")}<span className="text-ink-400 font-normal text-xs ml-2">
+          {t(bullet
             ? "Showing the original lines that back this rewrite."
-            : "Select a bullet in the comparison below to inspect its source."}
+            : "Select a bullet in the comparison below to inspect its source.")}
         </span>
       </div>
 
       <div className="mt-4 grid md:grid-cols-2 gap-4 min-h-[120px]">
         <div>
           <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
-            Optimized
-          </div>
+            {t("Optimized")}</div>
           {bullet ? (
             <div className="rounded-lg border border-accent-200 bg-accent-50/40 p-3 text-sm text-ink-900">
               {bullet.text}
@@ -2542,20 +2498,18 @@ function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
               </div>
               {bullet.rationale && (
                 <div className="mt-3 text-xs text-ink-500 italic">
-                  Why this change: {bullet.rationale}
+                  {t("Why this change:")}{" "}{bullet.rationale}
                 </div>
               )}
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/40 p-6 text-sm text-ink-400 text-center">
-              No bullet selected
-            </div>
+              {t("No bullet selected")}</div>
           )}
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
-            From your original resume
-          </div>
+            {t("From your original resume")}</div>
           {orig.length ? (
             <div className="space-y-2">
               {orig.map((o) => (
@@ -2571,7 +2525,7 @@ function EvidencePanel({ hoveredId }: { hoveredId: string | null }) {
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/40 p-6 text-sm text-ink-400 text-center">
-              {bullet ? "Inferred from full context" : "—"}
+              {t(bullet ? "Inferred from full context" : "—")}
             </div>
           )}
         </div>
@@ -2612,6 +2566,7 @@ function BulletDiffRow({
   onReplace: (next: OptimizedBullet, action?: "accept" | "edit" | "restore") => void;
   onQuotaConsume: () => void;
 }) {
+  const { t } = useI18n();
   const [refining, setRefining] = useState(false);
   const quotaExhausted = quotaRemaining <= 0;
   const review = currentContentReview(bullet);
@@ -2631,33 +2586,29 @@ function BulletDiffRow({
       <div className="grid gap-0 md:grid-cols-2 md:gap-4">
         <div>
           <div className="mb-1.5 text-[10px] font-medium uppercase tracking-widest text-ink-400">
-            Before
-          </div>
+            {t("Before")}</div>
           <div className="text-ink-500">
             {evidence.length
               ? evidence.map((o) => o.text).join(" / ")
-              : "Inferred from context"}
+              : t("Inferred from context")}
           </div>
         </div>
         <div>
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <div className="text-[10px] font-medium uppercase tracking-widest text-accent-600">
-              After
-            </div>
+              {t("After")}</div>
             <div className="flex flex-wrap items-center justify-end gap-1">
               <button
                 type="button"
                 onClick={onToggleLock}
                 className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10"
-                aria-label={`${locked ? "Unlock" : "Lock"} rewritten bullet`}
-                title={
-                  locked
+                aria-label={t(`${locked ? "Unlock" : "Lock"} rewritten bullet`)}
+                title={t(locked
                     ? "Allow future regeneration and Fit to change this bullet"
-                    : "Keep this wording during future regeneration and Fit"
-                }
+                    : "Keep this wording during future regeneration and Fit")}
               >
                 {locked ? <Lock size={13} /> : <Unlock size={13} />}
-                {locked ? "Locked" : "Lock"}
+                {t(locked ? "Locked" : "Lock")}
               </button>
               <button
                 type="button"
@@ -2673,10 +2624,9 @@ function BulletDiffRow({
                   }, "restore");
                 }}
                 className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900 focus:outline-none focus:ring-2 focus:ring-ink-900/10 disabled:cursor-not-allowed disabled:opacity-40"
-                title="Restore the source wording and lock it"
+                title={t("Restore the source wording and lock it")}
               >
-                <RotateCcw size={13} /> Restore original
-              </button>
+                <RotateCcw size={13} /> {t("Restore original")}</button>
               <button
                 type="button"
                 onClick={() => setRefining((v) => !v)}
@@ -2689,34 +2639,31 @@ function BulletDiffRow({
                       ? "border-accent-300 bg-accent-50 text-accent-700"
                       : "border-accent-200 bg-white text-accent-700 hover:bg-accent-50",
                 )}
-                title={
-                  quotaExhausted
+                title={t(quotaExhausted
                     ? "Refinements used up for this resume"
-                    : "Tell the story behind this bullet — speak or type, then review the AI rewrite"
-                }
+                    : "Tell the story behind this bullet — speak or type, then review the AI rewrite")}
               >
                 <Mic size={11} />
-                Refine · voice or text
-              </button>
+                {t("Refine · voice or text")}</button>
             </div>
           </div>
           <textarea
             value={bullet.text}
             onChange={(e) => onReplace({ ...bullet, text: e.target.value })}
             rows={2}
-            aria-label="Rewritten bullet"
+            aria-label={t("Rewritten bullet")}
             className="w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-1.5 -mx-2 text-sm leading-relaxed text-ink-900 transition hover:border-ink-100 focus:border-accent-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent-100"
           />
           {review && (
             <div className="mt-2 text-xs text-ink-600">
               <span className="font-medium text-ink-900">
-                {review.status === "improved" ? "Content improved" : review.status === "retained" ? "Original retained" : "Content review unavailable"}
+                {t(review.status === "improved" ? "Content improved" : review.status === "retained" ? "Original retained" : "Content review unavailable")}
               </span>
               <p className="mt-1">{review.reason}</p>
               {(review.question || review.impactMetrics?.length) && (
                 <button type="button" onClick={() => setRefining(true)} disabled={quotaExhausted}
                   className="mt-2 text-left font-medium text-accent-700 underline underline-offset-2 disabled:opacity-40">
-                  Add evidence: {review.question || "Estimate or fill in relevant impact metrics"}
+                  {t("Add evidence:")}{" "}{review.question || t("Estimate or fill in relevant impact metrics")}
                 </button>
               )}
             </div>
@@ -2732,8 +2679,7 @@ function BulletDiffRow({
             ))}
             {bullet.evidence.includes("voice-transcript") && (
               <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                <Mic size={11} /> you confirmed this
-              </span>
+                <Mic size={11} /> {t("you confirmed this")}</span>
             )}
             {(bullet.suggestion === "cut" || bullet.suggestion === "trim") && (
               <span
@@ -2745,12 +2691,12 @@ function BulletDiffRow({
                 )}
                 title={bullet.rationale || undefined}
               >
-                {bullet.suggestion === "cut"
+                {t(bullet.suggestion === "cut"
                   ? "Low relevance — consider cutting"
-                  : "Consider trimming"}
-                {typeof bullet.relevance === "number"
+                  : "Consider trimming")}
+                {t(typeof bullet.relevance === "number"
                   ? ` · ${bullet.relevance}/100`
-                  : ""}
+                  : "")}
               </span>
             )}
           </div>
@@ -2787,6 +2733,7 @@ function BulletDiff({
   onFocusBullet?: (bulletId: string) => void;
   preview?: React.ReactNode;
 } = {}) {
+  const { t } = useI18n();
   const {
     resume,
     optimization,
@@ -2845,23 +2792,21 @@ function BulletDiff({
   return (
     <div className="mt-10">
       <div className="mb-4 rounded-lg border border-ink-200 bg-white p-4 text-sm" aria-live="polite">
-        <p className="font-medium text-ink-900">Content improvements</p>
-        <p className="mt-1 text-ink-600">{improvedCount} improved · {retainedCount} originals retained · {needsEvidenceCount} could benefit from more evidence{unreviewedCount > 0 ? ` · ${unreviewedCount} without a current content review` : ""}</p>
-        <p className="mt-1 text-xs text-ink-500">These comparisons assess achievement wording. Formatting and ATS keyword scores are separate. Expand Refine to answer an optional evidence question.</p>
+        <p className="font-medium text-ink-900">{t("Content improvements")}</p>
+        <p className="mt-1 text-ink-600">{improvedCount} {t("improved ·")}{" "}{retainedCount} {t("originals retained ·")}{" "}{needsEvidenceCount} {t("could benefit from more evidence")}{" "}{t(unreviewedCount > 0 ? ` · ${unreviewedCount} without a current content review` : "")}</p>
+        <p className="mt-1 text-xs text-ink-500">{t("These comparisons assess achievement wording. Formatting and ATS keyword scores are separate. Expand Refine to answer an optional evidence question.")}</p>
       </div>
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-ink-900">
-          Bullet-by-bullet changes
-        </h2>
+          {t("Bullet-by-bullet changes")}</h2>
         <div className="text-xs text-ink-400 flex items-center gap-3">
           <span>
             {optimization.roles.flatMap((r) => r.bullets).length +
               (optimization.projects?.flatMap((p) => p.bullets).length ?? 0) +
               (optimization.additionalSections?.flatMap((section) =>
                 section.items.flatMap((item) => item.bullets),
-              ).length ?? 0)}{" "}
-            bullets compared
-          </span>
+              ).length ?? 0)}{t(" ")}
+            {t("bullets compared")}</span>
           <span className="hidden sm:inline">·</span>
           <span
             className={cn(
@@ -2869,8 +2814,7 @@ function BulletDiff({
               quotaRemaining === 0 && "text-rose-500",
             )}
           >
-            <Sparkles size={12} /> {quotaRemaining}/{REFINE_QUOTA} refinements
-          </span>
+            <Sparkles size={12} /> {quotaRemaining}/{REFINE_QUOTA} {t("refinements")}</span>
         </div>
       </div>
 
@@ -2878,15 +2822,13 @@ function BulletDiff({
         {preview ? (
           <div className="hidden lg:sticky lg:top-6 lg:block">
             <div className="mb-2 text-[10px] font-medium uppercase tracking-widest text-ink-400">
-              Live preview
-            </div>
+              {t("Live preview")}</div>
             {preview}
           </div>
         ) : (
           <div className="card hidden max-h-[calc(100vh-7rem)] overflow-y-auto p-5 lg:sticky lg:top-6 lg:block">
             <div className="mb-3 text-[10px] font-medium uppercase tracking-widest text-ink-400">
-              Live preview
-            </div>
+              {t("Live preview")}</div>
             <ResumeView
               mode="optimized"
               resume={resume}
@@ -2931,7 +2873,7 @@ function BulletDiff({
           return (
             <div key={role.id}>
               <div className="px-5 py-3 bg-ink-50/60 border-b border-ink-100 text-sm font-medium text-ink-900">
-                {original.company}{" "}
+                {original.company}{t(" ")}
                 <span className="text-ink-500 font-normal">
                   · {original.title}
                 </span>
@@ -2955,7 +2897,7 @@ function BulletDiff({
                         {team.name}
                         {team.title ? (
                           <span className="font-normal text-ink-500">
-                            {" "}
+                            {t(" ")}
                             · {team.title}
                           </span>
                         ) : null}
@@ -2974,7 +2916,7 @@ function BulletDiff({
           return (
             <div key={project.id}>
               <div className="px-5 py-3 bg-ink-50/60 border-b border-ink-100 text-sm font-medium text-ink-900">
-                {original.name}{" "}
+                {original.name}{t(" ")}
                 <span className="text-ink-500 font-normal">
                   · {original.role}
                 </span>
@@ -3018,7 +2960,7 @@ function BulletDiff({
                   {originalSection.title}
                   {originalItem.heading ? (
                     <span className="font-normal text-ink-500">
-                      {" "}· {originalItem.heading}
+                      {t(" ")}· {originalItem.heading}
                     </span>
                   ) : null}
                 </div>

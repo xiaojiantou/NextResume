@@ -1,5 +1,8 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+"use client";
+
+import { useI18n } from "@/components/LanguageProvider";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -13,6 +16,7 @@ const STEPS = [
 type StepId = (typeof STEPS)[number]["id"];
 
 export function Stepper({ current }: { current: StepId }) {
+  const { t } = useI18n();
   const currentIdx = STEPS.findIndex((s) => s.id === current);
   return (
     <div className="flex items-center justify-center gap-2 py-6">
@@ -41,7 +45,7 @@ export function Stepper({ current }: { current: StepId }) {
                 {done ? <Check size={12} strokeWidth={3} /> : i + 1}
               </span>
               <span className={cn(!active && "hidden sm:inline")}>
-                {s.label}
+                {t(s.label)}
               </span>
             </div>
             {i < STEPS.length - 1 && (

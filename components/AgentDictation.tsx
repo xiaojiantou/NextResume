@@ -1,5 +1,6 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 'use client';
+import { useI18n } from "@/components/LanguageProvider";
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Square } from 'lucide-react';
 
@@ -18,6 +19,7 @@ function recognitionConstructor() {
 export function AgentDictation({ value, disabled, onChange, onActiveChange }: {
   value: string; disabled: boolean; onChange: (value: string) => void; onActiveChange: (active: boolean) => void;
 }) {
+  const { t, locale } = useI18n();
   const [supported, setSupported] = useState<boolean | null>(null);
   const [language, setLanguage] = useState('en-US');
   const [active, setActive] = useState(false);
@@ -26,13 +28,13 @@ export function AgentDictation({ value, disabled, onChange, onActiveChange }: {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setSupported(Boolean(recognitionConstructor()));
-    setLanguage(navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en-US');
     return () => {
       if (timer.current) clearTimeout(timer.current);
       const rec = recognition.current;
       if (rec) { rec.onresult = null; rec.onerror = null; rec.onend = null; rec.abort(); }
     };
   }, []);
+  useEffect(() => { if (!recognition.current) setLanguage(locale === 'zh' ? 'zh-CN' : 'en-US'); }, [locale]);
   function start() {
     if (disabled || recognition.current) return;
     const Constructor = recognitionConstructor();
@@ -75,16 +77,15 @@ export function AgentDictation({ value, disabled, onChange, onActiveChange }: {
       <button type="button" disabled={disabled || !supported} aria-pressed={active}
         onClick={() => active ? recognition.current?.stop() : start()}
         className="btn btn-secondary text-sm">
-        {active ? <Square size={14} /> : <Mic size={14} />}{active ? 'Stop dictation' : 'Voice input'}
+        {active ? <Square size={14} /> : <Mic size={14} />}{t(active ? 'Stop dictation' : 'Voice input')}
       </button>
-      <label className="inline-flex items-center gap-2 text-xs text-ink-500">Spoken language
-        <select aria-label="Spoken language" value={language} disabled={active || disabled} onChange={e => setLanguage(e.target.value)} className="rounded border border-ink-200 bg-white px-2 py-1.5 text-sm">
-          <option value="en-US">English</option><option value="zh-CN">中文</option>
+      <label className="inline-flex items-center gap-2 text-xs text-ink-500">{t("Spoken language")}<select aria-label={t("Spoken language")} value={language} disabled={active || disabled} onChange={e => setLanguage(e.target.value)} className="rounded border border-ink-200 bg-white px-2 py-1.5 text-sm">
+          <option value="en-US">{t("English")}</option><option value="zh-CN">中文</option>
         </select>
       </label>
-      <span role="status" className="text-xs text-ink-500">{active ? 'Listening… Stop to review and edit your text.' : supported === false ? 'Voice input is unavailable in this browser. You can still type below.' : 'Transcribe, review, then suggest changes.'}</span>
+      <span role="status" className="text-xs text-ink-500">{t(active ? 'Listening… Stop to review and edit your text.' : supported === false ? 'Voice input is unavailable in this browser. You can still type below.' : 'Transcribe, review, then suggest changes.')}</span>
     </div>
-    <p className="mt-1 text-xs text-ink-400">Voice input uses your browser’s speech service.</p>
-    {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
+    <p className="mt-1 text-xs text-ink-400">{t("Voice input uses your browser’s speech service.")}</p>
+    {error && <p role="alert" className="mt-1 text-xs text-red-600">{t(error)}</p>}
   </div>;
 }

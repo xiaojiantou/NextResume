@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { AppShell } from "@/components/AppShell";
 import { SignInToUnlockNote, UnlockLink } from "@/components/UnlockLink";
 import { useFlow } from "@/lib/store";
@@ -51,6 +52,12 @@ export default function AnalysisPage() {
   const ran = useRef(false);
   const previewRan = useRef(false);
   const briefRan = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const unsubscribe = useFlow.persist.onFinishHydration(() => setHydrated(true));
+    if (useFlow.persist.hasHydrated()) setHydrated(true);
+    return unsubscribe;
+  }, []);
 
   // The strategic read doesn't depend on the ATS arithmetic, so it starts
   // immediately — it is the slowest call on the page.
@@ -114,7 +121,7 @@ export default function AnalysisPage() {
   }, [report, resume, job, preview, setPreview]);
 
   useEffect(() => {
-    if (ran.current) return;
+    if (!hydrated || ran.current) return;
     ran.current = true;
 
     if (!resume || !job) {
@@ -153,7 +160,7 @@ export default function AnalysisPage() {
       clearInterval(tick);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hydrated, resume, job, report, router, setReport]);
 
   const totalBullets =
     (resume?.experience.reduce((n, r) => n + r.bullets.length, 0) ?? 0) +
@@ -181,34 +188,32 @@ export default function AnalysisPage() {
 }
 
 function ErrorBox({ message }: { message: string }) {
+  const { t } = useI18n();
   return (
     <div className="card p-8 text-center">
       <div className="w-12 h-12 rounded-xl bg-rose-100 text-rose-700 mx-auto inline-flex items-center justify-center">
         <AlertCircle size={20} />
       </div>
       <h2 className="text-xl font-semibold mt-4 text-ink-900">
-        Analysis failed
-      </h2>
-      <p className="text-ink-500 text-sm mt-2">{message}</p>
+        {t("Analysis failed")}</h2>
+      <p className="text-ink-500 text-sm mt-2">{t(message)}</p>
       <Link href="/upload" className="btn btn-outline mt-5 inline-flex">
-        Try again
-      </Link>
+        {t("Try again")}</Link>
     </div>
   );
 }
 
 function Analyzing({ stage }: { stage: number }) {
+  const { t } = useI18n();
   return (
     <div className="card p-10 text-center">
       <div className="w-12 h-12 rounded-xl bg-ink-900 text-white mx-auto inline-flex items-center justify-center">
         <Sparkles size={20} />
       </div>
       <h2 className="text-2xl font-semibold tracking-tight mt-5 text-ink-900">
-        Analyzing your resume…
-      </h2>
+        {t("Analyzing your resume…")}</h2>
       <p className="text-ink-500 mt-2">
-        Running against the job description. About 20 seconds.
-      </p>
+        {t("Running against the job description. About 20 seconds.")}</p>
       <div className="mt-8 max-w-md mx-auto text-left space-y-2.5">
         {STAGES.map((s, i) => (
           <div key={s} className="flex items-center gap-3 text-sm">
@@ -230,7 +235,7 @@ function Analyzing({ stage }: { stage: number }) {
               )}
             </span>
             <span className={i <= stage ? "text-ink-900" : "text-ink-400"}>
-              {s}
+              {t(s)}
             </span>
           </div>
         ))}
@@ -252,6 +257,7 @@ function Report({
   previewLoading: boolean;
   totalBullets: number;
 }) {
+  const { t } = useI18n();
   const { report } = useFlow();
   if (!report) return null;
   const remainingBullets = Math.max(totalBullets - 1, 0);
@@ -260,7 +266,7 @@ function Report({
     <div className="space-y-6 animate-rise">
       <div className="card p-6 grid md:grid-cols-3 gap-6 items-center">
         <div className="text-center md:text-left md:col-span-1">
-          <div className="text-xs text-ink-500">Your current ATS score</div>
+          <div className="text-xs text-ink-500">{t("Your current ATS score")}</div>
           <div className="mt-1 flex items-baseline gap-2 justify-center md:justify-start">
             <span className="text-5xl font-semibold tracking-tight tabular-nums text-ink-900">
               {report.overallBefore}
@@ -269,13 +275,12 @@ function Report({
           </div>
           <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
             <AlertTriangle size={11} />
-            {report.overallBefore < 65 ? "Needs work" : "Decent · room to grow"}
+            {t(report.overallBefore < 65 ? "Needs work" : "Decent · room to grow")}
           </div>
         </div>
         <div className="md:col-span-2 rounded-xl bg-gradient-to-br from-ink-900 to-ink-700 text-white p-5">
           <div className="text-xs text-white/60">
-            With NextResume optimization (up to)
-          </div>
+            {t("With NextResume optimization (up to)")}</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-5xl font-semibold tracking-tight tabular-nums">
               {report.overallAfter}
@@ -283,15 +288,10 @@ function Report({
             <span className="text-white/60 text-sm">/ 100</span>
             <span className="ml-3 inline-flex items-center gap-1 text-sm font-medium text-emerald-300">
               <TrendingUp size={14} />
-              up to +{report.overallAfter - report.overallBefore} points
-            </span>
+              {t("up to +")}{" "}{report.overallAfter - report.overallBefore} {t("points")}</span>
           </div>
           <p className="mt-2 text-sm text-white/70 max-w-md">
-            An upper bound from this report's gaps: the headline, the verbs, and
-            the keywords your experience already supports. We never add a metric
-            you did not state. After the rewrite we re-score the optimized resume
-            and show the measured number.
-          </p>
+            {t("An upper bound from this report's gaps: the headline, the verbs, and the keywords your experience already supports. We never add a metric you did not state. After the rewrite we re-score the optimized resume and show the measured number.")}</p>
         </div>
       </div>
 
@@ -299,17 +299,16 @@ function Report({
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="card p-5">
-          <h3 className="font-semibold text-ink-900">Category breakdown</h3>
+          <h3 className="font-semibold text-ink-900">{t("Category breakdown")}</h3>
           <p className="text-xs text-ink-500 mt-1">
-            How the AI scores your resume against this job.
-          </p>
+            {t("How the AI scores your resume against this job.")}</p>
           <div className="mt-4 space-y-3">
             {report.categoriesBefore.map((c, i) => {
               const after = report.categoriesAfter[i]?.score ?? c.score;
               return (
                 <div key={c.label}>
                   <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-ink-800 font-medium">{c.label}</span>
+                    <span className="text-ink-800 font-medium">{t(c.label)}</span>
                     <span className="tabular-nums text-ink-400">
                       {c.score} → <span className="text-ink-900">{after}</span>
                     </span>
@@ -324,7 +323,7 @@ function Report({
                       style={{ width: `${after}%`, opacity: 0.85 }}
                     />
                   </div>
-                  <p className="text-xs text-ink-500 mt-1.5">{c.detail}</p>
+                  <p className="text-xs text-ink-500 mt-1.5">{t(c.detail)}</p>
                 </div>
               );
             })}
@@ -332,10 +331,9 @@ function Report({
         </div>
 
         <div className="card p-5">
-          <h3 className="font-semibold text-ink-900">Missing keywords</h3>
+          <h3 className="font-semibold text-ink-900">{t("Missing keywords")}</h3>
           <p className="text-xs text-ink-500 mt-1">
-            Terms from the JD that don't appear in your resume.
-          </p>
+            {t("Terms from the JD that don't appear in your resume.")}</p>
           <div className="mt-4 flex flex-wrap gap-1.5">
             {report.missingKeywords.map((k) => (
               <span
@@ -351,8 +349,7 @@ function Report({
             <>
               <div className="hairline my-5" />
               <h4 className="font-semibold text-ink-900 text-sm">
-                Where you're strong
-              </h4>
+                {t("Where you're strong")}</h4>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {report.presentKeywords.map((k) => (
                   <span
@@ -381,28 +378,22 @@ function Report({
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-ink-900">
-              Unlock the optimized resume
-            </h3>
+              {t("Unlock the optimized resume")}</h3>
             <p className="text-sm text-ink-500 mt-1">
-              One-time $9.99. Tailored rewrite, Evidence Mode, side-by-side
-              comparison, and browser PDF export.
-            </p>
+              {t("One-time $9.99. Tailored rewrite, Evidence Mode, side-by-side comparison, and browser PDF export.")}</p>
             <SignInToUnlockNote />
           </div>
           <UnlockLink className="btn btn-primary">
-            Unlock for $9.99
-            <ArrowRight size={14} />
+            {t("Unlock for $9.99")}<ArrowRight size={14} />
           </UnlockLink>
         </div>
       </div>
 
       <div className="flex items-center justify-between">
         <Link href="/upload" className="btn btn-ghost">
-          <ArrowLeft size={14} /> Edit job description
-        </Link>
+          <ArrowLeft size={14} /> {t("Edit job description")}</Link>
         <UnlockLink className="btn btn-accent !px-5">
-          Unlock optimized resume
-          <ArrowRight size={14} />
+          {t("Unlock optimized resume")}<ArrowRight size={14} />
         </UnlockLink>
       </div>
     </div>
@@ -438,7 +429,8 @@ function FitBriefBlock({
   brief: FitBrief | null;
   loading: boolean;
 }) {
-  const [language, setLanguage] = useState<"zh" | "en">("zh");
+  const { t, locale } = useI18n();
+  const [language, setLanguage] = useState<"zh" | "en" | null>(null);
   if (!brief && !loading) return null;
 
   if (!brief) {
@@ -446,8 +438,7 @@ function FitBriefBlock({
       <div className="card p-6">
         <div className="flex items-center gap-2 text-xs text-ink-400">
           <Compass size={13} className="animate-pulse" />
-          Reading between the lines of this posting…
-        </div>
+          {t("Reading between the lines of this posting…")}</div>
         <div className="mt-4 space-y-2">
           <div className="h-4 rounded shimmer bg-ink-100 w-3/4" />
           <div className="h-3 rounded shimmer bg-ink-100" />
@@ -458,14 +449,14 @@ function FitBriefBlock({
   }
 
   const verdict = VERDICT_STYLE[brief.verdict];
-  const chinese = language === "zh" && Boolean(brief.quickZh);
+  const chinese = (language ?? locale) === "zh" && Boolean(brief.quickZh);
 
   return (
     <div className="card overflow-hidden">
       <div className="px-5 py-3 bg-gradient-to-r from-ink-50/70 to-white border-b border-ink-100 flex items-center justify-between gap-3">
         <span className="pill">
           <Compass size={11} />
-          {chinese ? "岗位匹配速览" : "Strategic read"}
+          {t(chinese ? "岗位匹配速览" : "Strategic read")}
         </span>
         <span
           className={`text-xs font-medium px-2.5 py-1 rounded-md border ${verdict.className}`}
@@ -474,15 +465,15 @@ function FitBriefBlock({
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-5 py-3" role="group" aria-label="Analysis language">
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-5 py-3" role="group" aria-label={t("Analysis language")}>
         {([['zh', '中文速览'], ['en', 'English']] as const).map(([value, label]) => (
           <button key={value} type="button" aria-pressed={chinese ? value === 'zh' : value === 'en'} disabled={value === 'zh' && !brief.quickZh}
             onClick={() => setLanguage(value)}
             className={`rounded-md px-3 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-500 disabled:opacity-40 ${(chinese ? value === 'zh' : value === 'en') ? 'bg-ink-900 text-white' : 'bg-ink-50 text-ink-600 hover:bg-ink-100'}`}>
-            {label}
+            {t(label)}
           </button>
         ))}
-        {!brief.quickZh && <span role="status" className="text-xs text-ink-500">{loading ? '正在生成中文速览…' : '中文速览暂不可用，请刷新重试。'}</span>}
+        {!brief.quickZh && <span role="status" className="text-xs text-ink-500">{t(loading ? '正在生成中文速览…' : '中文速览暂不可用，请刷新重试。')}</span>}
       </div>
 
       {chinese && brief.quickZh ? <div lang="zh-CN" className="space-y-5 p-6">
@@ -495,7 +486,7 @@ function FitBriefBlock({
           </div>)}
         </div>
         <div className="rounded-lg bg-ink-50 p-4"><h4 className="text-sm font-semibold text-ink-900">优先修改</h4><ol className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-ink-700">{brief.quickZh.actions.map((action, i) => <li key={i}>{action}</li>)}</ol></div>
-        <p className="text-xs text-ink-400">英文关键词与简历原文保持不变；切换 English 查看完整分析及依据。</p>
+        <p className="text-xs text-ink-400">{t("英文关键词与简历原文保持不变；切换 English 查看完整分析及依据。")}</p>
       </div> : <div lang="en" className="p-6 space-y-5">
         <p className="text-lg font-semibold text-ink-900 leading-snug">
           {brief.headline}
@@ -503,8 +494,7 @@ function FitBriefBlock({
 
         <div>
           <h4 className="text-sm font-semibold text-ink-900">
-            What they&apos;re actually hiring for
-          </h4>
+            {t("What they're actually hiring for")}</h4>
           <p className="text-sm text-ink-600 mt-1.5">{brief.whatTheyWant}</p>
           {brief.workflow.length > 1 && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -527,8 +517,7 @@ function FitBriefBlock({
             {brief.strengths.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-ink-900">
-                  Why you match
-                </h4>
+                  {t("Why you match")}</h4>
                 <ul className="mt-2 space-y-2.5">
                   {brief.strengths.map((s) => (
                     <li key={s.point} className="text-sm">
@@ -554,8 +543,7 @@ function FitBriefBlock({
             {brief.gaps.length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold text-ink-900">
-                  Gaps to defuse
-                </h4>
+                  {t("Gaps to defuse")}</h4>
                 <ul className="mt-2 space-y-2.5">
                   {brief.gaps.map((g) => (
                     <li key={g.point} className="text-sm">
@@ -584,8 +572,7 @@ function FitBriefBlock({
         {brief.yourStory && (
           <div className="rounded-xl bg-accent-50/50 border border-accent-100 p-4">
             <h4 className="text-sm font-semibold text-accent-700">
-              The story your resume should tell
-            </h4>
+              {t("The story your resume should tell")}</h4>
             <p className="text-sm text-ink-700 mt-1.5">{brief.yourStory}</p>
           </div>
         )}
@@ -603,6 +590,7 @@ function PreviewBulletBlock({
   loading: boolean;
   remaining: number;
 }) {
+  const { t } = useI18n();
   if (!preview && !loading) return null;
 
   return (
@@ -611,25 +599,22 @@ function PreviewBulletBlock({
         <div className="flex items-center gap-2">
           <span className="pill !text-accent-700 !border-accent-200 !bg-white">
             <Sparkles size={11} />
-            Free preview · 1 bullet rewritten
-          </span>
+            {t("Free preview · 1 bullet rewritten")}</span>
         </div>
         <span className="text-xs text-ink-400 hidden sm:inline">
-          See how Evidence Mode works before you pay
-        </span>
+          {t("See how Evidence Mode works before you pay")}</span>
       </div>
 
       {loading || !preview ? (
         <div className="p-6 grid md:grid-cols-2 gap-4">
-          <PreviewSkeleton label="Your original" />
-          <PreviewSkeleton label="Tailored rewrite" tone="accent" />
+          <PreviewSkeleton label={t("Your original")} />
+          <PreviewSkeleton label={t("Tailored rewrite")} tone="accent" />
         </div>
       ) : (
         <div className="p-5 grid md:grid-cols-2 gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-widest text-ink-400 font-medium mb-1.5">
-              Your original bullet
-            </div>
+              {t("Your original bullet")}</div>
             <div className="rounded-lg border border-ink-100 bg-white p-3 text-sm text-ink-700">
               <span className="evidence-active px-1.5 py-0.5">
                 {preview.targetBulletText}
@@ -638,8 +623,7 @@ function PreviewBulletBlock({
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-widest text-accent-600 font-medium mb-1.5">
-              Rewritten for this job
-            </div>
+              {t("Rewritten for this job")}</div>
             <div className="rounded-lg border border-accent-200 bg-accent-50/40 p-3 text-sm text-ink-900">
               {preview.preview.text}
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -654,7 +638,7 @@ function PreviewBulletBlock({
               </div>
               {preview.preview.rationale && (
                 <div className="mt-3 text-xs text-ink-500 italic">
-                  Why this is stronger: {preview.preview.rationale}
+                  {t("Why this is stronger:")}{" "}{preview.preview.rationale}
                 </div>
               )}
             </div>
@@ -665,17 +649,15 @@ function PreviewBulletBlock({
       <div className="px-5 py-3 bg-ink-50/50 border-t border-ink-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="text-sm text-ink-700">
           <span className="font-medium text-ink-900">
-            {remaining > 0
+            {t(remaining > 0
               ? `${remaining} more ${remaining === 1 ? "bullet" : "bullets"} to rewrite.`
-              : "Unlock the full rewrite."}
-          </span>{" "}
+              : "Unlock the full rewrite.")}
+          </span>{t(" ")}
           <span className="text-ink-500">
-            Includes Evidence Mode, side-by-side, and exports.
-          </span>
+            {t("Includes Evidence Mode, side-by-side, and exports.")}</span>
         </div>
         <UnlockLink className="btn btn-primary">
-          Unlock the rest for $9.99
-          <ArrowRight size={14} />
+          {t("Unlock the rest for $9.99")}<ArrowRight size={14} />
         </UnlockLink>
       </div>
     </div>
@@ -689,6 +671,7 @@ function PreviewSkeleton({
   label: string;
   tone?: "accent";
 }) {
+  const { t } = useI18n();
   return (
     <div>
       <div
@@ -696,7 +679,7 @@ function PreviewSkeleton({
           tone === "accent" ? "text-accent-600" : "text-ink-400"
         }`}
       >
-        {label}
+        {t(label)}
       </div>
       <div
         className={`rounded-lg p-3 space-y-2 ${

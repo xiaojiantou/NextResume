@@ -1,5 +1,6 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+import { LanguageSwitch } from "@/components/LanguageProvider";
 import { SignIn } from "@clerk/nextjs";
 
 // Hosted in-app rather than redirected to Clerk's Account Portal. The old
@@ -11,6 +12,7 @@ import { SignIn } from "@clerk/nextjs";
 export default function SignInPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-ink-50/40 p-6">
+      <div className="absolute right-4 top-4"><LanguageSwitch /></div>
       <SignIn />
     </main>
   );

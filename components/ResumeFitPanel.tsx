@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import {
   AlertTriangle,
   Check,
@@ -54,6 +55,7 @@ export function ResumeFitPanel({
   onKeep: (contentId: string) => void;
   onRestore: (contentId: string) => void;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(true);
   const groups = useMemo(() => {
     if (!variant) return [];
@@ -86,7 +88,7 @@ export function ResumeFitPanel({
     return (
       <section
         aria-live="polite"
-        aria-label="Resume page fitting progress"
+        aria-label={t("Resume page fitting progress")}
         className="mt-4 rounded-xl border border-accent-200 bg-accent-50/40 p-4"
       >
         <div className="flex items-start gap-3">
@@ -95,12 +97,9 @@ export function ResumeFitPanel({
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-medium text-ink-900">
-              Fitting the latest resume…
-            </div>
+              {t("Fitting the latest resume…")}</div>
             <p className="mt-0.5 text-sm text-ink-500">
-              Layout and content are being verified against the exact page
-              target.
-            </p>
+              {t("Layout and content are being verified against the exact page target.")}</p>
             <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {FIT_PROGRESS_STAGES.map((item, index) => {
                 const complete = index < activeIndex;
@@ -125,7 +124,7 @@ export function ResumeFitPanel({
                         className={active ? "fill-accent-500 text-accent-500" : ""}
                       />
                     )}
-                    {item}
+                    {t(item)}
                   </li>
                 );
               })}
@@ -135,8 +134,7 @@ export function ResumeFitPanel({
               onClick={onCancel}
               className="btn btn-outline mt-4 min-h-11 bg-white"
             >
-              Cancel fit
-            </button>
+              {t("Cancel fit")}</button>
           </div>
         </div>
       </section>
@@ -156,25 +154,22 @@ export function ResumeFitPanel({
           />
           <div className="min-w-0 flex-1">
             <div className="font-medium text-amber-950">
-              Exact page fit needs your input
-            </div>
-            <p className="mt-1 text-sm text-amber-900">{conflict.message}</p>
+              {t("Exact page fit needs your input")}</div>
+            <p className="mt-1 text-sm text-amber-900">{t(conflict.message)}</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
               {conflict.reasons.map((reason) => (
-                <li key={reason}>{reason}</li>
+                <li key={reason}>{t(reason)}</li>
               ))}
             </ul>
             <p className="mt-3 text-xs text-amber-700">
-              Feasible range observed: {conflict.recommendedRange.min}–
-              {conflict.recommendedRange.max} pages.
-            </p>
+              {t("Feasible range observed:")}{" "}{conflict.recommendedRange.min}–
+              {conflict.recommendedRange.max} {t("pages.")}</p>
             <button
               type="button"
               onClick={onFit}
               className="btn btn-outline mt-3 min-h-11 bg-white"
             >
-              <RotateCcw size={14} /> Try again
-            </button>
+              <RotateCcw size={14} /> {t("Try again")}</button>
           </div>
         </div>
       </section>
@@ -193,8 +188,8 @@ export function ResumeFitPanel({
             className="mt-0.5 shrink-0 text-rose-700"
           />
           <div>
-            <div className="font-medium text-rose-950">Page fit failed</div>
-            <p className="mt-1 text-sm text-rose-800">{error}</p>
+            <div className="font-medium text-rose-950">{t("Page fit failed")}</div>
+            <p className="mt-1 text-sm text-rose-800">{t(error)}</p>
           </div>
         </div>
         <button
@@ -202,8 +197,7 @@ export function ResumeFitPanel({
           onClick={onFit}
           className="btn btn-outline min-h-11 shrink-0 bg-white"
         >
-          Retry
-        </button>
+          {t("Retry")}</button>
       </section>
     );
   }
@@ -221,17 +215,13 @@ export function ResumeFitPanel({
           />
           <div>
             <div className="font-medium text-amber-950">
-              Resume content changed
-            </div>
+              {t("Resume content changed")}</div>
             <p className="mt-0.5 text-sm text-amber-800">
-              Refit is required so the downloadable PDF includes your latest
-              edits.
-            </p>
+              {t("Refit is required so the downloadable PDF includes your latest edits.")}</p>
           </div>
         </div>
         <button type="button" onClick={onFit} className="btn btn-primary min-h-11">
-          Refit latest resume
-        </button>
+          {t("Refit latest resume")}</button>
       </section>
     );
   }
@@ -251,13 +241,12 @@ export function ResumeFitPanel({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-medium text-ink-900">
-            Exactly {variant.actualPages}{" "}
-            {variant.actualPages === 1 ? "page" : "pages"}
+            {t("Exactly")}{" "}{variant.actualPages}{t(" ")}
+            {t(variant.actualPages === 1 ? "page" : "pages")}
           </span>
           <span className="block text-xs text-ink-500">
-            ATS {variant.atsScore} · {variant.density} density ·{" "}
-            {variant.changes.length} page-fit changes
-          </span>
+            {t("ATS")}{" "}{variant.atsScore} · {t(variant.density)} {t("density ·")}{t(" ")}
+            {variant.changes.length} {t("page-fit changes")}</span>
         </span>
         {expanded ? (
           <ChevronUp size={16} className="text-ink-400" />
@@ -270,9 +259,7 @@ export function ResumeFitPanel({
         <div className="border-t border-ink-100 p-4">
           {groups.length === 0 ? (
             <p className="text-sm text-ink-500">
-              The complete optimized content already fits this target. Only
-              layout density changed.
-            </p>
+              {t("The complete optimized content already fits this target. Only layout density changed.")}</p>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {groups.map((group) => (
@@ -283,7 +270,7 @@ export function ResumeFitPanel({
                     ) : (
                       <Sparkles size={13} />
                     )}
-                    {group.label}
+                    {t(group.label)}
                     <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[10px] text-ink-600">
                       {group.items.length}
                     </span>
@@ -298,7 +285,7 @@ export function ResumeFitPanel({
                           {change.label}
                         </div>
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-500">
-                          {change.reason}
+                          {t(change.reason)}
                         </p>
                         {change.kind === "shortened" ||
                         change.kind === "expanded" ? (
@@ -307,8 +294,7 @@ export function ResumeFitPanel({
                             onClick={() => onRestore(change.targetId)}
                             className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 text-xs font-medium text-ink-700 transition hover:border-ink-300 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                           >
-                            <RotateCcw size={12} /> Restore &amp; lock wording
-                          </button>
+                            <RotateCcw size={12} /> {t("Restore & lock wording")}</button>
                         ) : null}
                         {(change.kind === "hidden" ||
                           change.kind === "collapsed") && (
@@ -317,8 +303,7 @@ export function ResumeFitPanel({
                             onClick={() => onKeep(change.targetId)}
                             className="mt-2 inline-flex min-h-10 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 text-xs font-medium text-ink-700 transition hover:border-ink-300 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
                           >
-                            <Lock size={12} /> Keep on next fit
-                          </button>
+                            <Lock size={12} /> {t("Keep on next fit")}</button>
                         )}
                       </div>
                     ))}

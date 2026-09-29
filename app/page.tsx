@@ -1,5 +1,8 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 
+"use client";
+
+import { useI18n } from "@/components/LanguageProvider";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -15,6 +18,7 @@ import { Nav } from "@/components/Nav";
 import { Logo } from "@/components/Logo";
 
 export default function Landing() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen">
       <Nav />
@@ -26,36 +30,27 @@ export default function Landing() {
         <div className="container-x relative pt-20 pb-24 text-center">
           <div className="inline-flex items-center gap-2 pill animate-rise">
             <Sparkles size={12} className="text-accent-600" />
-            New · Evidence Mode keeps the AI honest
-          </div>
+            {t("New · Evidence Mode keeps the AI honest")}</div>
           <h1 className="h-display mt-6 text-gradient max-w-4xl mx-auto animate-rise">
-            The resume that gets you{" "}
-            <span className="italic font-serif font-normal">interviewed.</span>
+            {t("The resume that gets you")}{t(" ")}
+            <span className="italic font-serif font-normal">{t("interviewed.")}</span>
           </h1>
           <p className="mt-5 text-ink-500 text-lg max-w-2xl mx-auto animate-rise">
-            Upload your resume, paste a job description, and get an
-            ATS-optimized rewrite tailored to the role — every bullet traceable
-            back to your real experience.
-          </p>
+            {t("Upload your resume, paste a job description, and get an ATS-optimized rewrite tailored to the role — every bullet traceable back to your real experience.")}</p>
           <div className="mt-8 flex items-center justify-center gap-3 animate-rise">
             <Link href="/upload" className="btn btn-primary !px-5 !py-3">
-              Optimize my resume
-              <ArrowRight size={16} />
+              {t("Optimize my resume")}<ArrowRight size={16} />
             </Link>
             <a href="#how" className="btn btn-ghost !px-4 !py-3">
-              How it works
-            </a>
+              {t("How it works")}</a>
           </div>
-          <div className="mt-5 flex items-center justify-center gap-6 text-xs text-ink-400">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs text-ink-400">
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck size={13} /> Private by default
-            </span>
+              <ShieldCheck size={13} /> {t("Private by default")}</span>
             <span className="inline-flex items-center gap-1.5">
-              <Zap size={13} /> 30-second analysis
-            </span>
+              <Zap size={13} /> {t("30-second analysis")}</span>
             <span className="inline-flex items-center gap-1.5">
-              <Lock size={13} /> Unlock when you love it
-            </span>
+              <Lock size={13} /> {t("Unlock when you love it")}</span>
           </div>
 
           {/* Hero product preview */}
@@ -67,12 +62,11 @@ export default function Landing() {
                 <span className="w-2.5 h-2.5 rounded-full bg-ink-200" />
                 <span className="w-2.5 h-2.5 rounded-full bg-ink-200" />
                 <span className="ml-3 text-xs text-ink-400">
-                  app.nextresume.io / analysis
-                </span>
+                  {t("app.nextresume.io / analysis")}</span>
               </div>
               <div className="grid md:grid-cols-2 gap-3">
                 <HeroPanel
-                  label="Your resume"
+                  label={t("Your resume")}
                   tone="muted"
                   rows={[
                     "Worked on internal dashboard tools…",
@@ -81,7 +75,7 @@ export default function Landing() {
                   ]}
                 />
                 <HeroPanel
-                  label="Optimized for: Senior Product Engineer @ Vercel"
+                  label={t("Optimized for: Senior Product Engineer @ Vercel")}
                   tone="accent"
                   rows={[
                     "Led end-to-end delivery of React/TS dashboards used by 200+ ops users…",
@@ -91,19 +85,19 @@ export default function Landing() {
                 />
               </div>
               <div className="mt-3 grid grid-cols-3 gap-3 px-1 pb-1">
-                <MetricCard label="ATS score" before={54} after={92} />
-                <MetricCard label="Keyword match" before={41} after={96} />
-                <MetricCard label="Quantified bullets" before={30} after={91} />
+                <MetricCard label={t("ATS score")} before={54} after={92} />
+                <MetricCard label={t("Keyword match")} before={41} after={96} />
+                <MetricCard label={t("Quantified bullets")} before={30} after={91} />
               </div>
             </div>
           </div>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4 text-xs text-ink-400">
-            <span>Example targets this flow can tailor toward:</span>
-            <span className="font-semibold tracking-tight">frontend platforms</span>
-            <span className="font-semibold tracking-tight">product teams</span>
-            <span className="font-semibold tracking-tight">design systems</span>
-            <span className="font-semibold tracking-tight">AI tooling</span>
+            <span>{t("Example targets this flow can tailor toward:")}</span>
+            <span className="font-semibold tracking-tight">{t("frontend platforms")}</span>
+            <span className="font-semibold tracking-tight">{t("product teams")}</span>
+            <span className="font-semibold tracking-tight">{t("design systems")}</span>
+            <span className="font-semibold tracking-tight">{t("AI tooling")}</span>
           </div>
         </div>
       </section>
@@ -113,7 +107,7 @@ export default function Landing() {
         <div className="container-x py-24">
           <SectionHeader
             eyebrow="How it works"
-            title="From raw resume to interview-ready in under a minute."
+            title={t("From raw resume to interview-ready in under a minute.")}
             subtitle="Four steps. No account required for the free analysis."
           />
           <div className="grid md:grid-cols-4 gap-4 mt-12">
@@ -148,9 +142,9 @@ export default function Landing() {
                 <div className="mt-3 w-9 h-9 rounded-lg bg-ink-900 text-white inline-flex items-center justify-center">
                   <s.icon size={16} />
                 </div>
-                <h3 className="mt-4 font-semibold text-ink-900">{s.title}</h3>
+                <h3 className="mt-4 font-semibold text-ink-900">{t(s.title)}</h3>
                 <p className="mt-1.5 text-sm text-ink-500 leading-relaxed">
-                  {s.body}
+                  {t(s.body)}
                 </p>
               </div>
             ))}
@@ -163,61 +157,49 @@ export default function Landing() {
         <div className="container-x py-24 grid md:grid-cols-2 gap-12 items-center">
           <div>
             <span className="pill !text-accent-700 !border-accent-200 !bg-accent-50">
-              <Sparkles size={12} /> Evidence Mode
-            </span>
+              <Sparkles size={12} /> {t("Evidence Mode")}</span>
             <h2 className="h-section mt-4 text-ink-900">
-              Every rewritten bullet, traceable.
-            </h2>
+              {t("Every rewritten bullet, traceable.")}</h2>
             <p className="mt-4 text-ink-500 leading-relaxed">
-              We never fabricate. Hover any bullet in your optimized resume and
-              we’ll highlight the exact sentences from your original experience
-              that back it up — plus the JD keyword it satisfies.
-            </p>
+              {t("We never fabricate. Hover any bullet in your optimized resume and we’ll highlight the exact sentences from your original experience that back it up — plus the JD keyword it satisfies.")}</p>
             <ul className="mt-6 space-y-3 text-sm">
               {[
                 "Bullet-level source mapping to your original resume",
                 "Color-coded JD keyword coverage",
                 "Side-by-side original and optimized views",
                 "Rationale for why each rewrite is stronger",
-              ].map((t) => (
+              ].map((itemText) => (
                 <li
-                  key={t}
+                  key={itemText}
                   className="flex items-start gap-2.5 text-ink-700"
                 >
                   <span className="mt-0.5 w-5 h-5 rounded-full bg-ink-900 inline-flex items-center justify-center shrink-0">
                     <Check size={12} className="text-white" strokeWidth={3} />
                   </span>
-                  {t}
+                  {t(itemText)}
                 </li>
               ))}
             </ul>
           </div>
           <div className="card p-5 shadow-pop">
             <div className="text-xs text-ink-400 mb-3">
-              Optimized bullet → Source
-            </div>
+              {t("Optimized bullet → Source")}</div>
             <div className="rounded-lg border border-accent-200 bg-accent-50/50 p-3 text-sm text-ink-900">
-              “Migrated Rails service to a TypeScript/Node backend on serverless
-              infra, cutting p95 latency 38%.”
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <KeywordChip>TypeScript</KeywordChip>
-                <KeywordChip>serverless</KeywordChip>
-                <KeywordChip>edge</KeywordChip>
+              {t("“Migrated Rails service to a TypeScript/Node backend on serverless infra, cutting p95 latency 38%.”")}<div className="mt-2 flex flex-wrap gap-1.5">
+                <KeywordChip>{t("TypeScript")}</KeywordChip>
+                <KeywordChip>{t("serverless")}</KeywordChip>
+                <KeywordChip>{t("edge")}</KeywordChip>
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2 text-ink-400 text-xs">
               <div className="h-px flex-1 bg-ink-100" />
-              traced to
-              <div className="h-px flex-1 bg-ink-100" />
+              {t("traced to")}<div className="h-px flex-1 bg-ink-100" />
             </div>
             <div className="rounded-lg border border-ink-100 bg-white p-3 text-sm text-ink-700 mt-3">
               <span className="evidence-active px-1.5 py-0.5">
-                Helped migrate a legacy Rails service to a TypeScript backend;
-                reduced p95 latency.
-              </span>
+                {t("Helped migrate a legacy Rails service to a TypeScript backend; reduced p95 latency.")}</span>
               <div className="text-xs text-ink-400 mt-2">
-                ExampleCo · Software Engineer · Jul 2022–Present
-              </div>
+                {t("ExampleCo · Software Engineer · Jul 2022–Present")}</div>
             </div>
           </div>
         </div>
@@ -228,7 +210,7 @@ export default function Landing() {
         <div className="container-x py-24">
           <SectionHeader
             eyebrow="Guardrails"
-            title="Built for careful tailoring, not resume fiction."
+            title={t("Built for careful tailoring, not resume fiction.")}
           />
           <div className="grid md:grid-cols-3 gap-4 mt-10">
             {[
@@ -244,14 +226,14 @@ export default function Landing() {
                 title: "Verified unlock flow",
                 body: "Stripe Checkout returns are verified server-side before the optimized result unlocks.",
               },
-            ].map((t, i) => (
+            ].map((itemText, i) => (
               <div key={i} className="card p-6">
                 <div className="w-9 h-9 rounded-lg bg-ink-900 text-white inline-flex items-center justify-center">
                   <Check size={15} strokeWidth={3} />
                 </div>
-                <h3 className="mt-4 font-semibold text-ink-900">{t.title}</h3>
+                <h3 className="mt-4 font-semibold text-ink-900">{t(itemText.title)}</h3>
                 <p className="mt-2 text-sm text-ink-500 leading-relaxed">
-                  {t.body}
+                  {t(itemText.body)}
                 </p>
               </div>
             ))}
@@ -264,12 +246,12 @@ export default function Landing() {
         <div className="container-x py-24">
           <SectionHeader
             eyebrow="Pricing"
-            title="One resume, one price. No subscription."
+            title={t("One resume, one price. No subscription.")}
             subtitle="Run the ATS analysis for free. Unlock the optimized version through Stripe Checkout."
           />
           <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto mt-10">
             <div className="card p-6">
-              <div className="text-sm text-ink-500">Free</div>
+              <div className="text-sm text-ink-500">{t("Free")}</div>
               <div className="mt-1 text-4xl font-semibold tracking-tight">
                 $0
               </div>
@@ -279,10 +261,10 @@ export default function Landing() {
                   "Job description analysis",
                   "Full ATS score breakdown",
                   "Missing keyword report",
-                ].map((t) => (
-                  <li key={t} className="flex items-start gap-2">
+                ].map((itemText) => (
+                  <li key={itemText} className="flex items-start gap-2">
                     <Check size={14} className="mt-0.5 text-ink-400" />
-                    {t}
+                    {t(itemText)}
                   </li>
                 ))}
               </ul>
@@ -290,14 +272,12 @@ export default function Landing() {
                 href="/upload"
                 className="btn btn-outline w-full mt-6 !justify-center"
               >
-                Run free analysis
-              </Link>
+                {t("Run free analysis")}</Link>
             </div>
             <div className="card p-6 ring-1 ring-ink-900 relative shadow-pop">
               <span className="absolute -top-2 right-4 pill !bg-ink-900 !text-white !border-ink-900">
-                Per resume
-              </span>
-              <div className="text-sm text-ink-500">Optimized resume</div>
+                {t("Per resume")}</span>
+              <div className="text-sm text-ink-500">{t("Optimized resume")}</div>
               <div className="mt-1 text-4xl font-semibold tracking-tight">
                 $9.99
               </div>
@@ -308,14 +288,14 @@ export default function Landing() {
                   "Evidence Mode — bullet-level traceability",
                   "Side-by-side comparison view",
                   "Browser PDF export",
-                ].map((t) => (
-                  <li key={t} className="flex items-start gap-2">
+                ].map((itemText) => (
+                  <li key={itemText} className="flex items-start gap-2">
                     <Check
                       size={14}
                       className="mt-0.5 text-accent-600"
                       strokeWidth={3}
                     />
-                    {t}
+                    {t(itemText)}
                   </li>
                 ))}
               </ul>
@@ -323,8 +303,7 @@ export default function Landing() {
                 href="/upload"
                 className="btn btn-primary w-full mt-6 !justify-center"
               >
-                Optimize my resume
-                <ArrowRight size={14} />
+                {t("Optimize my resume")}<ArrowRight size={14} />
               </Link>
             </div>
           </div>
@@ -334,7 +313,7 @@ export default function Landing() {
       {/* FAQ */}
       <section id="faq" className="border-t border-ink-100 bg-ink-50/40">
         <div className="container-x py-24">
-          <SectionHeader eyebrow="FAQ" title="Questions, answered." />
+          <SectionHeader eyebrow="FAQ" title={t("Questions, answered.")} />
           <div className="max-w-2xl mx-auto mt-10 divide-y divide-ink-100 border border-ink-100 rounded-2xl bg-white">
             {[
               {
@@ -356,13 +335,13 @@ export default function Landing() {
             ].map((f, i) => (
               <details key={i} className="group p-5 cursor-pointer">
                 <summary className="flex items-center justify-between list-none">
-                  <span className="font-medium text-ink-900">{f.q}</span>
+                  <span className="font-medium text-ink-900">{t(f.q)}</span>
                   <span className="text-ink-300 group-open:rotate-45 transition">
                     +
                   </span>
                 </summary>
                 <p className="text-sm text-ink-500 mt-3 leading-relaxed">
-                  {f.a}
+                  {t(f.a)}
                 </p>
               </details>
             ))}
@@ -374,17 +353,14 @@ export default function Landing() {
       <section className="border-t border-ink-100">
         <div className="container-x py-24 text-center">
           <h2 className="h-section text-gradient">
-            Stop guessing what recruiters want.
-          </h2>
+            {t("Stop guessing what recruiters want.")}</h2>
           <p className="mt-4 text-ink-500">
-            Get your free ATS analysis in 30 seconds.
-          </p>
+            {t("Get your free ATS analysis in 30 seconds.")}</p>
           <Link
             href="/upload"
             className="btn btn-primary !px-5 !py-3 mt-8 inline-flex"
           >
-            Optimize my resume
-            <ArrowRight size={16} />
+            {t("Optimize my resume")}<ArrowRight size={16} />
           </Link>
         </div>
       </section>
@@ -392,7 +368,7 @@ export default function Landing() {
       <footer className="border-t border-ink-100">
         <div className="container-x py-10 flex items-center justify-between text-sm text-ink-400">
           <Logo />
-          <span>© {new Date().getFullYear()} NextResume</span>
+          <span>© {new Date().getFullYear()} {t("NextResume")}</span>
         </div>
       </footer>
     </div>
@@ -408,11 +384,12 @@ function SectionHeader({
   title: string;
   subtitle?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="text-center max-w-2xl mx-auto">
-      <div className="pill">{eyebrow}</div>
-      <h2 className="h-section mt-4 text-ink-900">{title}</h2>
-      {subtitle && <p className="text-ink-500 mt-3">{subtitle}</p>}
+      <div className="pill">{t(eyebrow)}</div>
+      <h2 className="h-section mt-4 text-ink-900">{t(title)}</h2>
+      {subtitle && <p className="text-ink-500 mt-3">{t(subtitle)}</p>}
     </div>
   );
 }
@@ -426,6 +403,7 @@ function HeroPanel({
   rows: string[];
   tone: "muted" | "accent";
 }) {
+  const { t } = useI18n();
   return (
     <div
       className={`rounded-xl border ${
@@ -434,7 +412,7 @@ function HeroPanel({
           : "border-ink-100 bg-ink-50/40"
       } p-4`}
     >
-      <div className="text-xs text-ink-500 mb-2">{label}</div>
+      <div className="text-xs text-ink-500 mb-2">{t(label)}</div>
       <div className="space-y-2">
         {rows.map((r, i) => (
           <div
@@ -462,9 +440,10 @@ function MetricCard({
   before: number;
   after: number;
 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-xl bg-white border border-ink-100 p-3 text-left">
-      <div className="text-[11px] text-ink-400">{label}</div>
+      <div className="text-[11px] text-ink-400">{t(label)}</div>
       <div className="flex items-end gap-2 mt-1">
         <span className="text-2xl font-semibold tabular-nums text-ink-900">
           {after}

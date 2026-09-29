@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import type {
   Resume,
   Optimization,
@@ -49,6 +50,7 @@ export function LivePdfPreview({
   onRetryPersonalized?: () => void;
   includeSummary?: boolean;
 }) {
+  const { t } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -265,15 +267,15 @@ export function LivePdfPreview({
             />
           </span>
           <div className="mt-3 text-sm font-medium text-ink-900">
-            {failed
+            {t(failed
               ? "Original-inspired style is not ready"
-              : "Preparing the Original-inspired layout…"}
+              : "Preparing the Original-inspired layout…")}
           </div>
           <p className="mt-1 text-sm text-ink-500">
             {failed
               ? personalizedError ||
-                "The layout could not be generated. Retry it or choose another PDF style."
-              : "The PDF preview will appear automatically when the layout is ready."}
+                t("The layout could not be generated. Retry it or choose another PDF style.")
+              : t("The PDF preview will appear automatically when the layout is ready.")}
           </p>
           {failed && onRetryPersonalized ? (
             <button
@@ -281,8 +283,7 @@ export function LivePdfPreview({
               onClick={onRetryPersonalized}
               className="btn btn-outline mt-4 min-h-11 bg-white"
             >
-              <RefreshCw size={14} /> Retry layout
-            </button>
+              <RefreshCw size={14} /> {t("Retry layout")}</button>
           ) : null}
         </div>
       </div>
@@ -300,9 +301,8 @@ export function LivePdfPreview({
             <AlertTriangle size={18} />
           </span>
           <div className="mt-3 text-sm font-medium text-ink-900">
-            Preview could not update
-          </div>
-          <p className="mt-1 text-sm text-rose-700">{error}</p>
+            {t("Preview could not update")}</div>
+          <p className="mt-1 text-sm text-rose-700">{t(error)}</p>
           <button
             type="button"
             disabled={retrySeconds > 0 || loading}
@@ -318,11 +318,11 @@ export function LivePdfPreview({
               size={14}
               className={loading ? "animate-spin" : undefined}
             />
-            {retrySeconds > 0
+            {t(retrySeconds > 0
               ? `Retry in ${retrySeconds}s`
               : loading
                 ? "Retrying…"
-                : "Retry preview"}
+                : "Retry preview")}
           </button>
         </div>
       </div>
@@ -335,8 +335,7 @@ export function LivePdfPreview({
         role="status"
         className="h-full w-full grid place-items-center text-sm text-ink-500"
       >
-        Generating preview…
-      </div>
+        {t("Generating preview…")}</div>
     );
   }
   return (
@@ -346,7 +345,7 @@ export function LivePdfPreview({
           page fill without scrolling. */}
       <iframe
         src={`${url}#toolbar=1&view=Fit`}
-        title="Edited resume PDF preview"
+        title={t("Edited resume PDF preview")}
         className="h-full w-full rounded-lg"
       />
       {loading ? (
@@ -355,23 +354,21 @@ export function LivePdfPreview({
           className="absolute right-3 top-3 inline-flex min-h-10 items-center gap-2 rounded-lg border border-ink-100 bg-white/95 px-3 text-xs font-medium text-ink-600 shadow-soft"
         >
           <RefreshCw size={13} className="animate-spin" />
-          Updating preview…
-        </div>
+          {t("Updating preview…")}</div>
       ) : null}
       {approximateLayout && !loading ? (
         <div
           role="status"
           className="absolute left-3 top-3 rounded-lg border border-amber-200 bg-amber-50/95 px-3 py-2 text-xs font-medium text-amber-900 shadow-soft"
         >
-          Approximate original-inspired layout — detected page geometry used
-        </div>
+          {t("Approximate original-inspired layout — detected page geometry used")}</div>
       ) : null}
       {error ? (
         <div
           role="alert"
           className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-white/95 px-3 py-2 text-xs text-rose-800 shadow-soft"
         >
-          <span>The latest preview could not replace this saved version: {error}</span>
+          <span>{t("The latest preview could not replace this saved version:")}{" "}{t(error)}</span>
           <button
             type="button"
             disabled={retrySeconds > 0 || loading}
@@ -384,7 +381,7 @@ export function LivePdfPreview({
             className="btn btn-outline min-h-11 bg-white"
           >
             <RefreshCw size={14} />
-            {retrySeconds > 0 ? `Retry in ${retrySeconds}s` : "Retry"}
+            {t(retrySeconds > 0 ? `Retry in ${retrySeconds}s` : "Retry")}
           </button>
         </div>
       ) : null}

@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { AppShell } from "@/components/AppShell";
 import { useFlow } from "@/lib/store";
 import { AlertCircle, CheckCircle2, Sparkles } from "lucide-react";
@@ -18,6 +19,7 @@ export default function CheckoutSuccessPage() {
 }
 
 function CheckoutSuccess() {
+  const { t } = useI18n();
   const params = useSearchParams();
   const router = useRouter();
   const { markPaid } = useFlow();
@@ -75,20 +77,17 @@ function CheckoutSuccess() {
               <AlertCircle size={20} />
             </div>
             <h1 className="text-xl font-semibold text-ink-900 mt-4">
-              Payment verification failed
-            </h1>
-            <p className="text-sm text-ink-500 mt-2">{error}</p>
+              {t("Payment verification failed")}</h1>
+            <p className="text-sm text-ink-500 mt-2">{t(error)}</p>
             <div className="mt-5 flex justify-center gap-2">
               <Link href="/checkout" className="btn btn-outline">
-                Back to checkout
-              </Link>
+                {t("Back to checkout")}</Link>
               <button
                 type="button"
                 onClick={() => location.reload()}
                 className="btn btn-primary"
               >
-                Try again
-              </button>
+                {t("Try again")}</button>
             </div>
           </div>
         </div>
@@ -100,6 +99,7 @@ function CheckoutSuccess() {
 }
 
 function Verifying() {
+  const { t } = useI18n();
   return (
     <AppShell step="checkout">
       <div className="container-x py-16 max-w-xl">
@@ -108,15 +108,12 @@ function Verifying() {
             <Sparkles size={20} />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight mt-5 text-ink-900">
-            Verifying payment…
-          </h1>
+            {t("Verifying payment…")}</h1>
           <p className="text-ink-500 mt-2">
-            Checking your Stripe checkout before unlocking the rewrite.
-          </p>
+            {t("Checking your Stripe checkout before unlocking the rewrite.")}</p>
           <div className="mt-6 text-emerald-600 inline-flex items-center gap-2 text-sm">
             <CheckCircle2 size={16} />
-            Secure return from Stripe
-          </div>
+            {t("Secure return from Stripe")}</div>
         </div>
       </div>
     </AppShell>
