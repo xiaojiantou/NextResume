@@ -4,60 +4,29 @@
 
 import { useI18n } from "@/components/LanguageProvider";
 import { EditableResumeCanvas } from "./EditableResumeCanvas";
-import { LivePdfPreview } from "./LivePdfPreview";
-import type {
-  Resume,
-  Optimization,
-  ResumePageSpec,
-  ResumeStyleProfile,
-} from "@/lib/types";
-import type { PdfStyle, TargetPages } from "@/lib/pdf/config";
-import type { ResumeFitVariant } from "@/lib/resumeFit";
-import { Maximize2, Minimize2 } from "lucide-react";
-import { useState } from "react";
+import type { Resume, Optimization } from "@/lib/types";
+import { useState, type ReactNode } from "react";
 
 export function EditorWithPreview({
   resume,
   optimization,
-  pdfStyle,
-  pdfPalette,
-  targetPages,
-  pageSize,
-  personalizedStyleProfile,
-  previewTargetPages,
-  previewFitVariant,
-  sourceRevision,
-  personalizedStatus,
-  personalizedError,
-  onRetryPersonalized,
+  preview,
   onResumeChange,
   onRegenerate,
   regenerating,
   keptContentIds,
   lockedContentIds,
   onToggleKeep,
-  includeSummary,
 }: {
   resume: Resume;
   optimization: Optimization | null;
-  pdfStyle: PdfStyle;
-  pdfPalette: string;
-  targetPages: TargetPages;
-  pageSize: ResumePageSpec;
-  personalizedStyleProfile: ResumeStyleProfile | null;
-  previewTargetPages?: TargetPages;
-  previewFitVariant?: ResumeFitVariant | null;
-  sourceRevision?: string | null;
-  personalizedStatus?: "idle" | "generating" | "ready" | "failed";
-  personalizedError?: string | null;
-  onRetryPersonalized?: () => void;
+  preview: ReactNode;
   onResumeChange: (resume: Resume) => void;
   onRegenerate: () => void;
   regenerating: boolean;
   keptContentIds?: string[];
   lockedContentIds?: string[];
   onToggleKeep?: (contentId: string) => void;
-  includeSummary?: boolean;
 }) {
   const { t } = useI18n();
   const [layout, setLayout] = useState<"split" | "editor" | "preview">("split");
@@ -99,7 +68,7 @@ export function EditorWithPreview({
 
       {/* Content */}
       {layout === "split" ? (
-        <div className="grid grid-cols-2 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Editor Side: grows with the page instead of scrolling inside a
               viewport-height box; the preview stays pinned beside it. */}
           <div className="min-w-0 pr-4 pb-4">
@@ -115,30 +84,8 @@ export function EditorWithPreview({
             />
           </div>
 
-          {/* Preview Side: the same page-shaped pane as the Side-by-side view,
-              sized from the output paper so the two previews match. */}
-          <div
-            className="min-w-0 overflow-hidden rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
-            style={{
-              aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}`,
-            }}
-          >
-            <LivePdfPreview
-              resume={resume}
-              optimization={optimization}
-              style={pdfStyle}
-              palette={pdfPalette}
-              targetPages={previewTargetPages ?? targetPages}
-              pageSize={pageSize}
-              personalizedStyleProfile={personalizedStyleProfile}
-              fitVariant={previewFitVariant}
-              sourceRevision={sourceRevision}
-              personalizedStatus={personalizedStatus}
-              personalizedError={personalizedError}
-              onRetryPersonalized={onRetryPersonalized}
-              includeSummary={includeSummary}
-            />
-          </div>
+          {/* Share the deliverable preview with the Side-by-side view. */}
+          <div className="min-w-0">{preview}</div>
         </div>
       ) : layout === "editor" ? (
         <div className="overflow-y-auto">
@@ -154,23 +101,7 @@ export function EditorWithPreview({
           />
         </div>
       ) : (
-        <div className="h-[calc(100dvh-8rem)] min-h-[760px] overflow-hidden rounded-lg border border-ink-100 bg-ink-50">
-          <LivePdfPreview
-            resume={resume}
-            optimization={optimization}
-            style={pdfStyle}
-            palette={pdfPalette}
-            targetPages={previewTargetPages ?? targetPages}
-            pageSize={pageSize}
-            personalizedStyleProfile={personalizedStyleProfile}
-            fitVariant={previewFitVariant}
-            sourceRevision={sourceRevision}
-            personalizedStatus={personalizedStatus}
-            personalizedError={personalizedError}
-            onRetryPersonalized={onRetryPersonalized}
-            includeSummary={includeSummary}
-          />
-        </div>
+        <div className="min-w-0">{preview}</div>
       )}
     </div>
   );

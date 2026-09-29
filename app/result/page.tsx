@@ -2068,25 +2068,7 @@ function ResultPageInner() {
               <EditorWithPreview
                 resume={resume}
                 optimization={optimization}
-                pdfStyle={pdfStyle}
-                pdfPalette={pdfPalette}
-                targetPages={targetPages}
-                previewTargetPages={
-                  fittedViewActive ? targetPages : "auto"
-                }
-                previewFitVariant={
-                  fittedViewActive ? activeFitVariant : null
-                }
-                sourceRevision={sourceRevision}
-                pageSize={outputPage}
-                personalizedStyleProfile={personalizedStyleProfile}
-                personalizedStatus={personalizedStatus}
-                personalizedError={personalizedError}
-                includeSummary={summaryEnabled}
-                onRetryPersonalized={() => {
-                  personalizeRan.current = true;
-                  void generatePersonalized();
-                }}
+                preview={optimizedPreviewPane}
                 onResumeChange={(nextResume) => {
                   setContentVersion("full");
                   setFitConflict(null);
