@@ -132,7 +132,7 @@ export function LatexSourcePreview({
 
   return (
     <div
-      className="flex flex-col rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
+      className="flex min-w-0 flex-col rounded-lg border border-ink-100 bg-ink-50 shadow-soft"
       style={
         pageSize
           ? { aspectRatio: `${pageSize.widthPt} / ${pageSize.heightPt}` }
@@ -176,7 +176,7 @@ export function LatexSourcePreview({
           pageSize ? "min-h-0 flex-1" : "max-h-[46rem]"
         }`}
       >
-        <pre className="min-w-full w-max text-[12px] leading-[1.6]">
+        <pre className="w-full min-w-0 text-[12px] leading-[1.6]">
           {lines.map((line) => (
             <div
               key={line.number}
@@ -189,7 +189,7 @@ export function LatexSourcePreview({
               >
                 {line.number}
               </span>
-              <code className="whitespace-pre px-3 font-mono text-ink-700">
+              <code className="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere] px-3 font-mono text-ink-700">
                 {line.text || " "}
               </code>
             </div>
