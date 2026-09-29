@@ -20,14 +20,16 @@ Verified against each of those:
 | `\immediate\write18{id > /tmp/pwned.txt}` | compiles, no file created |
 | `\input{/etc/passwd}` | refused, 422 |
 | `\openout` to `/tmp/escape.txt` | refused, 422 |
-| `\def\l{\l}\l` | killed on timeout, 422 |
+| `\def\l{\l}\l` | killed on timeout, 504 |
 | wrong `X-Compile-Token` | 401 |
 
 ## API
 
 `POST /compile` with `{"source": "...", "engine": "pdflatex"}` and header
 `X-Compile-Token`. Returns `application/pdf`, or JSON `{error, log}` with 422
-when the document itself does not build. `GET /health` returns `ok`.
+when the document itself does not build, or 504 when compilation times out.
+The default 40-second budget covers both TeX passes together; the app waits
+up to 50 seconds, within the route’s 60-second limit. `GET /health` returns `ok`.
 
 `engine` accepts `pdflatex` (default), `xelatex`, or `lualatex`.
 
@@ -50,7 +52,7 @@ PROJECT_ID=<gcp project> ./services/latex-compiler/deploy.sh
 It enables the APIs, creates an Artifact Registry repo and a Secret Manager
 secret for `COMPILE_TOKEN` (generated once, reused after), builds with Cloud
 Build, deploys to Cloud Run in `us-east1` (the same side of the US as Vercel's
-`iad1`) with 1 CPU / 1 GiB / concurrency 2, health-checks the service, and
+`iad1`) with 1 CPU / 1 GiB / concurrency 1, health-checks the service, and
 prints the three Vercel variables. `REGION`, `SERVICE`, and `MIN_INSTANCES`
 can be overridden in the environment.
 

@@ -23,7 +23,7 @@ const PORT = Number(process.env.PORT || 8080);
 // Trimmed because a secret created from a shell pipeline arrives with its
 // trailing newline, and the header it is compared against never has one.
 const TOKEN = (process.env.COMPILE_TOKEN || "").trim();
-const TIMEOUT_MS = Number(process.env.COMPILE_TIMEOUT_MS || 20_000);
+const TIMEOUT_MS = Number(process.env.COMPILE_TIMEOUT_MS || 40_000);
 const MAX_SOURCE_BYTES = Number(process.env.MAX_SOURCE_BYTES || 2 * 1024 * 1024);
 const MAX_PDF_BYTES = Number(process.env.MAX_PDF_BYTES || 20 * 1024 * 1024);
 // TeX writes its own log; only the engine's stdout is captured, and only
@@ -50,7 +50,7 @@ function readBody(req, limit) {
   });
 }
 
-function runEngine(engine, directory, jobName) {
+function runEngine(engine, directory, jobName, timeoutMs) {
   return new Promise((resolve) => {
     const child = spawn(
       engine,
@@ -88,7 +88,7 @@ function runEngine(engine, directory, jobName) {
 
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
-    }, TIMEOUT_MS);
+    }, timeoutMs);
 
     child.on("error", (error) => {
       clearTimeout(timer);
@@ -129,16 +129,25 @@ async function compile(source, engine) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "texc-"));
   try {
     await fs.writeFile(path.join(directory, "resume.tex"), source, "utf8");
-    let result = await runEngine(engine, directory, "resume");
+    const deadline = Date.now() + TIMEOUT_MS;
+    let result = await runEngine(engine, directory, "resume", TIMEOUT_MS);
 
     // A second pass only when TeX says it needs one — page-count and
     // last-page macros are the usual reason, and resumes rarely go further.
     if (result.code === 0 && /Rerun to get|Rerun LaTeX/i.test(result.output)) {
-      result = await runEngine(engine, directory, "resume");
+      const remainingMs = deadline - Date.now();
+      result = remainingMs > 0
+        ? await runEngine(engine, directory, "resume", remainingMs)
+        : { ...result, killed: true };
     }
 
     if (result.killed) {
-      return { ok: false, status: 422, error: "Compilation timed out." };
+      return {
+        ok: false,
+        status: 504,
+        error: "Compilation timed out. Please retry; if it keeps failing, check the source in Overleaf.",
+        log: errorSummary(result.output),
+      };
     }
 
     let pdf;

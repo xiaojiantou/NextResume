@@ -30,7 +30,7 @@ export function isLatexCompilerConfigured(): boolean {
 
 export async function compileLatex(
   source: string,
-  { timeoutMs = 30_000, engine }: { timeoutMs?: number; engine?: TexEngine } = {},
+  { timeoutMs = 50_000, engine }: { timeoutMs?: number; engine?: TexEngine } = {},
 ): Promise<CompileSuccess | CompileFailure> {
   const base = process.env.LATEX_COMPILER_URL;
   if (!base) {
@@ -69,7 +69,7 @@ export async function compileLatex(
         ok: false,
         // A LaTeX error is the user's document, not a server fault, so it is
         // surfaced as 422 rather than dressed up as a 500.
-        status: res.status === 422 ? 422 : 502,
+        status: res.status === 422 ? 422 : res.status === 504 ? 504 : 502,
         error: data.error || `Compile service returned ${res.status}.`,
         log: data.log,
       };

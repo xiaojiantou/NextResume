@@ -56,11 +56,11 @@ gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID" --quiet
 
 echo "☁️  Deploying to Cloud Run..."
 # Unauthenticated at the platform level: the service enforces X-Compile-Token
-# itself (a wrong token is a 401). Concurrency 2 keeps two pdflatex runs from
+# itself (a wrong token is a 401). Concurrency 1 keeps parallel TeX runs from
 # fighting over one CPU.
 gcloud run deploy "$SERVICE" --image "$IMAGE" --project "$PROJECT_ID" --region "$REGION" \
   --platform managed --allow-unauthenticated \
-  --cpu 1 --memory 1Gi --concurrency 2 --timeout 60 \
+  --cpu 1 --memory 1Gi --concurrency 1 --timeout 60 \
   --min-instances "$MIN_INSTANCES" --max-instances 3 \
   --set-secrets "COMPILE_TOKEN=${SECRET}:latest" --quiet
 

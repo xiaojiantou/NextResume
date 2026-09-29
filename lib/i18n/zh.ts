@@ -1,5 +1,9 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 export const zh: Record<string, string> = {
+  "Compilation timed out.": "编译超时。",
+  "Compilation timed out. Please retry; if it keeps failing, check the source in Overleaf.": "编译超时，请重试。如果持续失败，请在 Overleaf 中检查源文件。",
+  "Compiling took too long. Download the .tex and build it in Overleaf.": "编译耗时过长。请下载 .tex 文件并在 Overleaf 中编译。",
+
   "Experience": "工作经历",
   "Edited": "已编辑",
   "Kept": "已保留",
