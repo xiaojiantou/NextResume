@@ -1,5 +1,7 @@
 // Copyright (c) 2026 HowBe LLC. All rights reserved.
 export const zh: Record<string, string> = {
+  "Exported {0} pages.": "已导出 {0} 页。",
+  "Download PDF compiles your own LaTeX source. If compilation fails, an error is shown. Turn off to use the template.": "下载 PDF 会编译你的 LaTeX 源文件。编译失败时会显示错误。关闭此选项可使用网站模板。",
   "Compilation timed out.": "编译超时。",
   "Compilation timed out. Please retry; if it keeps failing, check the source in Overleaf.": "编译超时，请重试。如果持续失败，请在 Overleaf 中检查源文件。",
   "Compiling took too long. Download the .tex and build it in Overleaf.": "编译耗时过长。请下载 .tex 文件并在 Overleaf 中编译。",

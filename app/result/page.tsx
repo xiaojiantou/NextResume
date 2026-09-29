@@ -758,6 +758,7 @@ function ResultPageInner() {
   }): Promise<boolean> => {
     if (!resume || !optimization) return false;
     setExporting(true);
+    setExportedPages(null);
     if (!opts?.silent) setExportError(null);
     setExportNotice(null);
     try {
@@ -854,6 +855,7 @@ function ResultPageInner() {
     if (!resume || !optimization || !sourceDocument) return false;
     const isTex = sourceDocument.kind === "tex";
     setExporting(true);
+    setExportedPages(null);
     if (!opts?.silent) setExportError(null);
     setExportNotice(null);
     try {
@@ -891,6 +893,10 @@ function ResultPageInner() {
         throw new Error(
           `${data.error || `${isTex ? "LaTeX" : "Word"} export failed (${res.status})`}${t(detail)}`,
         );
+      }
+      if (compiled) {
+        const pages = Number(res.headers.get("X-Resume-Pages") || "0");
+        setExportedPages(Number.isFinite(pages) && pages > 0 ? pages : null);
       }
       // Some lines deliberately keep their original wording: anything carrying
       // a hyperlink is never rewritten, and anything we could not locate with
@@ -945,17 +951,14 @@ function ResultPageInner() {
     }
   };
 
-  // For a .tex source, the user's own LaTeX typesetting is the truer
-  // "download PDF" than our template rendering — try compiling their source
-  // first and only fall back to the generic template when that fails (a
-  // template we cannot build, or the compiler being unavailable).
+  // A failed source compile must not silently download a different layout.
   const downloadPdfPreferSource = async () => {
     if (
       preferLatexCompile &&
       sourceDocument?.kind === "tex" &&
       process.env.NEXT_PUBLIC_LATEX_COMPILER === "1"
     ) {
-      const compiled = await downloadSource(true, { silent: true });
+      const compiled = await downloadSource(true);
       if (compiled) {
         setExportNotice((prev) =>
           prev
@@ -963,17 +966,6 @@ function ResultPageInner() {
             : "Compiled from your original LaTeX.",
         );
         return;
-      }
-      // The user's own template failed to build (or the compiler is
-      // unavailable) — fall back quietly on the request, but say so on the
-      // result, since the PDF they get is now our layout, not theirs.
-      const templated = await downloadPdf({ silent: true });
-      if (templated) {
-        setExportNotice(
-          "Your LaTeX couldn't be compiled, so this PDF uses our template layout instead.",
-        );
-      } else {
-        setExportError("Both your LaTeX and the template PDF failed to export.");
       }
       return;
     }
@@ -1481,6 +1473,7 @@ function ResultPageInner() {
   // spacing, sometimes a different page count — discovered only after
   // paying and opening it.
   const canPreviewCompiledTex =
+    preferLatexCompile &&
     sourceDocument?.kind === "tex" &&
     latexSource !== null &&
     process.env.NEXT_PUBLIC_LATEX_COMPILER === "1" &&
@@ -1709,26 +1702,13 @@ function ResultPageInner() {
         )}
 
         {exportedPages !== null && !exportError && (
-          <div
-            className={cn(
-              "mt-3 rounded-lg border px-3 py-2 text-sm",
-              exportedPages > 1
-                ? "border-amber-200 bg-amber-50 text-amber-800"
-                : "border-emerald-200 bg-emerald-50 text-emerald-700",
-            )}
-          >
-            {exportedPages > 1 ? (
-              <>
-                {t("Exported")}{" "}{exportedPages} {t("pages — even at maximum compaction this content doesn't fit one page.")}{t(" ")}
-                {t(!resume.summary && optimization?.summary && summaryEnabled
-                  ? "Try turning off the AI summary, or cut the bullets marked low-relevance in the diff below."
-                  : "Try cutting the bullets marked low-relevance in the diff below.")}
-              </>
-            ) : (
-              <>{t("Exported as a single page.")}</>
-            )}
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {exportedPages === 1
+              ? t("Exported as a single page.")
+              : t(`Exported ${exportedPages} pages.`)}
           </div>
         )}
+
 
         {pdfStyle === "personalized" &&
           personalizedStatus === "failed" && (
@@ -1815,7 +1795,7 @@ function ResultPageInner() {
                   onChange={() => setPreferLatexCompile((v) => !v)}
                   icon={<FileDown size={14} />}
                   label={t("Use your LaTeX")}
-                  title={t("Download PDF compiles your own LaTeX source first, falling back to our template only if that fails. Turn off to always use the template.")}
+                  title={t("Download PDF compiles your own LaTeX source. If compilation fails, an error is shown. Turn off to use the template.")}
                 />
               ) : null}
             </div>
